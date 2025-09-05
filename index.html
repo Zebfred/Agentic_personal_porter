@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Use Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <nav class="bg-gray-800 p-4 text-white">
+        <div class="container mx-auto flex justify-between">
+            <h1 class="text-xl font-bold">Time Use Tracker</h1>
+            <a href="inventory.html" class="text-white hover:text-gray-300">Inventory</a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto p-4">
+        <div id="app">
+            <!-- Forms will go here -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Intention Form -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4">Log Intention</h2>
+                    <form id="intention-form">
+                        <div class="mb-4">
+                            <label for="intention-title" class="block text-sm font-medium text-gray-700">Title</label>
+                            <input type="text" id="intention-title" name="intention-title" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="intention-category" class="block text-sm font-medium text-gray-700">Category</label>
+                            <select id="intention-category" name="intention-category" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                                <option value="physiological">Physiological</option>
+                                <option value="safety">Safety</option>
+                                <option value="belonging">Belonging</option>
+                                <option value="esteem">Esteem</option>
+                                <option value="self-actualization">Self-Actualization</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="start-time" class="block text-sm font-medium text-gray-700">Start Time</label>
+                                <input type="time" id="start-time" name="start-time" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                            </div>
+                            <div>
+                                <label for="end-time" class="block text-sm font-medium text-gray-700">End Time</label>
+                                <input type="time" id="end-time" name="end-time" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Add Intention</button>
+                    </form>
+                </div>
+                <!-- Actual Form -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4">Log Actual</h2>
+                    <form id="actual-form">
+                        <div class="mb-4">
+                            <label for="actual-title" class="block text-sm font-medium text-gray-700">Activity Title</label>
+                            <input type="text" id="actual-title" name="actual-title" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label for="time-spent" class="block text-sm font-medium text-gray-700">Time Spent (minutes)</label>
+                            <input type="number" id="time-spent" name="time-spent" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700">Feeling</label>
+                            <div class="mt-2 flex space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="feeling" value="happy" class="form-radio h-5 w-5 text-green-600"><span class="ml-2 text-3xl">😊</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="feeling" value="neutral" class="form-radio h-5 w-5 text-yellow-600"><span class="ml-2 text-3xl">😐</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="feeling" value="sad" class="form-radio h-5 w-5 text-red-600"><span class="ml-2 text-3xl">😔</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" id="valuable-detour" name="valuable-detour" class="form-checkbox h-5 w-5 text-blue-600">
+                                <span class="ml-2 text-sm font-medium text-gray-700">Valuable Detour?</span>
+                            </label>
+                        </div>
+                        <div id="inventory-note-container" class="mb-4 hidden">
+                            <label for="inventory-note" class="block text-sm font-medium text-gray-700">Inventory Note</label>
+                            <textarea id="inventory-note" name="inventory-note" rows="3" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Add Actual</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Dashboard will go here -->
+            <div>
+                <h2 class="text-2xl font-bold mt-8 mb-4">Today's Log</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Intentions</h3>
+                        <div id="intentions-list">
+                            <div class="bg-gray-200 p-4 rounded-lg mb-2">
+                                <p class="font-bold">Work on project X</p>
+                                <p class="text-sm text-gray-600">Esteem | 09:00 - 17:00</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">Actuals</h3>
+                        <div id="actuals-list">
+                            <div class="bg-green-200 p-4 rounded-lg mb-2">
+                                <p class="font-bold">Watched YouTube videos 😊</p>
+                                <p class="text-sm text-gray-600">120 minutes</p>
+                            </div>
+                            <div class="bg-red-200 p-4 rounded-lg mb-2">
+                                <p class="font-bold">Procrastinated 😔</p>
+                                <p class="text-sm text-gray-600">60 minutes</p>
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const valuableDetourCheckbox = document.getElementById('valuable-detour');
+        const inventoryNoteContainer = document.getElementById('inventory-note-container');
+
+        valuableDetourCheckbox.addEventListener('change', () => {
+            if (valuableDetourCheckbox.checked) {
+                inventoryNoteContainer.classList.remove('hidden');
+            } else {
+                inventoryNoteContainer.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
