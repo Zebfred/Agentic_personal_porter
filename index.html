@@ -76,6 +76,10 @@
                             </div>
                         </div>
                         <div class="mb-4">
+                            <label for="brain-fog" class="block text-sm font-medium text-gray-700">Brain Fog Level: <span id="brain-fog-value">0</span>%</label>
+                            <input type="range" id="brain-fog" name="brain-fog" min="0" max="100" step="10" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div class="mb-4">
                             <label class="inline-flex items-center">
                                 <input type="checkbox" id="valuable-detour" name="valuable-detour" class="form-checkbox h-5 w-5 text-blue-600">
                                 <span class="ml-2 text-sm font-medium text-gray-700">Valuable Detour?</span>
@@ -142,6 +146,12 @@
             } else {
                 inventoryNoteContainer.classList.add('hidden');
             }
+        });
+
+        const brainFogSlider = document.getElementById('brain-fog');
+        const brainFogValue = document.getElementById('brain-fog-value');
+        brainFogSlider.addEventListener('input', () => {
+            brainFogValue.textContent = brainFogSlider.value;
         });
     </script>
 </body>
