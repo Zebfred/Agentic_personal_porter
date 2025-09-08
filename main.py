@@ -69,13 +69,17 @@ task_ingest = Task(
 
 task_reflect = Task(
     description=(
-        "Based on the structured summary of the user's day, analyze the discrepancy between their intentions and actions. "
-        "If there was a 'detour,' formulate one or two gentle, Socratic questions to help the user find value in it. "
-        "For example: 'I notice you spent time on X instead of Y. What did X provide for you today that Y couldn't have?' "
-        "If the actions aligned with intentions, offer a brief, encouraging affirmation. "
-        "Frame your output as a supportive message directly to the user."
+        "Analyze the user's journal entry summary. Your primary focus is the 'Brain Fog' level.\n"
+        "1. **Acknowledge Brain Fog**: Start by mentioning the reported brain fog level.\n"
+        "2. **High Fog (>40%) Analysis**:\n"
+        "   - If they progressed on their intention, praise their resilience.\n"
+        "   - If they took a detour (e.g., rested), validate it as wise self-care, not a failure.\n"
+        "3. **Low Fog (<20%) Analysis**:\n"
+        "   - Focus on how their actions aligned with their goals.\n"
+        "4. **General Reflection**: For any other cases, or in addition to the above, you can still use gentle, Socratic questions to help the user find value in their day's activities.\n"
+        "Frame the entire output as a supportive, direct message to the user."
     ),
-    expected_output="A compassionate and insightful message for the user, containing either reflective questions or an affirmation.",
+    expected_output="A compassionate and insightful message for the user, that acknowledges their brain fog level and contains either reflective questions or an affirmation.",
     agent=reflection_agent,
     context=[task_ingest]
 )

@@ -77,6 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
             feeling: formData.get('feeling'),
             valuableDetour: formData.get('valuable-detour') === 'on',
             inventoryNote: formData.get('inventory-note'),
+            brainFog: formData.get('brain-fog'),
         };
 
         // Save and render the new "actual" locally first
@@ -91,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         aiOutputContainer.innerHTML = '';
 
         // 2. Create the journal entry string
-        let journalEntry = `Activity: ${newActual.title}, Time Spent: ${newActual.timeSpent} minutes. Feeling: ${newActual.feeling}.`;
+        let journalEntry = `Activity: ${newActual.title}, Time Spent: ${newActual.timeSpent} minutes. Feeling: ${newActual.feeling}. Brain Fog: ${newActual.brainFog}%.`;
         if (newActual.valuableDetour && newActual.inventoryNote) {
             journalEntry += ` Note: ${newActual.inventoryNote}`;
         }
