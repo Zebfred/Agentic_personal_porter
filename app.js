@@ -3,6 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const actualForm = document.getElementById('actual-form');
     const intentionsList = document.getElementById('intentions-list');
     const actualsList = document.getElementById('actuals-list');
+    const loader = document.getElementById('loader');
+    const aiOutputContainer = document.getElementById('ai-output-container');
 
     const getFromStorage = (key) => JSON.parse(localStorage.getItem(key)) || [];
     const saveToStorage = (key, data) => localStorage.setItem(key, JSON.stringify(data));
@@ -65,9 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
         intentionForm.reset();
     });
 
-    actualForm.addEventListener('submit', (e) => {
+    actualForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(actualForm);
+
         const newActual = {
             title: formData.get('actual-title'),
             timeSpent: formData.get('time-spent'),
@@ -75,9 +78,52 @@ document.addEventListener('DOMContentLoaded', () => {
             valuableDetour: formData.get('valuable-detour') === 'on',
             inventoryNote: formData.get('inventory-note'),
         };
+
+        // Save and render the new "actual" locally first
         actuals.push(newActual);
         saveToStorage('actuals', actuals);
         renderActuals();
+
+        // --- New Logic for AI Processing ---
+
+        // 1. Show loader and clear previous output
+        loader.classList.remove('hidden');
+        aiOutputContainer.innerHTML = '';
+
+        // 2. Create the journal entry string
+        let journalEntry = `Activity: ${newActual.title}, Time Spent: ${newActual.timeSpent} minutes. Feeling: ${newActual.feeling}.`;
+        if (newActual.valuableDetour && newActual.inventoryNote) {
+            journalEntry += ` Note: ${newActual.inventoryNote}`;
+        }
+
+        try {
+            // 3. Make the fetch request
+            const response = await fetch('http://localhost:5000/process_journal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ journal_entry: journalEntry }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // 4. Display the result
+            aiOutputContainer.innerHTML = `<p>${data.result.replace(/\n/g, '<br>')}</p>`;
+
+        } catch (error) {
+            console.error('Error processing journal entry:', error);
+            aiOutputContainer.innerHTML = `<p class="text-red-500">Error processing your entry. Please try again later.</p>`;
+        } finally {
+            // 5. Hide loader
+            loader.classList.add('hidden');
+        }
+
+        // Reset form and UI elements
         actualForm.reset();
         document.getElementById('inventory-note-container').classList.add('hidden');
     });
