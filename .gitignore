@@ -1,0 +1,16 @@
+# Ignore IDE and editor-specific files
+.idea/
+.vscode/
+*.iml
+*.swp
+.DS_Store
+
+# Ignore log files and temporary files
+*.log
+tmp/
+temp/
+
+# Ignore sensitive information (e.g., configuration files with credentials)
+config.local.js
+.env
+
