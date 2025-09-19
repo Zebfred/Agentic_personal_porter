@@ -9,6 +9,7 @@
 *.log
 tmp/
 temp/
+__pycache__/
 
 # Ignore sensitive information (e.g., configuration files with credentials)
 config.local.js
