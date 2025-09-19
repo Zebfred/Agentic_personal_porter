@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const inventoryList = document.getElementById('inventory-list');
+    const inventoryList = document.getElementById('valuable-detours-list');
     const getFromStorage = (key) => JSON.parse(localStorage.getItem(key)) || [];
 
     const actuals = getFromStorage('actuals');
