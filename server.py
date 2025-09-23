@@ -14,73 +14,67 @@ def process_journal():
     """
     try:
         data = request.get_json()
-        journal_entry_text = data.get('journal_entry') 
+        journal_entry = data.get('journal_entry') 
+        journal_entry = data['journal_entry']
+        print(f"Received journal entry: {journal_entry}")  # Debugging log
         log_data = data.get('log_data')
+        print(f"Received log data: {log_data}")  # Debugging log
         
-        if not journal_entry_text or not log_data:
-            return jsonify({'error': "Incomplete data provided: requires 'journal_entry_text' and 'log_data'"}), 400
+        if not journal_entry or not log_data:
+            # --- MORE DESCRIPTIVE 400 ERROR ---
+            error_message = "Incomplete data. "
+            if not journal_entry:
+                error_message += "'journal_entry' is missing. "
+            if not log_data:
+                error_message += "'log_data' is missing. Check app.js payload construction."
+            print(f"Returning 400 error: {error_message}")
+            return jsonify({"error": error_message}), 400
         
-        # Log the journal entry
-        #journal_entry = data['journal_entry']
-        
-        # Runs the CrewAI workflow to get the reflection for the journal text
-        crew_result = run_crew(journal_entry_text)
-
-
-
-        # v4: Access the .raw attribute from the LAST task's output
-        # The result is often a list of outputs, we want the final one.
-        result_text = "Could not retrieve a reflection."
-        
-        # Safely access the nested raw output from the last task
         try:
+            # Run the CrewAI workflow
+            crew_result = run_crew(journal_entry)
+
+            # BEFORE any error can happen
+            print("\n--- DEBUGGING CREWAI OUTPUT ---")
+            print(f"Type of crew_result: {type(crew_result)}")
+            print(f"Raw crew_result object: {crew_result}")
+            if crew_result:
+                print(f"Attributes of crew_result: {dir(crew_result)}")
+            print("--- END IMMEDIATE DEBUGGING ---\n")
+
+            # Safely extract the reflection text
+            result_text = "Could not retrieve a reflection."
             if crew_result and hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
                 last_task = crew_result.tasks_output[-1]
                 if hasattr(last_task, 'raw') and last_task.raw:
                     result_text = last_task.raw
-                else: # Fallback if .raw is missing or empty
+                else:
                     result_text = str(last_task)
             elif crew_result: # Fallback if tasks_output is missing or empty
                 result_text = str(crew_result)
-        except Exception as e:
-            print(f"Error extracting reflection from crew_result: {e}")
-            result_text = "Error parsing AI response object."
-        #the generated reflection to the log_data dictionary
-        log_data['reflection'] = result_text    
 
-        # Log the journal entry
-        #journal_entry = data['journal_entry']
+            # Add reflection to the log data for the database
+            log_data['reflection'] = result_text
 
-        # Save the entire, complete log entry to our Neo4j database
-        db_confirmation = log_to_neo4j(log_data)
-        print(f"Neo4j Confirmation: {db_confirmation}")
+            # 5. Save the complete log to Neo4j
+            db_confirmation = log_to_neo4j(log_data)
+            print(f"Neo4j Confirmation: {db_confirmation}")
 
-        # --- Enhanced Debugging ---
-        print("--- DEBUGGING CREWAI OUTPUT ---")
-        print(f"Type of crew_result: {type(crew_result)}")
-        print(f"Raw crew_result object: {crew_result}")
-        print(f"Attributes of crew_result: {dir(crew_result)}")
-        #print(f"Type of result_text: {type(result_text)}")
-        #print(f"Raw result_text object: {result_text}")
-        #print(f"Attributes of result_text_object: {dir(result_text)}")
-        # --- End Debugging ---
-
+            # 6. Return the successful result to the front-end
+            return jsonify({"reflection": result_text})
         
-        # --- Enhanced Debugging for Return Value ---
-        print("--- DEBUGGING RETURN VALUE ---")
-        print(f"Type of result_text before jsonify: {type(result_text)}")
-        print(f"Content of result_text: {result_text}")
-        print(f"Attributes of result_text_object: {dir(result_text)}")
-        # --- End Debugging ---    
-
-        # Send the reflection text back to the front-end to be displayed
-        return jsonify({'reflection': result_text})
+        except Exception as e:
+            # This will now catch the 'NoneType' error and give us a detailed traceback
+            print(f"\n!!! AN ERROR OCCURRED DURING CREW EXECUTION OR DATA PROCESSING !!!")
+            import traceback
+            traceback.print_exc() # This prints the full error stack trace
+            print(f"Error details: {e}\n")
+            return jsonify({"error": "An error occurred while processing the AI reflection."}), 500
 
     except Exception as e:
-        # Log the error for debugging
-        print(f"An error occurred: {e}")
-        # Return a generic error message
-        return jsonify({'error': 'An internal server error occurred.'}), 500
+        # This outer block catches errors in getting the initial JSON data
+        print(f"An error occurred reading the request data: {e}")
+        return jsonify({"error": "An internal server error occurred."}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
