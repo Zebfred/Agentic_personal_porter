@@ -2,6 +2,7 @@ import os
 from crewai import Agent, Task, Crew, Process
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from groq import Groq # Likely not needed here, but useful for testing connectivity
 
 # Load environment variables from .env file
 load_dotenv()
@@ -9,52 +10,91 @@ load_dotenv()
 # Set up the language model
 llm = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY"),
-    model_name="groq/llama-3.1-8b-instant"
+    # By prepending 'groq/', we explicitly tell the underlying library which provider to use.
+    #decommissioned model="groq-llama3-8b-8192" # Old parameter name
+    #model_name="groq/llama3-8b-8192" # Corrected parameter from 'model' to 'model_name'
+    #model_name="groq/llama-3.1-8b-instant"
+    model_name="groq/compound"
 )
 
-# --- Define Agents ---
+# --- Model and Agent Definitions ---
+# We are defining a specific model for each agent's task, following the principle
+# of using the simplest/most efficient model that is best suited for the job.
+
+# For the Scribe (Goal Ingester): A fast, low-latency model is best.
+llm_scribe = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="groq/llama-3.1-8b-instant",
+    verbose=True # Show agent's thought process as it completes its task
+)
+
+# For the Coach (Reflection Agent): A powerful, nuanced model is needed for high-quality, empathetic responses.
+llm_coach = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="groq/llama-3.3-70b-versatile",
+    verbose=True # Show agent's thought process as it completes its task
+)
+
+# For the Librarian (Inventory Curator): A balanced, reliable model is perfect for structured output.
+llm_librarian = ChatGroq(
+    api_key=os.getenv("GROQ_API_KEY"),
+    model="groq/llama-3.1-8b-instant",
+    verbose=True # Show agent's thought process as it completes its task
+)
+
+# --- 1. Defined Agents (The Porters) ---
+
+# Agent 1: The Goal Ingestion Agent (The Scribe)
+# This agent's job is to read the user's raw input and structure it.
 goal_ingester = Agent(
-    role='Goal and Activity Analyst',
-    goal='To accurately parse the user\'s journal entry, identifying their stated intentions and their actual activities.',
-    backstory=(
-        "You are a meticulous analyst. Your strength is in reading unstructured text "
-        "and extracting key pieces of information with high fidelity. You separate "
-        "what the user planned to do from what they actually did."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    llm=llm
+  role='Goal and Activity Analyst',
+  goal='To accurately parse the user\'s journal entry, identifying their stated intentions and their actual activities.',
+  backstory=(
+    "You are a meticulous analyst. Your strength is in reading unstructured text "
+    "and extracting key pieces of information with high fidelity. You separate "
+    "what the user planned to do from what they actually did."
+  ),
+  verbose=True,
+  allow_delegation=False,
+  llm=llm_scribe # Assign the fast model
 )
 
+
+# Agent 2: The Socratic Reflection Agent (The Coach)
+# This is the core agent that facilitates self-discovery.
 reflection_agent = Agent(
-    role='Empathetic Self-Reflection Coach',
-    goal='To analyze the user\'s activities and feelings, and gently guide them to find value and insight, especially in unplanned "detours".',
-    backstory=(
-        "You are a compassionate coach grounded in positive psychology. You never judge. "
-        "Your purpose is to ask thoughtful, Socratic questions that help the user "
-        "understand their own behavior and appreciate the value in all their experiences, "
-        "aligning them with Maslow\'s hierarchy of needs."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    llm=llm
+  role='Empathetic Self-Reflection Coach',
+  goal='To analyze the user\'s activities and feelings, and gently guide them to find value and insight, especially in unplanned "detours".',
+  backstory=(
+    "You are a compassionate coach grounded in positive psychology. You never judge. "
+    "Your purpose is to ask thoughtful, Socratic questions that help the user "
+    "understand their own behavior and appreciate the value in all their experiences, "
+    "aligning them with Maslow\'s hierarchy of needs."
+  ),
+  verbose=True,
+  allow_delegation=False,
+  llm=llm_coach # Assign the powerful model
 )
 
+
+# Agent 3: The Inventory Curator Agent (The Librarian)
+# This agent logs the "wins" and valuable detours.
 inventory_curator = Agent(
-    role='Personal Growth Librarian',
-    goal='To categorize and log valuable experiences, skills, and insights into a structured "inventory" for the user\'s future reference.',
-    backstory=(
-        "You are the keeper of the user's personal treasure chest of growth. "
-        "You take the valuable insights discovered during reflection and formalize them "
-        "into a clean, organized list of skills, experiences, and personal wins. "
-        "This inventory serves as a testament to the user\'s journey."
-    ),
-    verbose=True,
-    allow_delegation=False,
-    llm=llm
+  role='Personal Growth Librarian',
+  goal='To categorize and log valuable experiences, skills, and insights into a structured "inventory" for the user\'s future reference.',
+  backstory=(
+    "You are the keeper of the user's personal treasure chest of growth. "
+    "You take the valuable insights discovered during reflection and formalize them "
+    "into a clean, organized list of skills, experiences, and personal wins. "
+    "This inventory serves as a testament to the user\'s journey."
+  ),
+  verbose=True,
+  allow_delegation=False,
+  llm=llm_librarian # Assign the balanced model
 )
 
-# --- Define Tasks ---
+# --- Define Tasks (The Workflow) ---
+# The input for this task will be the user's raw text.
 task_ingest = Task(
     description=(
         "Analyze the following user journal entry: '{user_journal_entry}'.\n"
@@ -67,6 +107,8 @@ task_ingest = Task(
     agent=goal_ingester
 )
 
+# Task for the Reflection Agent
+# This task takes the output of the first task as its context.
 task_reflect = Task(
     description=(
         "Analyze the user's journal entry summary. Your primary focus is the 'Brain Fog' level.\n"
@@ -84,6 +126,8 @@ task_reflect = Task(
     context=[task_ingest]
 )
 
+# Task for the Curator Agent
+# This task also uses the context from the previous tasks.
 task_curate = Task(
     description=(
         "From the analysis of the user's activities and reflections, identify any clear 'Valuable Detours' or accomplished intentions that represent a skill, a learning experience, or a personal win. "
@@ -96,7 +140,7 @@ task_curate = Task(
     context=[task_reflect]
 )
 
-# --- Assemble the Crew ---
+# --- Assemble the Crew and Kick if off ---
 crew = Crew(
     agents=[goal_ingester, reflection_agent, inventory_curator],
     tasks=[task_ingest, task_reflect, task_curate],
