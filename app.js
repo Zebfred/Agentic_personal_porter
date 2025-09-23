@@ -204,7 +204,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('http://localhost:5000/process_journal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ journal_entry: journalEntry }),
+                    body: JSON.stringify({ journal_entry: journalEntry, // string for CrewAI
+                    log_data: {
+                        day, day,
+                        timeChunk: chunkId, // or the full label if you prefer
+                        intention: chunkData.intention,
+                        actual: chunkData.activityTitle,
+                        feeling: chunkData.feeling,
+                        brainFog: chunkData.brainFog,
+                        isValuableDetour: chunkData.valuableDetour,
+                        inventoryNote: chunkData.inventoryNote
+                    }
+
+
+                     }),
                 });
 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
