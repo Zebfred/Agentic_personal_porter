@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ journal_entry: journalEntry, // string for CrewAI
                     log_data: {
-                        day, day,
+                        day: day,
                         timeChunk: chunkId, // or the full label if you prefer
                         intention: chunkData.intention,
                         actual: chunkData.activityTitle,
