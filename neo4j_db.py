@@ -6,11 +6,14 @@ load_dotenv()
 
 # --- Database Connection ---
 URI = os.getenv("NEO4J_URI")
+AUTH_USER = os.getenv("NEO4J_USERNAME")
+AUTH_PASS = os.getenv("NEO4J_PASSWORD")
 AUTH = (os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD"))
+
 
 def get_driver():
     """Establishes a connection to the Neo4j database."""
-    return GraphDatabase.driver(URI, auth=AUTH)
+    return GraphDatabase.driver(URI, auth=(AUTH_USER, AUTH_PASS))
 
 # --- Logging Function ---
 def log_to_neo4j(log_data: dict) -> str:
@@ -22,7 +25,7 @@ def log_to_neo4j(log_data: dict) -> str:
     with driver.session() as session:
         result_node = session.write_transaction(_create_log_entry, log_data)
         
-        # --- THE FINAL FIX IS HERE ---
+        # another potential fix
         # We must check if result_node is not None before trying to access it.
         if result_node and 'actual' in result_node:
             return f"Successfully logged entry for '{result_node['actual']}'"
