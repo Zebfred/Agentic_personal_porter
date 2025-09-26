@@ -1,0 +1,41 @@
+*First traceback
+I managed to find my original traceback that was last drive me crazy. I am embarress how much time I spent with this. but basically I am seeing this 
+bolt error when trying to import the creds of neo4j database using 
+
+#from dotenv import load_dotenv
+#load_dotenv()
+
+Why I am confident on that being the issue with the retrevial of the graph causing this traceback? a full history for the Headaches aside, when I used validator_simple.py I get a different traceback. ( more debugging needs though )
+
+  File "/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter/lib/python3.11/site-packages/neo4j/_sync/io/_bolt.py", line 878, in fetch_all
+    detail_delta, summary_delta = self.fetch_message()
+                                  ^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter/lib/python3.11/site-packages/neo4j/_sync/io/_bolt.py", line 863, in fetch_message
+    res = self._process_message(tag, fields)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter/lib/python3.11/site-packages/neo4j/_sync/io/_bolt5.py", line 1208, in _process_message
+    response.on_failure(summary_metadata or {})
+  File "/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter/lib/python3.11/site-packages/neo4j/_sync/io/_common.py", line 304, in on_failure
+    raise self._hydrate_error(metadata)
+neo4j.exceptions.AuthError: {code: Neo.ClientError.Security.Unauthorized} {message: The client is unauthorized due to authentication failure.}
+Error details: {code: Neo.ClientError.Security.Unauthorized} {message: The client is unauthorized due to authentication failure.}
+
+
+*Second traceback
+uri = 'locally used variables'
+        user = 'locally used variables'
+        password = 'locally used variables'
+in the validate_connections.py script gives the below error. Additional debugging needed        
+
+
+-- DEBUGGING CREWAI OUTPUT ---
+Type of crew_result: <class 'crewai.crews.crew_output.CrewOutput'>
+Raw crew_result object: Learned: The importance of adaptability and flexibility in planning and prioritizing tasks, especially when unforeseen circumstances arise.
+Attributes of crew_result: ['__abstractmethods__', '__annotations__', '__class__', '__class_getitem__', '__class_vars__', '__copy__', '__deepcopy__', '__delattr__', '__dict__', '__dir__', '__doc__', '__eq__', '__fields__', '__fields_set__', '__format__', '__ge__', '__get_pydantic_core_schema__', '__get_pydantic_json_schema__', '__getattr__', '__getattribute__', '__getitem__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__iter__', '__le__', '__lt__', '__module__', '__ne__', '__new__', '__pretty__', '__private_attributes__', '__pydantic_complete__', '__pydantic_computed_fields__', '__pydantic_core_schema__', '__pydantic_custom_init__', '__pydantic_decorators__', '__pydantic_extra__', '__pydantic_fields__', '__pydantic_fields_set__', '__pydantic_generic_metadata__', '__pydantic_init_subclass__', '__pydantic_parent_namespace__', '__pydantic_post_init__', '__pydantic_private__', '__pydantic_root_model__', '__pydantic_serializer__', '__pydantic_setattr_handlers__', '__pydantic_validator__', '__reduce__', '__reduce_ex__', '__replace__', '__repr__', '__repr_args__', '__repr_name__', '__repr_recursion__', '__repr_str__', '__rich_repr__', '__setattr__', '__setstate__', '__signature__', '__sizeof__', '__slots__', '__str__', '__subclasshook__', '__weakref__', '_abc_impl', '_calculate_keys', '_copy_and_set_values', '_get_value', '_iter', '_setattr_handler', 'construct', 'copy', 'dict', 'from_orm', 'json', 'json_dict', 'model_computed_fields', 'model_config', 'model_construct', 'model_copy', 'model_dump', 'model_dump_json', 'model_extra', 'model_fields', 'model_fields_set', 'model_json_schema', 'model_parametrized_name', 'model_post_init', 'model_rebuild', 'model_validate', 'model_validate_json', 'model_validate_strings', 'parse_file', 'parse_obj', 'parse_raw', 'pydantic', 'raw', 'schema', 'schema_json', 'tasks_output', 'to_dict', 'token_usage', 'update_forward_refs', 'validate']
+--- END IMMEDIATE DEBUGGING ---
+
+!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.
+Neo4j Confirmation: Failed to log entry to Neo4j.
+127.0.0.1 - - [26/Sep/2025 12:51:35] "POST /process_journal HTTP/1.1" 200 -
+^C(/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter)
+
