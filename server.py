@@ -3,8 +3,54 @@ from flask_cors import CORS
 from main import run_crew
 from neo4j_db import log_to_neo4j
 
-app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+app = Flask(__name__) 
+# A secret key is needed for session management, which stores the OAuth token.
+app.secret_key = os.urandom(24)
+CORS(app) # This will enable CORS for all routes
+
+# --- Google Calendar Service ---
+# We initialize this when the app starts. The very first time you run this,
+# you will need to follow the authentication steps printed in your Flask terminal.
+# After that, it should be automatic thanks to the token.pickle file.
+print("--- Initializing Google Calendar Service ---")
+gcal_service = get_calendar_service()
+print("--- Google Calendar Service Initialized ---")
+
+@app.route('/get_calendar_events', methods=['GET'])
+def get_events():
+    """
+    Fetches calendar events for a specific date provided as a query parameter.
+    e.g., /get_calendar_events?date=2025-09-29
+    """
+    try:
+        date_str = request.args.get('date')
+        if not date_str:
+            return jsonify({"error": "A 'date' query parameter is required."}), 400
+
+        # Create a timezone-aware datetime object for the start and end of the day
+        day = datetime.datetime.strptime(date_str, '%Y-%m-%d').date()
+        time_min = datetime.datetime.combine(day, datetime.time.min).isoformat() + 'Z'  # 'Z' denotes UTC
+        time_max = datetime.datetime.combine(day, datetime.time.max).isoformat() + 'Z'
+
+        print(f"Fetching events for date: {date_str}")
+        events_result = gcal_service.events().list(
+            calendarId='primary', timeMin=time_min, timeMax=time_max,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+        events = events_result.get('items', [])
+        
+        # We'll just send back the titles (summaries) of the events.
+        event_titles = [event['summary'] for event in events if 'summary' in event]
+        
+        print(f"Found {len(event_titles)} events.")
+        return jsonify({"events": event_titles})
+
+    except Exception as e:
+        print(f"Error fetching calendar events: {e}")
+        return jsonify({"error": "An unexpected error occurred while fetching calendar events."}), 500
+
 
 @app.route('/process_journal', methods=['POST'])
 def process_journal():

@@ -44,6 +44,50 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('weeklyLog', JSON.stringify(weeklyLog));
     };
 
+    // --- NEW: Google Calendar Integration ---
+    const fetchCalendarEvents = async (day) => {
+        const dayIndex = DAYS.indexOf(day);
+
+        // This logic calculates the actual date for the selected day in the current week.
+        const today = new Date();
+        const currentDayIndex = (today.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+        const dateOffset = dayIndex - currentDayIndex;
+
+        const targetDate = new Date();
+        targetDate.setDate(today.getDate() + dateOffset);
+
+        // Format the date as YYYY-MM-DD
+        const dateString = targetDate.toISOString().split('T')[0];
+
+        console.log(`Fetching calendar events for ${day} (${dateString})...`);
+        try {
+            const response = await fetch(`http://localhost:5000/get_calendar_events?date=${dateString}`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (data.events && data.events.length > 0) {
+                const eventsString = data.events.join('; ');
+                // We'll put all of the day's events into the first non-empty intention field,
+                // or just the first field of the day. A simple but effective starting point.
+                const targetChunkId = TIME_CHUNKS[2].id; // Default to 'late-morning'
+                weeklyLog[day][targetChunkId].intention = eventsString;
+
+                saveWeeklyLog();
+                // We need to re-render the view to show the newly fetched intentions.
+                renderDay(day);
+                console.log(`Successfully populated intentions for ${day} with: ${eventsString}`);
+            } else {
+                console.log(`No events found for ${day}.`);
+            }
+        } catch (error) {
+            console.error('Could not fetch Google Calendar events:', error);
+            // You could show a small, non-intrusive error message to the user here.
+        }
+    };
+
     const renderDay = (day) => {
         // Highlight active day button
         document.querySelectorAll('.day-btn').forEach(btn => {
@@ -131,6 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
         renderDay(currentDay);
+        // Automatically fetch events for the current day on load
+        fetchCalendarEvents(currentDay);
     };
 
     // --- Event Handling ---
@@ -140,6 +186,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('day-btn')) {
             const day = e.target.dataset.day;
             renderDay(day);
+            // Fetch events every time a new day is clicked
+            fetchCalendarEvents(currentDay);
         }
     });
 

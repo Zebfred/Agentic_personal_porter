@@ -15,3 +15,5 @@ __pycache__/
 config.local.js
 .env
 
+#Json credentials
+credentials.json
