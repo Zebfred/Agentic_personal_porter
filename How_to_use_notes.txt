@@ -2,3 +2,10 @@ cd path/to/Agentic_personal_porter
 conda activate agentic_porter
 python server.py
 Open live server index.html
+
+
+
+python verify_calendar.py
+3.  **Observe the Terminal:**
+* The **first time you run this**, it will likely prompt you to go through the Google authentication flow (copying a URL to your browser, logging in as `zebfred22@gmail.com`, and pasting an authorization code back).
+* After that, it will print a list of today's calendar events directly to your console.
