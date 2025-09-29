@@ -1,12 +1,26 @@
+import os
+import datetime
+from google_calendar import get_calendar_service
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from main import run_crew
-from neo4j_db import log_to_neo4j
+from main import run_crew # Uncomment when API key is set
+from neo4j_db import get_driver, create_user, get_user, log_to_neo4j
+from auth import hash_password, check_password
+from dotenv import load_dotenv, find_dotenv
+load_dotenv()
 
 app = Flask(__name__) 
 # A secret key is needed for session management, which stores the OAuth token.
-app.secret_key = os.urandom(24)
-CORS(app) # This will enable CORS for all routes
+app.secret_key = os.getenv('FLASH_SECRET_KEY', 'a_default-dev-key')
+CORS(app, supports_credentials=True) # supports_credentials=True is needed for sessions
+
+# --- Database Connection ---
+uri = os.getenv("NEO4J_URI")
+username = os.getenv("NEO4J_USER")
+password = os.getenv("NEO4J_PASSWORD")
+
+if not all([uri, username, password]):
+    raise ValueError("Missing one or more Neo4j environment variables.")
 
 # --- Google Calendar Service ---
 # We initialize this when the app starts. The very first time you run this,
@@ -15,6 +29,62 @@ CORS(app) # This will enable CORS for all routes
 print("--- Initializing Google Calendar Service ---")
 gcal_service = get_calendar_service()
 print("--- Google Calendar Service Initialized ---")
+
+app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    hashed_password = hash_password(password)
+
+    driver = get_driver()
+    with driver.session() as db_session:
+        user = db_session.execute_write(create_user, username, hashed_password)
+    driver.close()
+
+    if user:
+        return jsonify({"message": "User created successfully"}), 201
+    else:
+        return jsonify({"error": "User already exists"}), 409
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    driver = get_driver()
+    with driver.session() as db_session:
+        user_node = db_session.execute_read(get_user, username)
+    driver.close()
+
+    if user_node and check_password(user_node['password'], password):
+        session['user_id'] = user_node['username']
+        return jsonify({"message": "Login successful", "user_id": user_node['username']}), 200
+    else:
+        return jsonify({"error": "Invalid username or password"}), 401
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.clear()
+    return jsonify({"message": "Logout successful"}), 200
+
+@app.route('/check_session', methods=['GET'])
+def check_session():
+    if 'user_id' in session:
+        return jsonify({"logged_in": True, "user_id": session['user_id']})
+    else:
+        return jsonify({"logged_in": False})
+
+
+# --- Main Application Route ---
 
 @app.route('/get_calendar_events', methods=['GET'])
 def get_events():

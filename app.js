@@ -1,8 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Global Variables ---
+    let currentUserId = null;
+    let weeklyLog = {};
+
+    // --- DOM Elements ---
+    const authContainer = document.getElementById('auth-container');
+    const appContainer = document.getElementById('app-container');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const loginTab = document.getElementById('login-tab');
+    const registerTab = document.getElementById('register-tab');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userGreeting = document.getElementById('user-greeting');
+
+    // --- Event Listeners ---
     const dayNav = document.getElementById('day-nav');
     const dayViewContainer = document.getElementById('day-view-container');
     const currentDayHeader = document.getElementById('current-day-header');
-
+    
+    // --- Constants ---
     const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const TIME_CHUNKS = [
         { id: 'late-night', label: 'Late Night (12am - 4am)' },
@@ -12,6 +28,122 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'evening', label: 'Evening (4pm - 8pm)' },
         { id: 'early-night', label: 'Early Night (8pm - 12am)' }
     ];
+    const API_BASE_URL = 'http://localhost:5000';
+
+    // --- Authentication Logic ---
+
+    const checkLoginStatus = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/check_session`, { credentials: 'include' });
+            const data = await response.json();
+
+            if (data.logged_in) {
+                currentUserId = data.user_id;
+                showApp();
+                initApp(); // Initialize the main application
+            } else {
+                showAuth();
+            }
+        } catch (error) {
+            console.error('Error checking session status:', error);
+            showAuth();
+        }
+    };
+
+    const showApp = () => {
+        authContainer.classList.add('hidden');
+        appContainer.classList.remove('hidden');
+        userGreeting.textContent = `Hello, ${currentUserId}!`;
+    };
+
+    const showAuth = () => {
+        authContainer.classList.remove('hidden');
+        appContainer.classList.add('hidden');
+        currentUserId = null;
+    };
+
+    loginTab.addEventListener('click', () => {
+        loginForm.classList.remove('hidden');
+        registerForm.classList.add('hidden');
+        loginTab.classList.add('border-b-2', 'border-blue-500', 'text-blue-500');
+        registerTab.classList.remove('border-b-2', 'border-blue-500', 'text-blue-500');
+    });
+
+    registerTab.addEventListener('click', () => {
+        registerForm.classList.remove('hidden');
+        loginForm.classList.add('hidden');
+        registerTab.classList.add('border-b-2', 'border-green-500', 'text-green-500');
+        loginTab.classList.remove('border-b-2', 'border-blue-500', 'text-blue-500');
+    });
+
+    registerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('register-username').value;
+        const password = document.getElementById('register-password').value;
+        const messageEl = document.getElementById('register-message');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                messageEl.textContent = 'Registration successful! Please log in.';
+                messageEl.className = 'text-green-500 text-sm mt-2';
+                registerForm.reset();
+                loginTab.click(); // Switch to login tab
+            } else {
+                throw new Error(data.error || 'Registration failed');
+            }
+        } catch (error) {
+            messageEl.textContent = error.message;
+            messageEl.className = 'text-red-500 text-sm mt-2';
+        }
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+        const errorEl = document.getElementById('login-error');
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include' // Important for sending session cookie
+            });
+            const data = await response.json();
+            if (response.ok) {
+                currentUserId = data.user_id;
+                showApp();
+                initApp();
+            } else {
+                throw new Error(data.error || 'Login failed');
+            }
+        } catch (error) {
+            errorEl.textContent = error.message;
+        }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await fetch(`${API_BASE_URL}/logout`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            showAuth();
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+    });
+
+
+    // --- Main Application Logic ---
+
 
     let weeklyLog = {};
 
