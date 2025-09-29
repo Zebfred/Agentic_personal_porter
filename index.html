@@ -7,30 +7,79 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <nav class="bg-gray-800 p-4 text-white">
-        <div class="container mx-auto flex justify-between">
-            <h1 class="text-xl font-bold">Life's Adventure Time Log</h1>
-            <a href="inventory.html" class="text-white hover:text-gray-300">Inventory</a>
+
+    <!-- Auth Container - Initially Visible -->
+    <div id="auth-container" class="min-h-screen flex items-center justify-center">
+        <div class="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold text-center mb-6">Welcome</h2>
+
+            <!-- Tabs for Login/Register -->
+            <div class="flex border-b border-gray-200">
+                <button id="login-tab" class="py-2 px-4 text-gray-500 font-semibold focus:outline-none w-1/2 text-center">Login</button>
+                <button id="register-tab" class="py-2 px-4 text-gray-500 font-semibold focus:outline-none w-1/2 text-center">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="mt-6">
+                <div class="mb-4">
+                    <label for="login-username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="login-username" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
+                <p id="login-error" class="text-red-500 text-sm mt-2"></p>
+            </form>
+
+            <!-- Registration Form - Initially Hidden -->
+            <form id="register-form" class="hidden mt-6">
+                <div class="mb-4">
+                    <label for="register-username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="register-username" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <div class="mb-6">
+                    <label for="register-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="register-password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" required>
+                </div>
+                <button type="submit" class="w-full bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Register</button>
+                <p id="register-message" class="text-green-500 text-sm mt-2"></p>
+            </form>
         </div>
-    </nav>
+    </div>
 
-    <div class="container mx-auto p-4">
-        <!-- Day of the week navigation -->
-        <div id="day-nav" class="flex flex-wrap justify-center space-x-2 mb-4">
-            <button data-day="monday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Monday</button>
-            <button data-day="tuesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Tuesday</button>
-            <button data-day="wednesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Wednesday</button>
-            <button data-day="thursday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Thursday</button>
-            <button data-day="friday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Friday</button>
-            <button data-day="saturday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Saturday</button>
-            <button data-day="sunday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Sunday</button>
-        </div>
+    <!-- Main App Container - Initially Hidden -->
+    <div id="app-container" class="hidden">
+        <nav class="bg-gray-800 p-4 text-white">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-bold">Life's Adventure Time Log</h1>
+                <div>
+                    <span id="user-greeting" class="mr-4"></span>
+                    <a href="inventory.html" class="text-white hover:text-gray-300 mr-4">Inventory</a>
+                    <button id="logout-btn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</button>
+                </div>
+            </div>
+        </nav>
 
-        <h2 id="current-day-header" class="text-3xl font-bold text-center mb-4"></h2>
+        <div class="container mx-auto p-4">
+            <!-- Day of the week navigation -->
+            <div id="day-nav" class="flex flex-wrap justify-center space-x-2 mb-4">
+                <button data-day="monday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Monday</button>
+                <button data-day="tuesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Tuesday</button>
+                <button data-day="wednesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Wednesday</button>
+                <button data-day="thursday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Thursday</button>
+                <button data-day="friday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Friday</button>
+                <button data-day="saturday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Saturday</button>
+                <button data-day="sunday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Sunday</button>
+            </div>
 
-        <!-- Container for the selected day's log -->
-        <div id="day-view-container" class="space-y-6">
-            <!-- Time chunk cards will be dynamically inserted here by app.js -->
+            <h2 id="current-day-header" class="text-3xl font-bold text-center mb-4"></h2>
+
+            <!-- Container for the selected day's log -->
+            <div id="day-view-container" class="space-y-6">
+                <!-- Time chunk cards will be dynamically inserted here by app.js -->
+            </div>
         </div>
     </div>
 
