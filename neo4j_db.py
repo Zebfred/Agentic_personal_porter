@@ -6,7 +6,7 @@ load_dotenv()
 
 # --- Database Connection ---
 URI = os.getenv("NEO4J_URI")
-AUTH_USER = os.getenv("NEO4J_USERNAME")
+AUTH_USER = os.getenv("NEO4J_USER")
 AUTH_PASS = os.getenv("NEO4J_PASSWORD")
 
 def get_driver():
