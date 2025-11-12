@@ -1,6 +1,6 @@
 import os
 import datetime
-from google_calendar import get_calendar_service
+from google_calendar_auth import get_calendar_service
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from main import run_crew # Uncomment when API key is set

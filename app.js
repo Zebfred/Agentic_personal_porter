@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'evening', label: 'Evening (4pm - 8pm)' },
         { id: 'early-night', label: 'Early Night (8pm - 12am)' }
     ];
-    const API_BASE_URL = 'http://localhost:5000';
+    const API_BASE_URL = 'http://127.0.0.1:5000';
 
     // --- Authentication Logic ---
 
@@ -144,37 +144,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Main Application Logic ---
 
+    // let weeklyLog = {};
 
-    let weeklyLog = {};
-
+    // User-specific local storage
     const getWeeklyLog = () => {
-        const log = localStorage.getItem('weeklyLog');
-        if (log) {
-            return JSON.parse(log);
-        } else {
-            // Create a new empty log structure
-            const newLog = {};
-            DAYS.forEach(day => {
-                newLog[day] = {};
-                TIME_CHUNKS.forEach(chunk => {
-                    newLog[day][chunk.id] = {
-                        intention: '',
-                        activityTitle: '',
-                        feeling: '',
-                        brainFog: 0,
-                        valuableDetour: false,
-                        inventoryNote: '',
-                        aiReflection: ''
-                    };
-                });
-            });
-            return newLog;
-        }
+        if (!currentUserId) return createEmptyLog();
+        const log = localStorage.getItem(`weeklyLog_${currentUserId}`);
+        return log ? JSON.parse(log) : createEmptyLog();
     };
 
     const saveWeeklyLog = () => {
-        localStorage.setItem('weeklyLog', JSON.stringify(weeklyLog));
+        if (!currentUserId) return;
+        localStorage.setItem(`weeklyLog_${currentUserId}`, JSON.stringify(weeklyLog));
     };
+
+    const createEmptyLog = () => {
+        const newLog = {};
+        DAYS.forEach(day => {
+            newLog[day] = {};
+            TIME_CHUNKS.forEach(chunk => {
+                newLog[day][chunk.id] = {
+                    intention: '',
+                    activityTitle: '',
+                    feeling: '',
+                    brainFog: 0,
+                    valuableDetour: false,
+                    inventoryNote: '',
+                    aiReflection: ''
+                };
+            });
+        });
+        return newLog;
+
+ 
 
     // --- NEW: Google Calendar Integration ---
     const fetchCalendarEvents = async (day) => {
@@ -231,11 +233,11 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDayHeader.textContent = day.charAt(0).toUpperCase() + day.slice(1);
         dayViewContainer.innerHTML = ''; // Clear previous content
 
-        const dayData = weeklyLog[day];
+        const dayData = weeklyLog[day] || {};
 
         TIME_CHUNKS.forEach(chunk => {
             const chunkId = chunk.id;
-            const chunkData = dayData[chunkId];
+            const chunkData = dayData[chunkId] || {};
             const card = document.createElement('div');
             card.className = 'time-chunk-card bg-white p-6 rounded-lg shadow-md';
             card.dataset.day = day;
@@ -247,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- Intention Area -->
                     <div>
                         <label for="intention-${chunkId}" class="block text-sm font-medium text-gray-700 mb-1">My Intention</label>
-                        <input type="text" id="intention-${chunkId}" value="${chunkData.intention}" class="intention-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., Deep work on project X">
+                        <input type="text" id="intention-${chunkId}" value="${chunkData.intention || ''}" class="intention-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., Deep work on project X">
                     </div>
 
                     <!-- Actuals Form -->
@@ -255,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4 class="text-lg font-semibold">Log Actuals</h4>
                         <div>
                             <label for="actual-title-${chunkId}" class="block text-sm font-medium text-gray-700">Activity Title</label>
-                            <input type="text" id="actual-title-${chunkId}" value="${chunkData.activityTitle}" class="actual-title-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                            <input type="text" id="actual-title-${chunkId}" value="${chunkData.activityTitle || ''}" class="actual-title-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                         </div>
 
                         <div>
@@ -271,8 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
 
                         <div>
-                            <label for="brain-fog-${chunkId}" class="block text-sm font-medium text-gray-700">Brain Fog: <span id="brain-fog-value-${chunkId}">${chunkData.brainFog}</span>%</label>
-                            <input type="range" id="brain-fog-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog}" class="brain-fog-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <label for="brain-fog-${chunkId}" class="block text-sm font-medium text-gray-700">Brain Fog: <span id="brain-fog-value-${chunkId}">${chunkData.brainFog || 0}</span>%</label>
+                            <input type="range" id="brain-fog-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog || 0}" class="brain-fog-slider w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                         </div>
 
                         <div>
@@ -284,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div id="inventory-note-container-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
                             <label for="inventory-note-${chunkId}" class="block text-sm font-medium text-gray-700">Inventory Note</label>
-                            <textarea id="inventory-note-${chunkId}" rows="3" class="inventory-note-textarea mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">${chunkData.inventoryNote}</textarea>
+                            <textarea id="inventory-note-${chunkId}" rows="3" class="inventory-note-textarea mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">${chunkData.inventoryNote || ''}</textarea>
                         </div>
                     </div>
                 </div>
@@ -302,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const init = () => {
+    const initApp = () => {
         weeklyLog = getWeeklyLog();
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
@@ -311,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchCalendarEvents(currentDay);
     };
 
-    // --- Event Handling ---
+    // --- Event Handling for Main App ---
 
     // Day navigation
     dayNav.addEventListener('click', (e) => {
@@ -358,12 +360,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Update the weeklyLog object
             const chunkData = {
-                intention,
-                activityTitle,
-                feeling,
-                brainFog,
-                valuableDetour,
-                inventoryNote,
+                intention, activityTitle,
+                feeling, brainFog,
+                valuableDetour, inventoryNote,
                 aiReflection: weeklyLog[day][chunkId].aiReflection // Preserve existing reflection for now
             };
             weeklyLog[day][chunkId] = chunkData;
@@ -379,31 +378,29 @@ document.addEventListener('DOMContentLoaded', () => {
             aiOutputContainer.innerHTML = '';
 
             const journalEntry = `Intention: ${intention}. Activity: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
+            const logData = {
+                day, timeChunk: chunkId, intention, actual: activityTitle, feeling, brainFog,
+                isValuableDetour: valuableDetour, inventoryNote
+            };
 
             try {
-                const response = await fetch('http://localhost:5000/process_journal', {
+                const response = await fetch(`${API_BASE_URL}/process_journal`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ journal_entry: journalEntry, // string for CrewAI
-                    log_data: {
-                        day: day,
-                        timeChunk: chunkId, // or the full label if you prefer
-                        intention: chunkData.intention,
-                        actual: chunkData.activityTitle,
-                        feeling: chunkData.feeling,
-                        brainFog: chunkData.brainFog,
-                        isValuableDetour: chunkData.valuableDetour,
-                        inventoryNote: chunkData.inventoryNote
-                    }
-
-
-                     }),
+                    body: JSON.stringify({ 
+                        journal_entry: journalEntry, // string for CrewAI
+                        log_data: logData  // structured data for context
+                    }),
+                    credentials: 'include' // Important for sending session cookie                    
                 });
 
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
-                const reflectionText = data.result.replace(/\n/g, '<br>');
+                const reflectionText = data.reflection.replace(/\n/g, '<br>');
 
                 // 5. Display the AI response and save it
                 aiOutputContainer.innerHTML = `<p class="text-gray-700">${reflectionText}</p>`;
@@ -412,13 +409,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (error) {
                 console.error('Error processing journal entry:', error);
-                aiOutputContainer.innerHTML = `<p class="text-red-500">Error fetching reflection. Please try again.</p>`;
+                aiOutputContainer.innerHTML = `<p class="text-red-500">${error.message}</p>`;
             } finally {
                 loader.classList.add('hidden');
             }
         }
     });
 
-
-    init();
+    // --- Initial Load ---
+    //init();
+    checkLoginStatus();
 });
