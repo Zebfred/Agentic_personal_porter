@@ -1,0 +1,138 @@
+Running comparative chunking analysis...
+Loading sentence transformer model: all-MiniLM-L6-v2
+Loading SciBERT model: allenai/scibert_scivocab_uncased
+SciBERT model loaded on cuda
+
+================================================================================
+CHUNKING STRATEGIES COMPARATIVE ANALYSIS
+================================================================================
+
+Generating chunks with each strategy...
+✓ Fixed-size: 5 chunks
+✓ Fast Semantic: 12 chunks
+✓ Science Detail Semantic: 4 chunks
+
+--------------------------------------------------------------------------------
+CHUNK STATISTICS
+--------------------------------------------------------------------------------
+
+Strategy                  Count      Avg Size     Min        Max        Median    
+--------------------------------------------------------------------------------
+Fixed-Size                5          755          36         985        955       
+Fast Semantic             12         254          100        560        183       
+Science Detail Semantic   4          763          157        978        958       
+
+--------------------------------------------------------------------------------
+SEMANTIC COHERENCE ANALYSIS
+--------------------------------------------------------------------------------
+(Higher scores indicate more semantically coherent chunks)
+
+Strategy                  Avg Coherence   Min        Max       
+--------------------------------------------------------------------------------
+Fixed-Size                0.4943          0.3782     0.5944    
+Fast Semantic             0.6521          0.5873     0.7373    
+Science Detail Semantic   0.4992          0.4038     0.5947    
+
+--------------------------------------------------------------------------------
+KEY FINDINGS
+--------------------------------------------------------------------------------
+
+📊 Chunk Count:
+   Most chunks: Fast Semantic (12 chunks)
+   Fewest chunks: Science Detail Semantic (4 chunks)
+   Ratio: 3.00x difference
+
+📏 Size Consistency (lower std = more consistent):
+   Most consistent: Fast Semantic (std: 157)
+
+🧠 Semantic Coherence:
+   Most coherent: Fast Semantic (score: 0.6521)
+Loading sentence transformer model: all-MiniLM-L6-v2
+Loading SciBERT model: allenai/scibert_scivocab_uncased
+SciBERT model loaded on cuda
+
+================================================================================
+CHUNK BOUNDARY QUALITY ANALYSIS
+================================================================================
+
+Mid-sentence breaks (chunks not ending with . ! ?):
+  Fixed-Size: 0/5 chunks (0.0%)
+  Fast Semantic: 0/12 chunks (0.0%)
+  Science Detail Semantic: 0/4 chunks (0.0%)
+
+--------------------------------------------------------------------------------
+SAMPLE CHUNK ENDINGS (last 50 chars of each chunk)
+--------------------------------------------------------------------------------
+
+Fixed-Size (first 3 chunks):
+  Chunk 1: ...ion of 
+    cumulative reward.
+  Chunk 2: ...mples from the current policy.
+  Chunk 3: ...omputationally 
+    efficient.
+
+Fast Semantic (first 3 chunks):
+  Chunk 1: ...e epochs of minibatch updates.
+  Chunk 2: ...mple complexity (empirically).
+  Chunk 3: ...ion of 
+    cumulative reward.
+
+Science Detail Semantic (first 3 chunks):
+  Chunk 1: ...ion of 
+    cumulative reward.
+  Chunk 2: ...ve and difficult to implement.
+  Chunk 3: ...ty, simplicity, and wall-time.
+
+✓ All chunks appear to end at sentence boundaries!
+
+--------------------------------------------------------------------------------
+SENTENCE COMPLETENESS CHECK
+--------------------------------------------------------------------------------
+Potentially incomplete sentences:
+  Fixed-Size: 0/5 chunks
+  Fast Semantic: 0/12 chunks
+  Science Detail Semantic: 0/4 chunks
+
+--------------------------------------------------------------------------------
+PARAGRAPH BOUNDARY ANALYSIS
+--------------------------------------------------------------------------------
+
+Paragraph boundary breaks (chunks breaking at paragraph boundaries):
+  Fixed-Size: 1/4 breaks (25.0%)
+  Fast Semantic: 11/11 breaks (100.0%)
+  Science Detail Semantic: 3/3 breaks (100.0%)
+
+Mid-paragraph breaks (first 3 examples):
+
+  Fixed-Size:
+    Break after chunk 1:
+      ...mples from the current policy.
+      dient theorem provides a way t...
+    Break after chunk 2:
+      ...omputationally 
+    efficient.
+      ion constraint without requiri...
+    Break after chunk 3:
+      ...impler to implement than TRPO.
+      ntly simpler to implement than...
+
+--------------------------------------------------------------------------------
+OVERLAP QUALITY ANALYSIS
+--------------------------------------------------------------------------------
+(Only applies to Fixed-Size chunking with overlap)
+
+Fixed-Size Overlap Analysis (target overlap: 200 chars):
+  Total overlaps: 4
+  Meaningful overlaps (contain complete words): 3/4 (75.0%)
+  Sentence boundary overlaps: 3/4 (75.0%)
+  Average overlap size: 50 characters
+  Overall overlap quality score: 0.75/1.0
+    (0.5 = meaningful overlaps, 0.5 = sentence boundaries)
+
+Semantic Chunking Continuity (no explicit overlap, but check for context preservation):
+  Fast Semantic continuity: 0.037 (higher = better context preservation)
+  Science Detail Semantic continuity: 0.156 (higher = better context preservation)
+
+================================================================================
+Analysis complete!
+================================================================================

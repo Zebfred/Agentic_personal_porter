@@ -1,4 +1,0 @@
-cd path/to/Agentic_personal_porter
-conda activate agentic_porter
-python server.py
-Open live server index.html
