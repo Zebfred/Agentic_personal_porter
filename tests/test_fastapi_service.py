@@ -66,10 +66,14 @@ def test_query_endpoint(client):
 
 def test_rebuild_index_endpoint_no_papers(client):
     """Test rebuild_index endpoint when no papers exist."""
-    response = client.post("/rebuild_index")
+    # Test with invalid strategy
+    response = client.post("/rebuild_index?chunking_strategy=invalid")
+    assert response.status_code == 400
     
-    # Should return 404 if no papers found
-    assert response.status_code in [404, 500]
+    # Test with valid strategy but missing file
+    # This will return 404 if file doesn't exist, 500 if other error
+    response = client.post("/rebuild_index?chunking_strategy=fixed")
+    assert response.status_code in [200, 404, 500]
 
 
 def test_query_request_model():

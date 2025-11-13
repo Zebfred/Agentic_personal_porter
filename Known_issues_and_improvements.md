@@ -327,6 +327,265 @@ The test suite provides comprehensive comparative analysis including:
 - `analyze_overlap_quality()`: Overlap quality metrics
 - `check_semantic_continuity()`: Topical continuity between chunks
 
+## Scaling Considerations
+
+### Current Scale (Handful of Papers)
+
+**Status**: ✅ **WORKING WELL**
+
+The current implementation is optimized for small to medium-scale datasets (10-100 papers):
+- Sequential processing with rate limiting (3-5 second delays)
+- Local ChromaDB storage
+- Single-machine processing
+- CPU/GPU embedding generation
+
+**Performance**: Acceptable for prototype and initial production use.
+
+### Scaling Issues (From Handful to Millions)
+
+When scaling from dozens to thousands or millions of papers, three major bottlenecks emerge:
+
+#### 1. Ingestion Bottleneck
+
+**Current Limitation**: 
+- Sequential paper downloading with 3-5 second delays
+- Single-threaded processing
+- **Impact**: Downloading 1,000,000 papers would take years at current rate
+
+**Scaling Solution**:
+- **Distributed Scraping Architecture**: Use a job queue system (e.g., **Celery with Redis**)
+- **Parallel Workers**: Multiple worker machines pull paper IDs from queue
+- **Distributed Rate Limiting**: Each worker manages its own rate limits to avoid API bans
+- **Fault Tolerance**: Workers can fail and restart without losing progress
+
+**Architecture Example**:
+```
+Paper ID Queue (Redis) → Worker Pool (10-100 machines) → Distributed Storage
+```
+
+#### 2. Processing Bottleneck (Extraction & Embedding)
+
+**Current Limitation**:
+- Sequential PDF extraction
+- Sequential SciBERT embedding generation (even with batching)
+- **Impact**: Processing millions of documents on CPU would take months/years
+
+**Scaling Solution**:
+- **Distributed Processing Framework**: Use **Apache Spark** (on Databricks, AWS EMR, or similar)
+- **GPU Clusters**: Distribute embedding generation across GPU clusters
+- **Parallel Processing**: Process 10,000+ PDFs across 100+ worker nodes simultaneously
+- **Pipeline Optimization**: Separate extraction and embedding stages for better resource utilization
+
+**Architecture Example**:
+```
+PDF Storage → Spark Cluster → [Extract] → [Embed] → Vector Store
+              (100+ nodes)     (parallel)  (GPU)
+```
+
+**Performance Target**: Process 1M papers in days/weeks instead of years
+
+#### 3. Storage & Retrieval Bottleneck
+
+**Current Limitation**:
+- Local ChromaDB/FAISS works well for thousands of chunks
+- **Impact**: Will collapse under billions of vectors
+- Single-machine storage limits
+- No horizontal scaling
+
+**Scaling Solution**:
+- **Managed Vector Databases**: Migrate to production-grade solutions:
+  - **Pinecone**: Managed vector database, auto-scaling
+  - **Weaviate**: Open-source, self-hosted or cloud
+  - **Amazon OpenSearch**: Vector search with full-text capabilities
+  - **Qdrant**: High-performance, distributed vector database
+- **Distributed Storage**: Store vectors across multiple nodes
+- **Caching Layer**: Redis for frequently accessed vectors
+- **CDN/Edge Caching**: For global query distribution
+
+**Performance Target**: Handle billions of vectors, thousands of queries/second, <100ms latency
+
+### Scaling Roadmap
+
+**Phase 1 (Current)**: 10-100 papers
+- ✅ Sequential processing
+- ✅ Local ChromaDB
+- ✅ Single machine
+
+**Phase 2 (100-10,000 papers)**: 
+- Add parallel processing (multiprocessing/threading)
+- Optimize batch sizes
+- Consider managed vector DB (Pinecone/Weaviate)
+
+**Phase 3 (10,000-1,000,000 papers)**:
+- Distributed job queue (Celery/Redis)
+- Spark cluster for processing
+- Managed vector database
+- GPU clusters for embeddings
+
+**Phase 4 (1M+ papers)**:
+- Full distributed architecture
+- Auto-scaling infrastructure
+- Global CDN for queries
+- Advanced caching strategies
+
+## Fine-Tuning and Model Training Requirements
+
+### Knowledge vs. Behavior: Two Different Training Problems
+
+#### 1. Knowledge (RAG) - Current Implementation
+
+**What It Does**: 
+- Provides the agent with *knowledge* from papers
+- Enables answering questions *about those papers*
+- Works immediately with 30-50 papers
+
+**Data Source**: 
+- The PDF papers themselves (30-50 foundational RL papers)
+- Chunked and embedded into vector store
+
+**Limitation**: 
+- Base LLM (e.g., Groq/llama-3.3-70b) is smart but not trained to be *your* agent
+- Will try to answer from its own memory
+- **Will NOT reliably say "I don't know"** when beyond scope
+
+#### 2. Behavior (Fine-Tuning) - Required for 90% Success
+
+**What It Does**:
+- Teaches the agent its *personality* and *scope*
+- Trains it to stick strictly to facts from RAG-retrieved papers
+- Enables robust handling of out-of-scope (OOS) requests
+- Teaches when and how to decline requests
+
+**Data Requirements**: 
+- **Minimum**: 1,000 high-quality question-answer pairs
+- **Recommended**: 3,000-5,000 examples for 90% success rate
+- **Format**: Structured dataset of (query, ideal_answer) pairs
+
+### Fine-Tuning Dataset Structure
+
+The fine-tuning dataset is **NOT** the PDFs. It's a "gold standard" set of question-answer pairs:
+
+#### In-Scope Questions (60-70% of dataset)
+
+**Example 1: Direct Question**
+- **Query**: "What is the core idea of PPO?"
+- **Ideal Answer**: "[Perfect, factual answer based ONLY on content from RAG-retrieved papers, with citations]"
+
+**Example 2: Comparison Question**
+- **Query**: "What's the difference between on-policy and off-policy RL?"
+- **Ideal Answer**: "[Detailed comparison using only retrieved paper content]"
+
+**Example 3: Implementation Question**
+- **Query**: "How does Q-learning update the value function?"
+- **Ideal Answer**: "[Mathematical explanation from papers, with formula citations]"
+
+#### Out-of-Scope (OOS) Questions (20-30% of dataset)
+
+**Example 1: Completely Unrelated**
+- **Query**: "What is the best way to train a dog?"
+- **Ideal Answer**: "I am sorry, but I am an AI assistant specialized in Reinforcement Learning. I do not have information on dog training, and this question is outside my area of expertise."
+
+**Example 2: Related but Out of Scope**
+- **Query**: "How do I implement a neural network from scratch?"
+- **Ideal Answer**: "While neural networks are used in deep RL, I specialize in Reinforcement Learning algorithms and theory. I don't have detailed information on neural network implementation. I can help you understand how neural networks are used in RL algorithms like DQN or policy gradients."
+
+**Example 3: Beyond Knowledge Base**
+- **Query**: "What did the latest RL paper from 2025 say about transformers?"
+- **Ideal Answer**: "I don't have access to papers from 2025 in my current knowledge base. My knowledge is limited to the foundational RL papers I have access to. I cannot provide information on papers outside my knowledge base."
+
+#### Edge-Case Questions (10-20% of dataset)
+
+**Example 1: Subtle OOS**
+- **Query**: "What does the PPO paper say about cooking?"
+- **Ideal Answer**: "The PPO (Proximal Policy Optimization) papers in my knowledge base do not contain any information about cooking. They focus on reinforcement learning algorithms, policy optimization, and related machine learning concepts."
+
+**Example 2: Partial Knowledge**
+- **Query**: "What is the best RL algorithm for playing chess?"
+- **Ideal Answer**: "The papers in my knowledge base discuss various RL algorithms (Q-learning, policy gradients, actor-critic methods), but they don't specifically evaluate which algorithm is best for chess. I can explain the algorithms, but I cannot make recommendations about chess applications as that's outside the scope of my knowledge base."
+
+**Example 3: Ambiguous Request**
+- **Query**: "Tell me everything about RL"
+- **Ideal Answer**: "Reinforcement Learning is a broad field. Based on my knowledge base, I can help you understand specific RL concepts, algorithms, or papers. Could you please ask a more specific question? For example, I can explain Q-learning, policy gradients, the Bellman equation, or specific papers like DQN or PPO."
+
+### Dataset Quality Requirements
+
+**Critical Factors**:
+1. **Diversity**: Cover various question types (what, how, why, compare, implement)
+2. **Accuracy**: Answers must be 100% accurate and grounded in retrieved papers
+3. **Consistency**: OOS responses must be consistent in tone and format
+4. **Coverage**: Include edge cases, ambiguous queries, and boundary conditions
+5. **Citations**: Always include source citations in answers
+
+**Distribution**:
+- 60-70% In-scope questions (various difficulty levels)
+- 20-30% Out-of-scope questions (various types)
+- 10-20% Edge cases and ambiguous queries
+
+### Fine-Tuning Process
+
+**Steps**:
+1. **Collect/Create Dataset**: 1,000-5,000 high-quality Q&A pairs
+2. **Validate**: Ensure answers are accurate and grounded
+3. **Format**: Convert to fine-tuning format (JSONL, etc.)
+4. **Train**: Fine-tune base model (e.g., llama-3.3-70b) on dataset
+5. **Evaluate**: Test on held-out set, measure OOS handling
+6. **Iterate**: Add more examples for failure cases
+
+**Model Options**:
+- Fine-tune base LLM (expensive, best results)
+- Use system prompts + few-shot examples (cheaper, good results)
+- Hybrid: Fine-tune smaller model, use larger for generation
+
+### Success Metrics for 90% Goal
+
+**Key Metrics**:
+1. **Answer Accuracy**: 95%+ of in-scope answers are factually correct
+2. **OOS Detection**: 90%+ of out-of-scope queries are correctly declined
+3. **Citation Accuracy**: 100% of answers cite correct sources
+4. **Response Quality**: Answers are clear, helpful, and appropriately scoped
+5. **Consistency**: OOS responses are consistent in tone and format
+
+**Testing**:
+- Hold-out test set (20% of dataset)
+- Manual evaluation of edge cases
+- A/B testing with users
+- Continuous monitoring in production
+
+### Current Status vs. Requirements
+
+**Current State**:
+- ✅ Knowledge base: 30-50 papers (sufficient for RAG)
+- ❌ Fine-tuning dataset: 0 examples (needs 1,000-5,000)
+- ❌ Fine-tuned model: Using base model (needs fine-tuning)
+- ❌ OOS handling: Not robust (needs training)
+
+**Path to 90% Success**:
+1. **Immediate**: Continue building knowledge base (more papers)
+2. **Short-term**: Create fine-tuning dataset (1,000 examples)
+3. **Medium-term**: Fine-tune model on dataset
+4. **Long-term**: Iterate based on production feedback
+
+## Technical Clarifications
+
+### PyMuPDF vs. `pdf_extractor.py`
+
+**Clarification**: These are **not** alternatives - they're the same thing!
+
+- **PyMuPDF** is the library
+- **`fitz`** is the module name (import: `import fitz`)
+- **`pdf_extractor.py`** is our intelligent wrapper around PyMuPDF
+
+**Why Our Script is Superior**:
+- ✅ Not just using basic `.get_text()` function
+- ✅ Intelligent extraction of `title`, `abstract`, and `sections`
+- ✅ Preserves document's semantic structure
+- ✅ Critical for getting good, context-aware chunks
+
+**Known Limitation** (from existing issues):
+- Section extraction relies on simple RegEx
+- May struggle with complex 2-column layouts or unusual formatting
+- This is a known, solvable problem (see Improvement #5)
+
 ## Notes
 
 - The arxiv API has strict rate limits (recommended: 1 request per 3 seconds)
@@ -336,4 +595,6 @@ The test suite provides comprehensive comparative analysis including:
 - SciBERT requires transformers library and downloads ~420MB model on first use
 - Comparative analysis test (`test_chunking_comparison.py`) provides actionable metrics for strategy selection
 - Chunking strategies can be tested independently or compared side-by-side using the comparison test
+- **Scaling**: Current architecture works for 10-100 papers; distributed architecture needed for 10,000+
+- **Fine-Tuning**: 1,000-5,000 high-quality Q&A pairs needed for 90% success rate with robust OOS handling
 
