@@ -126,20 +126,135 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const init = () => {
+    // Map time chunks to hour ranges for calendar event matching
+    const TIME_CHUNK_RANGES = {
+        'late-night': { start: 0, end: 4 },
+        'early-morning': { start: 4, end: 8 },
+        'late-morning': { start: 8, end: 12 },
+        'afternoon': { start: 12, end: 16 },
+        'evening': { start: 16, end: 20 },
+        'early-night': { start: 20, end: 24 }
+    };
+
+    /**
+     * Fetches calendar events for a specific date and maps them to time chunks.
+     * @param {string} day - Day name (monday, tuesday, etc.)
+     */
+    const fetchCalendarEvents = async (day) => {
+        try {
+            // Convert day name to date (this week)
+            const today = new Date();
+            const dayIndex = DAYS.indexOf(day);
+            const currentDayIndex = today.getDay() - 1; // getDay() returns 0-6, we need 0-6 for Mon-Sun
+            const daysDiff = dayIndex - currentDayIndex;
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + daysDiff);
+            
+            const dateStr = targetDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+            
+            console.log(`Fetching calendar events for ${day} (${dateStr})...`);
+            
+            const response = await fetch(`http://localhost:5000/get_calendar_events?date=${dateStr}`);
+            
+            if (!response.ok) {
+                console.warn(`Failed to fetch calendar events: ${response.status}`);
+                return [];
+            }
+            
+            const data = await response.json();
+            const events = data.events || [];
+            
+            console.log(`Found ${events.length} calendar events for ${dateStr}`);
+            
+            // Map events to time chunks
+            const eventsByChunk = {};
+            TIME_CHUNKS.forEach(chunk => {
+                eventsByChunk[chunk.id] = [];
+            });
+            
+            events.forEach(event => {
+                // Parse event start time
+                const startTime = new Date(event.start);
+                const hour = startTime.getHours();
+                
+                // Find which time chunk this event belongs to
+                for (const [chunkId, range] of Object.entries(TIME_CHUNK_RANGES)) {
+                    if (hour >= range.start && hour < range.end) {
+                        eventsByChunk[chunkId].push(event);
+                        break;
+                    }
+                }
+            });
+            
+            return eventsByChunk;
+            
+        } catch (error) {
+            console.error('Error fetching calendar events:', error);
+            return {};
+        }
+    };
+
+    /**
+     * Populates intention fields with calendar events for a day.
+     * @param {string} day - Day name
+     * @param {Object} eventsByChunk - Events grouped by time chunk ID
+     */
+    const populateIntentionsFromCalendar = (day, eventsByChunk) => {
+        TIME_CHUNKS.forEach(chunk => {
+            const chunkId = chunk.id;
+            const events = eventsByChunk[chunkId] || [];
+            const intentionInput = document.getElementById(`intention-${chunkId}`);
+            
+            if (intentionInput && events.length > 0) {
+                // Combine multiple events into a single intention string
+                const eventTitles = events.map(e => e.title).join(', ');
+                intentionInput.value = eventTitles;
+                
+                // Update weeklyLog
+                if (weeklyLog[day] && weeklyLog[day][chunkId]) {
+                    weeklyLog[day][chunkId].intention = eventTitles;
+                }
+                
+                // Add visual indicator that this came from calendar
+                intentionInput.style.backgroundColor = '#e0f2fe'; // Light blue
+                intentionInput.title = `Auto-filled from Google Calendar (${events.length} event${events.length > 1 ? 's' : ''})`;
+            }
+        });
+        
+        // Save updated log
+        saveWeeklyLog();
+    };
+
+    const init = async () => {
         weeklyLog = getWeeklyLog();
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
         renderDay(currentDay);
+        
+        // Fetch calendar events for the current day
+        try {
+            const eventsByChunk = await fetchCalendarEvents(currentDay);
+            populateIntentionsFromCalendar(currentDay, eventsByChunk);
+        } catch (error) {
+            console.error('Error loading calendar events on init:', error);
+        }
     };
 
     // --- Event Handling ---
 
     // Day navigation
-    dayNav.addEventListener('click', (e) => {
+    dayNav.addEventListener('click', async (e) => {
         if (e.target.classList.contains('day-btn')) {
             const day = e.target.dataset.day;
             renderDay(day);
+            
+            // Fetch and populate calendar events for the selected day
+            try {
+                const eventsByChunk = await fetchCalendarEvents(day);
+                populateIntentionsFromCalendar(day, eventsByChunk);
+            } catch (error) {
+                console.error('Error loading calendar events:', error);
+            }
         }
     });
 
