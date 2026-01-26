@@ -67,7 +67,7 @@ def check_neo4j_connection():
     print("="*60)
     
     try:
-        from neo4j_db import get_driver
+        from src.database.neo4j_db import get_driver
         
         uri = os.getenv("NEO4J_URI")
         username = os.getenv("NEO4J_USERNAME")
@@ -132,18 +132,18 @@ def check_google_calendar_credentials():
         return False
     
     if token_file.exists():
-        print(f"  ✅ token.pickle found (user token exists)")
+        print("  ✅ token.pickle found (user token exists)")
         print("     This means OAuth flow has been completed")
         print("     Token is for the user account (zebfred22@gmail.com)")
     else:
-        print(f"  ⚠️  token.pickle NOT FOUND")
+        print("  ⚠️  token.pickle NOT FOUND")
         print("     OAuth flow will need to be completed on first run")
         print("     User will need to authorize with zebfred22@gmail.com")
     
     # Try to import and test the helper
     try:
-        from google_calendar_authentication_helper import get_calendar_service
-        print("  ✅ google_calendar_authentication_helper.py can be imported")
+        from src.integrations.google_calendar import get_calendar_service
+        print("  ✅ src/integrations/google_calendar.py can be imported")
         
         # Only test service if token exists (otherwise it will prompt)
         if token_file.exists():
@@ -171,29 +171,37 @@ def check_flask_readiness():
     print("="*60)
     
     try:
-        # Try to import server
-        import server
-        print("  ✅ server.py can be imported")
+        # Try to import Flask app from new location
+        from src import app
+        print("  ✅ src/app.py can be imported")
         
         # Check if app is defined
-        if hasattr(server, 'app'):
+        if hasattr(app, 'app'):
             print("  ✅ Flask app is defined")
             
             # Check routes
-            routes = [rule.rule for rule in server.app.url_map.iter_rules()]
+            routes = [rule.rule for rule in app.app.url_map.iter_rules()]
             print(f"  ✅ Found {len(routes)} routes:")
             for route in routes:
-                methods = [m for m in server.app.url_map.iter_rules() if rule.rule == route]
                 print(f"     - {route}")
             
             return True
         else:
-            print("  ❌ Flask app not found in server.py")
+            print("  ❌ Flask app not found in src/app.py")
             return False
             
     except ImportError as e:
-        print(f"  ❌ Cannot import server: {e}")
-        return False
+        print(f"  ❌ Cannot import src.app: {e}")
+        print("     Trying alternative import...")
+        try:
+            from src.app import app
+            print("  ✅ src.app imported successfully")
+            routes = [rule.rule for rule in app.url_map.iter_rules()]
+            print(f"  ✅ Found {len(routes)} routes")
+            return True
+        except Exception as e2:
+            print(f"  ❌ Alternative import also failed: {e2}")
+            return False
     except Exception as e:
         print(f"  ❌ Error checking Flask: {e}")
         return False

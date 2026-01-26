@@ -130,20 +130,22 @@ def _create_log_entry(tx, log_data: dict):
         MERGE (a)-[:AFFECTED_BY]->(enState)
         MERGE (a)-[:AFFECTED_BY]->(timeState)
         
-        // Try to link to existing Goal if intention matches goal pattern
+                // Try to link to existing Goal if intention matches goal pattern
         // (This is a simple pattern match - can be enhanced with AI)
-        WITH a, u, int, $intention as intentionText
+        WITH a, u, int, r, $intention as intentionText
         WHERE intentionText IS NOT NULL AND intentionText <> ''
         OPTIONAL MATCH (g:Goal)
         WHERE toLower(g.description) CONTAINS toLower(intentionText) 
            OR toLower(intentionText) CONTAINS toLower(g.description)
-        WITH a, u, int, g
-        WHERE g IS NOT NULL
-        MERGE (int)-[:TARGETS]->(g)
-        MERGE (a)-[:ALIGNED_WITH]->(g)
+        WITH a, u, int, r, g
+        FOREACH (x IN CASE WHEN g IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (int)-[:TARGETS]->(g)
+            MERGE (a)-[:ALIGNED_WITH]->(g)
+        )
         
         RETURN a, int, r
         """
+        
     )
     
     result = tx.run(query,

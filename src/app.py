@@ -1,12 +1,35 @@
-from flask import Flask, request, jsonify
+import sys
+from pathlib import Path
+
+# Add project root to Python path so imports work when run directly
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, time, timedelta
-from main import run_crew
-from neo4j_db import log_to_neo4j
-from google_calendar_authentication_helper import get_calendar_service
+from src.main import run_crew
+from src.database.neo4j_db import log_to_neo4j
+from src.integrations.google_calendar import get_calendar_service
+
 
 app = Flask(__name__)
 CORS(app)  # This will enable CORS for all routes
+
+# Serve front-end files
+@app.route('/')
+def index():
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/inventory')
+def inventory():
+    return send_from_directory('../frontend', 'inventory.html')
+
+# Serve static files (JS, CSS, etc.)
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory('../frontend/js', filename)
 
 # Initialize Google Calendar service (lazy initialization)
 _calendar_service = None
@@ -59,11 +82,11 @@ def process_journal():
     """
     try:
         data = request.get_json()
-        journal_entry = data.get('journal_entry') 
-        journal_entry = data['journal_entry']
-        print(f"Received journal entry: {journal_entry}")  # Debugging log
+        journal_entry = data.get('journal_entry')
         log_data = data.get('log_data')
-        print(f"Received log data: {log_data}")  # Debugging log
+        
+        print(f"Received journal entry: {journal_entry[:100] if journal_entry else 'None'}...")
+        print(f"Received log data for day: {log_data.get('day') if log_data else 'None'}")
         
         if not journal_entry or not log_data:
             # --- MORE DESCRIPTIVE 400 ERROR ---
@@ -109,48 +132,40 @@ def process_journal():
             # Run the CrewAI workflow with enhanced context
             crew_result = run_crew(enhanced_journal_entry)
 
-            # BEFORE any error can happen
-            print("\n--- DEBUGGING CREWAI OUTPUT ---")
-            print(f"Type of crew_result: {type(crew_result)}")
-            print(f"Raw crew_result object: {crew_result}")
-            if crew_result:
-                print(f"Attributes of crew_result: {dir(crew_result)}")
-            print("--- END IMMEDIATE DEBUGGING ---\n")
-
-            # Safely extract the reflection text
-            result_text = "Could not retrieve a reflection."
+            # Extract the reflection text (simplified from iteration file)
             if crew_result and hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
                 last_task = crew_result.tasks_output[-1]
-                if hasattr(last_task, 'raw') and last_task.raw:
-                    result_text = last_task.raw
-                else:
-                    result_text = str(last_task)
-            elif crew_result: # Fallback if tasks_output is missing or empty
-                result_text = str(crew_result)
+                result_text = last_task.raw if hasattr(last_task, 'raw') and last_task.raw else str(last_task)
+            elif crew_result and hasattr(crew_result, 'raw'):
+                result_text = crew_result.raw
+            else:
+                result_text = str(crew_result) if crew_result else "Could not retrieve a reflection."
 
             # Add reflection to the log data for the database
             log_data['reflection'] = result_text
 
-            # 5. Save the complete log to Neo4j
+            # Save the complete log to Neo4j
             db_confirmation = log_to_neo4j(log_data)
             print(f"Neo4j Confirmation: {db_confirmation}")
 
-            # 6. Return the successful result to the front-end
+            # Return the successful result to the front-end
             # Note: app.js expects "result" key, not "reflection"
-            return jsonify({"result": result_text})
+            return jsonify({
+                "result": result_text,
+                "db_status": db_confirmation
+            })
         
         except Exception as e:
-            # This will now catch the 'NoneType' error and give us a detailed traceback
-            print(f"\n!!! AN ERROR OCCURRED DURING CREW EXECUTION OR DATA PROCESSING !!!")
+            # Log error with traceback for debugging
+            print(f"Backend Error during CrewAI execution: {e}")
             import traceback
-            traceback.print_exc() # This prints the full error stack trace
-            print(f"Error details: {e}\n")
-            return jsonify({"error": "An error occurred while processing the AI reflection."}), 500
+            traceback.print_exc()
+            return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         # This outer block catches errors in getting the initial JSON data
-        print(f"An error occurred reading the request data: {e}")
-        return jsonify({"error": "An internal server error occurred."}), 500
+        print(f"Error reading request data: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/get_calendar_events', methods=['GET'])
@@ -222,4 +237,5 @@ def get_calendar_events():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    print("Agentic Personal Porter Server starting on port 5000...")
+    app.run(debug=True, host='0.0.0.0', port=5000)

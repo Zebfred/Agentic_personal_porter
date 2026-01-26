@@ -1,0 +1,67 @@
+# Cursor Rules for Agentic Personal Porter
+
+## Documentation Organization
+
+**CRITICAL: All markdown (.md) documentation files MUST be placed in the `Documentation/` directory.**
+
+### Rules:
+1. **Never create markdown files in the project root** - All `.md` files (except `README.md`) must be in `Documentation/`
+2. **When generating documentation**, always use the path: `Documentation/FILENAME.md`
+3. **If asked to create documentation**, automatically place it in `Documentation/` without asking
+4. **Exception**: `README.md` can stay in root (standard practice)
+
+### Examples:
+- ✅ `Documentation/IMPLEMENTATION_SUMMARY.md`
+- ✅ `Documentation/QUICK_START.md`
+- ✅ `Documentation/ARCHITECTURE.md`
+- ❌ `IMPLEMENTATION_SUMMARY.md` (in root)
+- ❌ `QUICK_START.md` (in root)
+
+### When to Create Documentation:
+- Implementation summaries
+- Feature documentation
+- Setup guides
+- Architecture documentation
+- API documentation
+- Troubleshooting guides
+- Any explanatory markdown files
+
+## Code Organization
+
+### Import Paths:
+- Always use absolute imports with `src.` prefix when importing from the main application
+- Example: `from src.main import run_crew`
+- Add project root to `sys.path` in entry point files (like `src/app.py`) to support direct execution
+
+### File Structure:
+- Main application code: `src/`
+- Front-end: `frontend/`
+- RAG system: `rag_system/`
+- Scripts: `scripts/`
+- Tests: `tests/`
+- Documentation: `Documentation/`
+
+## Code Style
+
+### Python:
+- Use type hints where appropriate
+- Follow PEP 8 style guidelines
+- Add docstrings to functions and classes
+- Use meaningful variable names
+
+### Error Handling:
+- Provide clear, actionable error messages
+- Include traceback for debugging in development
+- Return appropriate HTTP status codes
+
+## Testing
+
+- Run tests before committing major changes
+- Update tests when modifying functionality
+- Keep test files organized in `tests/` directory
+
+## Git Workflow
+
+- Create feature branches for significant changes
+- Use descriptive commit messages
+- Test thoroughly before merging to main

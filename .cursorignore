@@ -44,7 +44,8 @@ yarn-error.log*
 .DS_Store
 
 # Logs and temporary files
-*.log
+#*.log
+logs/jan2026/*
 *.tmp
 tmp/
 temp/
@@ -62,9 +63,8 @@ test-results/
 tests/reports/
 
 # Environment and credentials
-.env
 .env.*
-*.env
+#*.env
 *cred*
 credentials.json
 token.pickle
