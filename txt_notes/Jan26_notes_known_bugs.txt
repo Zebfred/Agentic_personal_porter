@@ -1,0 +1,9 @@
+Important Bugs:
+1 and 2. We lost functionality of the index page and inventory on the current working branch needs to be addressed. And restored, have collected original .html pages that still show functionality for now. 
+
+3.
+Still experiencing minor issues in the neo4j database:
+
+
+Have not verified I am happy in how we are making the connections for the agents.
+Need to revisit and verify the functionality of agents
