@@ -18,5 +18,5 @@ config.local.js
 token.pickle
 token.json
 credentials.json
-
+*.json
 

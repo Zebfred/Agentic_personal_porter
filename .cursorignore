@@ -59,7 +59,7 @@ htmlcov/
 .tox/
 test-results/
 *.xml
-*.html
+#*.html
 tests/reports/
 
 # Environment and credentials
