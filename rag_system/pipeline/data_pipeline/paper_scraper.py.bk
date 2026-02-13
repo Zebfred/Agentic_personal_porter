@@ -1,0 +1,242 @@
+"""
+Paper scraper for downloading RL papers from arxiv.org and conference sites.
+
+This module handles:
+- Scraping papers from arxiv.org using arxiv API
+- Downloading PDFs
+- Storing metadata (title, authors, arxiv ID, date)
+"""
+
+import os
+import json
+import requests
+import arxiv
+from typing import List, Dict, Optional
+from pathlib import Path
+import time
+
+
+class PaperScraper:
+    """Scraper for downloading RL papers from various sources."""
+    
+    def __init__(self, papers_dir: str = "data/papers", metadata_file: str = "data/papers_metadata.json"):
+        """
+        Initialize the paper scraper.
+        
+        Args:
+            papers_dir: Directory to store downloaded PDFs
+            metadata_file: Path to JSON file storing paper metadata
+        """
+        self.papers_dir = Path(papers_dir)
+        self.papers_dir.mkdir(parents=True, exist_ok=True)
+        self.metadata_file = Path(metadata_file)
+        self.metadata = self._load_metadata()
+    
+    def _load_metadata(self) -> List[Dict]:
+        """Load existing metadata if available."""
+        if self.metadata_file.exists():
+            with open(self.metadata_file, 'r') as f:
+                return json.load(f)
+        return []
+    
+    def _save_metadata(self):
+        """Save metadata to JSON file."""
+        with open(self.metadata_file, 'w') as f:
+            json.dump(self.metadata, f, indent=2)
+    
+    def scrape_arxiv(self, 
+                     query: str = "reinforcement learning",
+                     max_results: int = 30,
+                     sort_by: arxiv.SortCriterion = arxiv.SortCriterion.SubmittedDate,
+                     sort_order: arxiv.SortOrder = arxiv.SortOrder.Descending) -> List[Dict]:
+        """
+        Scrape papers from arxiv.org using the arxiv API.
+        
+        Args:
+            query: Search query (default: "reinforcement learning")
+            max_results: Maximum number of papers to download
+            sort_by: How to sort results
+            sort_order: Sort order (ascending/descending)
+            
+        Returns:
+            List of paper metadata dictionaries
+        """
+        print(f"Searching arxiv.org for: {query}")
+        print(f"Max results: {max_results}")
+        
+        # Search arxiv
+        search = arxiv.Search(
+            query=query,
+            max_results=max_results,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        
+        downloaded = []
+        for paper in search.results():
+            try:
+                # Check if already downloaded
+                arxiv_id = paper.entry_id.split('/')[-1]
+                if any(p['arxiv_id'] == arxiv_id for p in self.metadata):
+                    print(f"Skipping {arxiv_id} - already downloaded")
+                    continue
+                
+                # Download PDF
+                pdf_path = self._download_pdf(paper, arxiv_id)
+                if pdf_path:
+                    # Store metadata
+                    paper_metadata = {
+                        'arxiv_id': arxiv_id,
+                        'title': paper.title,
+                        'authors': [str(author) for author in paper.authors],
+                        'published': paper.published.isoformat() if paper.published else None,
+                        'summary': paper.summary,
+                        'pdf_path': str(pdf_path),
+                        'source': 'arxiv',
+                        'url': paper.entry_id
+                    }
+                    self.metadata.append(paper_metadata)
+                    downloaded.append(paper_metadata)
+                    print(f"Downloaded: {paper.title[:60]}...")
+                    
+                    # Be polite to arxiv servers
+                    time.sleep(1)
+                    
+            except Exception as e:
+                print(f"Error downloading paper {paper.entry_id}: {e}")
+                continue
+        
+        # Save metadata
+        self._save_metadata()
+        print(f"\nDownloaded {len(downloaded)} new papers from arxiv")
+        return downloaded
+    
+    def _download_pdf(self, paper: arxiv.Result, arxiv_id: str) -> Optional[Path]:
+        """
+        Download PDF for a given arxiv paper.
+        
+        Args:
+            paper: arxiv.Result object
+            arxiv_id: Arxiv ID for the paper
+            
+        Returns:
+            Path to downloaded PDF, or None if download failed
+        """
+        try:
+            pdf_url = paper.pdf_url
+            response = requests.get(pdf_url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            pdf_path = self.papers_dir / f"{arxiv_id}.pdf"
+            with open(pdf_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            return pdf_path
+        except Exception as e:
+            print(f"Error downloading PDF for {arxiv_id}: {e}")
+            return None
+    
+    def get_foundational_rl_papers(self) -> List[Dict]:
+        """
+        Get a curated list of foundational RL papers.
+        This method uses specific arxiv IDs for well-known RL papers.
+        
+        Returns:
+            List of paper metadata dictionaries
+        """
+        # Curated list of foundational RL papers (arxiv IDs)
+        foundational_papers = [
+            "1312.5602",  # DQN: Playing Atari with Deep Reinforcement Learning
+            "1509.06461",  # DQN Nature paper
+            "1707.06347",  # PPO: Proximal Policy Optimization Algorithms
+            "1506.02438",  # DDPG: Continuous control with deep reinforcement learning
+            "1602.01783",  # A3C: Asynchronous Methods for Deep Reinforcement Learning
+            "1801.01290",  # Soft Actor-Critic
+            "1706.03762",  # Attention Is All You Need (Transformer)
+            "1810.06339",  # IMPALA: Scalable Distributed Deep-RL
+            "1906.00953",  # MuZero
+            "1910.06591",  # Dreamer: Learning Latent Dynamics
+            "2006.05990",  # Decision Transformer
+            "2106.01345",  # Decision Transformer: Reinforcement Learning via Sequence Modeling
+            "1707.01495",  # Rainbow: Combining Improvements in Deep RL
+            "1803.00933",  # Distributional RL
+            "1901.10912",  # R2D2: Recurrent Experience Replay
+            "2003.13350",  # Agent57: Outperforming the Atari Human Benchmark
+            "1502.05477",  # Trust Region Policy Optimization
+            "1604.06778",  # Asynchronous Advantage Actor-Critic
+            "1802.01561",  # Hindsight Experience Replay
+            "1907.02057",  # Prioritized Experience Replay
+            "1703.03864",  # Evolution Strategies as a Scalable Alternative
+            "1801.01290",  # Soft Actor-Critic
+            "1906.10667",  # AlphaStar: Grandmaster level in StarCraft II
+            "1911.08265",  # Mastering Atari, Go, Chess and Shogi
+            "2009.01325",  # MuZero: Mastering Go, chess, shogi and Atari
+        ]
+        
+        downloaded = []
+        for arxiv_id in foundational_papers:
+            try:
+                # Check if already downloaded
+                if any(p['arxiv_id'] == arxiv_id for p in self.metadata):
+                    print(f"Skipping {arxiv_id} - already downloaded")
+                    continue
+                
+                # Fetch paper from arxiv
+                search = arxiv.Search(id_list=[arxiv_id])
+                paper = next(search.results(), None)
+                
+                if paper:
+                    pdf_path = self._download_pdf(paper, arxiv_id)
+                    if pdf_path:
+                        paper_metadata = {
+                            'arxiv_id': arxiv_id,
+                            'title': paper.title,
+                            'authors': [str(author) for author in paper.authors],
+                            'published': paper.published.isoformat() if paper.published else None,
+                            'summary': paper.summary,
+                            'pdf_path': str(pdf_path),
+                            'source': 'arxiv',
+                            'url': paper.entry_id
+                        }
+                        self.metadata.append(paper_metadata)
+                        downloaded.append(paper_metadata)
+                        print(f"Downloaded: {paper.title[:60]}...")
+                        time.sleep(1)
+                else:
+                    print(f"Paper {arxiv_id} not found on arxiv")
+                    
+            except Exception as e:
+                print(f"Error downloading paper {arxiv_id}: {e}")
+                continue
+        
+        self._save_metadata()
+        print(f"\nDownloaded {len(downloaded)} foundational RL papers")
+        return downloaded
+
+
+def main():
+    """Main function to run the scraper."""
+    scraper = PaperScraper()
+    
+    # First, get foundational papers
+    print("=" * 60)
+    print("Downloading Foundational RL Papers")
+    print("=" * 60)
+    foundational = scraper.get_foundational_rl_papers()
+    
+    # Then, search for additional recent papers
+    print("\n" + "=" * 60)
+    print("Searching for Additional Recent RL Papers")
+    print("=" * 60)
+    recent = scraper.scrape_arxiv(
+        query="reinforcement learning AND (deep learning OR neural networks)",
+        max_results=10
+    )
+    
+    print(f"\nTotal papers in database: {len(scraper.metadata)}")
+
+
+if __name__ == "__main__":
+    main()
+

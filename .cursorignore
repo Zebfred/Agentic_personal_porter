@@ -1,0 +1,118 @@
+# .cursorignore - Optimize token usage by excluding large/unnecessary files
+
+# Data directories - Large binary files and generated data
+data/
+**/chroma_db/
+**/papers/
+**/extracted_text/
+**/*.pdf
+**/*.bin
+**/*.sqlite3
+**/*.db
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+conda_envs/
+/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs and temporary files
+#*.log
+logs/jan2026/*
+*.tmp
+tmp/
+temp/
+*.bak
+*.backup
+
+# Test outputs and reports
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+test-results/
+*.xml
+#*.html
+tests/reports/
+
+# Environment and credentials
+.env.*
+#*.env
+*cred*
+credentials.json
+token.pickle
+*.pem
+*.key
+
+# Large JSON data files
+data/chunks_*.json
+data/*_metadata.json
+data/extraction_results.json
+
+# Git files
+.git/
+
+# Docker
+.dockerignore
+
+# Large model files (if any)
+*.pt
+*.pth
+*.h5
+*.ckpt
+*.safetensors
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Large test data
+tests/fixtures/
+tests/data/
+
+# Build artifacts
+*.o
+*.a
+*.lib
+*.dll
+*.exe
+
+# Coverage reports
+.coverage.*
+coverage.xml
+*.cover
+
+# MyPy cache
+.mypy_cache/
+.dmypy.json
+dmypy.json
