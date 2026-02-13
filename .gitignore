@@ -16,4 +16,5 @@ config.local.js
 .*env*
 *cred*
 
-
+token.json
+data/google_calendar/*
