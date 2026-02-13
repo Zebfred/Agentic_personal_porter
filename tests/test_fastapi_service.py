@@ -11,7 +11,7 @@ sys.path.insert(0, str(project_root))
 
 import pytest
 from fastapi.testclient import TestClient
-from rag_service import app
+from rag_top_level_service.rag_service import app
 import os
 
 
@@ -78,7 +78,7 @@ def test_rebuild_index_endpoint_no_papers(client):
 
 def test_query_request_model():
     """Test QueryRequest model validation."""
-    from rag_service import QueryRequest
+    from rag_top_level_service.rag_service import QueryRequest
     
     # Valid request
     request = QueryRequest(query="Test query", top_k=5)
