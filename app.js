@@ -13,6 +13,19 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'early-night', label: 'Early Night (8pm - 12am)' }
     ];
 
+    // Helper function to escape HTML special characters to prevent XSS
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return str.replace(/[&<>'"]/g,
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag]));
+    };
+
     let weeklyLog = {};
 
     const getWeeklyLog = () => {
@@ -71,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- Intention Area -->
                     <div>
                         <label for="intention-${chunkId}" class="block text-sm font-medium text-gray-700 mb-1">My Intention</label>
-                        <input type="text" id="intention-${chunkId}" value="${chunkData.intention}" class="intention-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., Deep work on project X">
+                        <input type="text" id="intention-${chunkId}" value="${escapeHTML(chunkData.intention)}" class="intention-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., Deep work on project X">
                     </div>
 
                     <!-- Actuals Form -->
@@ -79,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4 class="text-lg font-semibold">Log Actuals</h4>
                         <div>
                             <label for="actual-title-${chunkId}" class="block text-sm font-medium text-gray-700">Activity Title</label>
-                            <input type="text" id="actual-title-${chunkId}" value="${chunkData.activityTitle}" class="actual-title-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                            <input type="text" id="actual-title-${chunkId}" value="${escapeHTML(chunkData.activityTitle)}" class="actual-title-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                         </div>
 
                         <div>
@@ -108,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div id="inventory-note-container-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
                             <label for="inventory-note-${chunkId}" class="block text-sm font-medium text-gray-700">Inventory Note</label>
-                            <textarea id="inventory-note-${chunkId}" rows="3" class="inventory-note-textarea mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">${chunkData.inventoryNote}</textarea>
+                            <textarea id="inventory-note-${chunkId}" rows="3" class="inventory-note-textarea mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">${escapeHTML(chunkData.inventoryNote)}</textarea>
                         </div>
                     </div>
                 </div>
@@ -118,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="save-reflect-btn w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Save & Reflect</button>
                     <div id="loader-${chunkId}" class="hidden text-center mt-4"><p>Processing...</p></div>
                     <div id="ai-output-${chunkId}" class="ai-output-container mt-4 p-4 bg-gray-50 rounded-lg min-h-[50px]">
-                        <p class="text-gray-700">${chunkData.aiReflection || 'Your reflection will appear here.'}</p>
+                        <p class="text-gray-700">${chunkData.aiReflection ? escapeHTML(chunkData.aiReflection).replace(/\n/g, '<br>') : 'Your reflection will appear here.'}</p>
                     </div>
                 </div>
             `;
@@ -223,11 +236,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
-                const reflectionText = data.result.replace(/\n/g, '<br>');
+                // Store raw text in memory/storage
+                const rawReflectionText = data.reflection || data.result;
+
+                // Escape HTML for display and convert newlines to <br>
+                const reflectionHTML = escapeHTML(rawReflectionText).replace(/\n/g, '<br>');
 
                 // 5. Display the AI response and save it
-                aiOutputContainer.innerHTML = `<p class="text-gray-700">${reflectionText}</p>`;
-                weeklyLog[day][chunkId].aiReflection = reflectionText;
+                aiOutputContainer.innerHTML = `<p class="text-gray-700">${reflectionHTML}</p>`;
+                weeklyLog[day][chunkId].aiReflection = rawReflectionText; // Save the raw text, not the HTML
                 saveWeeklyLog();
 
             } catch (error) {
