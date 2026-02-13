@@ -14,33 +14,29 @@ def process_journal():
     """
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+
         journal_entry = data.get('journal_entry') 
-        journal_entry = data['journal_entry']
-        print(f"Received journal entry: {journal_entry}")  # Debugging log
         log_data = data.get('log_data')
-        print(f"Received log data: {log_data}")  # Debugging log
         
-        if not journal_entry or not log_data:
-            # --- MORE DESCRIPTIVE 400 ERROR ---
-            error_message = "Incomplete data. "
-            if not journal_entry:
-                error_message += "'journal_entry' is missing. "
-            if not log_data:
-                error_message += "'log_data' is missing. Check app.js payload construction."
-            print(f"Returning 400 error: {error_message}")
-            return jsonify({"error": error_message}), 400
+        # Validation
+        if not journal_entry or not isinstance(journal_entry, str):
+            return jsonify({"error": "'journal_entry' is missing or invalid."}), 400
+
+        if not log_data or not isinstance(log_data, dict):
+             return jsonify({"error": "'log_data' is missing or invalid."}), 400
+
+        required_fields = ['day', 'timeChunk', 'intention', 'actual', 'feeling', 'brainFog', 'isValuableDetour', 'inventoryNote']
+        missing_fields = [field for field in required_fields if field not in log_data]
+        if missing_fields:
+            return jsonify({"error": f"Missing fields in log_data: {', '.join(missing_fields)}"}), 400
+
+        # Removed sensitive logging of journal_entry and log_data
         
         try:
             # Run the CrewAI workflow
             crew_result = run_crew(journal_entry)
-
-            # BEFORE any error can happen
-            print("\n--- DEBUGGING CREWAI OUTPUT ---")
-            print(f"Type of crew_result: {type(crew_result)}")
-            print(f"Raw crew_result object: {crew_result}")
-            if crew_result:
-                print(f"Attributes of crew_result: {dir(crew_result)}")
-            print("--- END IMMEDIATE DEBUGGING ---\n")
 
             # Safely extract the reflection text
             result_text = "Could not retrieve a reflection."
@@ -64,11 +60,8 @@ def process_journal():
             return jsonify({"reflection": result_text})
         
         except Exception as e:
-            # This will now catch the 'NoneType' error and give us a detailed traceback
-            print(f"\n!!! AN ERROR OCCURRED DURING CREW EXECUTION OR DATA PROCESSING !!!")
-            import traceback
-            traceback.print_exc() # This prints the full error stack trace
-            print(f"Error details: {e}\n")
+            # Log error securely (avoid printing full traceback to stdout in production if possible, but keeping minimal info)
+            print(f"An error occurred during crew execution: {str(e)}")
             return jsonify({"error": "An error occurred while processing the AI reflection."}), 500
 
     except Exception as e:
