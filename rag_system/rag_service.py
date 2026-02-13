@@ -22,7 +22,7 @@ from dotenv import load_dotenv
 from rag_core.query_engine import RAGQueryEngine
 from rag_core.vector_store import VectorStore
 from rag_core.embeddings import SciBERTEmbedder
-from build_rag_index import build_index, load_chunks
+from rag_top_level_service.build_rag_index import build_index, load_chunks
 
 load_dotenv()
 
