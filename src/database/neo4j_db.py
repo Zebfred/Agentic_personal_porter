@@ -23,7 +23,7 @@ def log_to_neo4j(log_data: dict) -> str:
     """
     driver = get_driver()
     with driver.session() as session:
-        result_node = session.write_transaction(_create_log_entry, log_data)
+        result_node = session.execute_write(_create_log_entry, log_data)
         
         # another potential fix
         # We must check if result_node is not None before trying to access it.

@@ -9,7 +9,7 @@ if str(project_root) not in sys.path:
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, time, timedelta
-from src.main import run_crew
+from src.agents.crew_manager import run_crew
 from src.database.neo4j_db import log_to_neo4j
 from src.integrations.google_calendar import get_calendar_service
 
@@ -82,9 +82,13 @@ def process_journal():
     """
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+        
         journal_entry = data.get('journal_entry')
         log_data = data.get('log_data')
         
+        # Validation with more descriptive error messages, list comprehensions for clarity
         print(f"Received journal entry: {journal_entry[:100] if journal_entry else 'None'}...")
         print(f"Received log data for day: {log_data.get('day') if log_data else 'None'}")
         
@@ -237,5 +241,5 @@ def get_calendar_events():
 
 
 if __name__ == '__main__':
-    print("Agentic Personal Porter Server starting on port 5000...")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print("Agentic Personal Porter Server starting on port 5090...")
+    app.run(debug=True, host='0.0.0.0', port=5090)
