@@ -5,7 +5,14 @@ from langchain_groq import ChatGroq
 from groq import Groq # Likely not needed here, but useful for testing connectivity
 
 # Load environment variables from .env file
-load_dotenv()
+# Get the base directory of your project
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+# Construct the full path to your .env file inside the .auth directory
+env_path = os.path.join(BASE_DIR, '.auth', '.env')
+
+#print(f"Loading .env from: {env_path}")
+load_dotenv(dotenv_path=env_path)
 
 # Set up the language model
 llm = ChatGroq(
@@ -52,7 +59,7 @@ goal_ingester = Agent(
   backstory=(
     "You are a meticulous analyst. Your strength is in reading unstructured text "
     "and extracting key pieces of information with high fidelity. You separate "
-    "what the user planned to do from what they actually did."
+    "what the user planned to do from what they ay did."
   ),
   verbose=True,
   allow_delegation=False,
