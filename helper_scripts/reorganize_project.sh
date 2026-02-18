@@ -15,21 +15,21 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Create new directory structure
-echo "📁 Creating new directory structure..."
-mkdir -p src/{api,agents,database,integrations,utils}
-mkdir -p frontend/{js,css,assets}
-mkdir -p rag_system/{core,pipeline}
-mkdir -p scripts/migration
-mkdir -p tests/{unit,integration,rag}
-mkdir -p docs/{architecture,development,features,notes}
-mkdir -p config
+#echo "📁 Creating new directory structure..."
+#mkdir -p src/{api,agents,database,integrations,utils}
+#mkdir -p frontend/{js,css,assets}
+#mkdir -p rag_system/{core,pipeline}
+#mkdir -p scripts/migration
+#mkdir -p tests/{unit,integration,rag}
+#mkdir -p docs/{architecture,development,features,notes}
+#mkdir -p config
 
 # Move main application files
-echo "📦 Moving main application files..."
-git mv server.py src/app.py
-git mv main.py src/main.py
-git mv neo4j_db.py src/database/neo4j_db.py
-git mv google_calendar_authentication_helper.py src/integrations/google_calendar.py
+#echo "📦 Moving main application files..."
+#git mv server.py src/app.py
+#git mv main.py src/main.py
+#git mv neo4j_db.py src/database/neo4j_db.py
+#git mv google_calendar_authentication_helper.py src/integrations/google_calendar.py
 
 # Move front-end files
 echo "🎨 Moving front-end files..."
