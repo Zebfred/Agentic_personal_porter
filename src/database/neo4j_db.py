@@ -167,6 +167,46 @@ def _create_log_entry(tx, log_data: dict):
         return record.get('a')
     return None
 
+# ---- Gtky agent functions for querying and insights will go here ----
+
+def create_identity_graph(user_id, origin_story, ambitions):
+    """
+    Parses the GTKY Agent's output to build the Identity Graph.
+    Uses MERGE to ensure idempotency.
+    """
+    driver = get_driver()
+    query = """
+    MATCH (u:User {id: $user_id})
+    
+    // 1. Map the Origin Story (Who you are)
+    FOREACH (trait IN $origin_story.traits |
+        MERGE (i:Identity {name: trait.name})
+        SET i.category = trait.category
+        MERGE (u)-[:DEFINES_IDENTITY]->(i)
+    )
+    
+    // 2. Map Future Ambitions (Where you are going)
+    FOREACH (quest IN $ambitions |
+        MERGE (a:Ambition {name: quest.title})
+        SET a.target_date = quest.target_date,
+            a.status = 'ACTIVE'
+        MERGE (u)-[:HAS_AMBITION]->(a)
+    )
+    
+    // 3. Link Ambitions to specific Life Pillars if known
+    WITH u
+    MATCH (u)-[:HAS_AMBITION]->(a:Ambition), (p:Pillar)
+    WHERE a.name CONTAINS p.name // Simple heuristic for now
+    MERGE (a)-[:SUPPORTS_PILLAR]->(p)
+    """
+
+    # Execute query with parameters
+    with driver.session() as session:
+        session.run(query, user_id=user_id, origin_story=origin_story, ambitions=ambitions)
+    driver.close()
+    user_id_graph = f"Identity graph created/updated successfully for user {user_id}"
+    print(user_id_graph)
+    return user_id_graph
 
 # --- Goal Management Functions ---
 

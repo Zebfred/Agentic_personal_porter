@@ -1,0 +1,28 @@
+{
+  "origin_story": {
+    "epochs": [
+      {
+        "name": "Childhood/Adolescence",
+        "timeframe": "Birth to 10 years of age",
+        "experiences": [
+          {
+            "title": "3 memories of my biological father. 3 memories of the father that raise me.",
+            "description": "I dont understand writing for myself. I dont understand what childhood events are important to me. it depends on the context of who I am speaking too. 6 events. Missing a day of kindergarden to hang out with the biology father. Getting Apples for my birthday. Having a memory that I wasn't worth the trouble to go through raising a second kid and the journey of my mom doing what she had too for us. The father who raised me was always a bit of grump, but a good guy deep down. I remember hiking was a fond activity we shared. Hiking Whitwell mountain. Thinking I would have to use the bathroom in front of a crowd at an AA eating meeting at firey gizzard, so held it in as long as I could till I pooped in pants in his truck on the way back and he was pissed at me. Going to his Mothers house, and he would wake me at like 5am morning to drop me off then she would take me to school."
+          },
+          {
+            "title": "Building Blocks: legos, k'nex , video games? and nature. Playing sports",
+            "description": "As a child my mother was a single mother that had to work often to support us so I was left to my own devices more time than not. We lived in a long dead coal mining town in TN. I had nature in my backyard in our home I had a gameboy & building blocks( partically k'nects). There was a creek and my dog, I explored it often discovery interesting rocks and critters that inhabited it. In our home I explored games. I would watch cartoons from Toonami, I adored Zoids and Gundams and would often make my own robotic figures from K'nects that would wage epic battles with each others. I also enjoyed building lego and other structures that they would often defend. I played baseball for one season and I did not enjoy that haha, found it very boring, and the one time I got a hit and a homerun. I got it for running the wrong way around the bases. Haha. I also played soccer for several years, I was decent goalie, and overall my favorite position was midfielder as you were never completing separate from the action, the physicality of the position was fun, and it was so so satisfying when I was successful in my defense with a steal."
+          }
+        ]
+      },
+      {
+        "name": "Teenage years",
+        "timeframe": "10 years of age to 18 years",
+        "experiences": [
+          // ... 
+        ]
+      }
+    ]
+  }
+}
+
