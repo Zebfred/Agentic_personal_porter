@@ -59,6 +59,15 @@ def determine_category(title, color_id):
             
     return "Uncategorized"
 
+def classify_event_type(color_id):
+    # Based on Google Calendar API Color Definitions
+    INTENT_COLORS = ['1', '9', 'default'] # Blue/Lavender
+    REALITY_COLORS = ['2', '8', '10']     # Green/Gray (Completed/Actual)
+    
+    if color_id in REALITY_COLORS:
+        return "Actual"
+    return "Intention"
+
 def parse_calendar_to_intentions(raw_events):
     """
     Transforms raw Google Calendar noise into clean Agentic Intentions.
