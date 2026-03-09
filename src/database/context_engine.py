@@ -2,6 +2,14 @@ import json
 from datetime import datetime, timedelta
 from neo4j import GraphDatabase
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from src.config import Config
+
+driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+
 
 class SovereignContextEngine:
     """
@@ -14,7 +22,7 @@ class SovereignContextEngine:
     def close(self):
         self.driver.close()
 
-    def get_hero_snapshot(self, user_name="Sir"):
+    def get_hero_snapshot(self, user_name="Jimmy"):
         """
         Fetches the active 'Hero' context to feed into the Agent System Prompt.
         """
@@ -125,7 +133,7 @@ def run_15min_sanity_test():
         {"title": "Scrolling Doom", "category": "Unknown", "start": "2026-03-06T21:00", "duration_minutes": 45}
     ]
     
-    engine = SovereignContextEngine("bolt://localhost:7687", "neo4j", "password")
+    engine = SovereignContextEngine("bolt://localhost:7687", AUTH_USER, AUTH_PASS)
     
     print("Testing Delta Logic...")
     report = engine.analyze_day_delta([], mock_actual, mock_context)
