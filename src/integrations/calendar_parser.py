@@ -9,28 +9,68 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 # --- THE LIFE PILLAR MAP ---
 # This is the "Learning" base. We map keywords and Google Colors to Pillars.
-# Google Color IDs: 1 (Blue/Lavender), 2 (Green/Sage), 10 (Green/Basil), 11 (Red/Tomato), etc.
-CATEGORY_MAPPING = {
-    "keywords": {
-        "Professional-core": ["dev", "work", "engineer", "data", "Deep Dive", "development", "Working on LaUIrl",],
-        "Professional-extended": ["meeting", "sync", "interview", "client"],
-        "Relationship": ["fellowship", "relationship", "anu", "date", "call with", "family", "dog"],
-        "Self-Care": ["gym", "workout", "meditation", "praying", "thinking", "health", "call"],
-        "Maintenance": ["laundry", "clean", "grocery", "admin", "setup", "laptop", "haircut", "waking", "Getting started", "Zeb's intended Sleep Time", "lunch"],
-        "Hero's Work": ["project", "porter", "lauirl", "theory", "planning"],
-        "Survival": ["jury duty", "bills", "doctor", "therapy", "pharmacy", "vet", "appointment", "travel", "commute"],
-        "Restorive": ["Calling it quit","sleep", "girlfriend", "nap", "relax", "rest", "reading", "tv", "show", "movie", "game", "gaming", "fun" , 	"party" , 	"hangout"],
-        "Uncategorized": []
+ACTUAL_CATEGORY_MAPPING = {
+    "intent_to_actual_mapping": {
+        "Career Goal": "Career related", 
+        "Health Goal": "Health related", 
+        "Loved ones": "Loved Ones", 
+        "Leisure Goal": "Leisures_related",
+        "Interest Goal": "Interests_related", 
+        "Spiritual Goal": "Spiritual_related", 
+        "Social Goal": "Social_related", 
+        "Mundane Goal": "Chore_related",
+        "Detriments to Avoid": "Detriments_related"
+    },
+    "actual_categorization_with_keywords": {        
+        "Career related": {
+            "Professional-core": ["dev", "work", "engineer", "data", "deep dive", "development", "working on lauirl"],
+            "Professional-extended": ["meeting", "sync", "interview", "client", "planning"],
+            "Hero's Work": ["project", "porter", "lauirl", "theory", "engineering"]
+        },
+        "Health related": {
+            "Exercise": ["workout", "exercise", "gym"],
+            "Diet": ["lunch", "dinner", "breakfast", "food"],
+            "Sleep": ["sleep", "nap"]
+        },
+        "Loved Ones": {
+            "Romantic_related": ["relationship", "anu", "date", "call with"],
+            "Family_related": ["family", "mom"],
+            "Pet_related": ["pet", "doggy", "dog", "puppy", "walk with dogs"]
+        },
+        "Leisures_related": {
+            "General": ["relaxing", "calling it quits", "movie", "hanging out", "board games", "hiking with dogs"]
+        },
+        "Interests_related": {
+            "General": ["hobbies", "reading", "activities", "caving", "exploring"]
+        },
+        "Spiritual_related": {
+            "General": ["meditate", "pray", "higher power", "religious", "church"]
+        },
+        "Social_related": {
+            "General": ["fellowship", "friends", "social", "amiable with strangers", "be available to friends and family"]
+        },
+        "Chore_related": {
+            "General": ["laundry", "clean", "grocery", "admin", "setup", "haircut", "waking", "getting started", "jury duty", "bills", "doctor", "therapy", "pharmacy", "vet", "appointment", "travel", "commute"]
+        },
+        "Detriments_related": {
+            "General": ["procrastinate", "ineffective work", "mindlessly engaged", "acting in selfwill/fear"]
+        },
+        "Uncategorized": {
+            "General": []
+        }
     },
     "colors": {
-        "6": "Professional-core", # Tangerine (Orange)
-        "10":"Professional-extended", # Banana (Yellow)
-        "11": "Survival",     # Tomato (Red)
-        "2":  "Self-Care",    # Sage (Green)
-        "5":  "Relationship", # Basil (Dark Green)
-        "3":  "Maintenance",  # Grape (Purple)
-        "8":  "Restorive",    # Gray (Gray)
-        "7":  "Hero's Work"   # Peacock (Blue)
+        "1": "Uncategorized",                 # Lavender (Default)
+        "2": "Social_related",                # Sage
+        "3": "Loved Ones",                    # Grape
+        "5": "Chore_related",                 # Banana
+        "6": ("Career related", "Professional-extended"),  # Tangerine
+        "7": ("Career related", "Hero's Work"),            # Peacock
+        "8": ["Health related", "Spiritual_related"],      # Graphite (Shared!)
+        "9": ("Career related", "Professional-core"),      # Blueberry
+        "10": "Leisures_related",             # Basil
+        "11": "Detriments_related",           # Tomato
+        "default": "Uncategorized"
     }
 }
 
@@ -44,29 +84,60 @@ def get_time_chunk(hour):
 
 def determine_category(title, color_id):
     """
-    Heuristic to guess the life pillar. 
-    Prioritizes Color ID, then falls back to Keyword matching.
+    Heuristic to guess the life pillar and subcategory.
+    Returns a dict with 'pillar' and 'subcategory'.
     """
-    # 1. Check Color ID First (Explicit intent)
-    if color_id in CATEGORY_MAPPING["colors"]:
-        return CATEGORY_MAPPING["colors"][color_id]
-    
-    # 2. Check Keywords in Title
     title_lower = title.lower()
-    for pillar, keywords in CATEGORY_MAPPING["keywords"].items():
-        if any(kw in title_lower for kw in keywords):
-            return pillar
-            
-    return "Uncategorized"
+    color_match = ACTUAL_CATEGORY_MAPPING["colors"].get(str(color_id))
 
-def classify_event_type(color_id):
-    # Based on Google Calendar API Color Definitions
-    INTENT_COLORS = ['1', '9', 'default'] # Blue/Lavender
-    REALITY_COLORS = ['2', '8', '10']     # Green/Gray (Completed/Actual)
-    
-    if color_id in REALITY_COLORS:
-        return "Actual"
-    return "Intention"
+    # 1. Explicit Color Checking
+    if color_match:
+        if isinstance(color_match, tuple):
+            # Perfect exact match for a subcategory (e.g., Tangerine -> Prof-extended)
+            return {"pillar": color_match[0], "subcategory": color_match[1]}
+        
+        elif isinstance(color_match, str) and color_match != "Uncategorized":
+            # Direct match to a single pillar
+            return {"pillar": color_match, "subcategory": "General"}
+        
+        # If it's a list (like Graphite [Health, Spiritual]), we skip returning here 
+        # and let the keyword logic below break the tie!
+
+    # 2. Keyword Fallback & Tie-Breaker
+    for pillar, subcategories in ACTUAL_CATEGORY_MAPPING["actual_categorization_with_keywords"].items():
+        # If we have a shared color list, only search within those specific pillars to save time
+        if isinstance(color_match, list) and pillar not in color_match:
+            continue
+            
+        for subcat, keywords in subcategories.items():
+            if any(kw.lower() in title_lower for kw in keywords):
+                return {"pillar": pillar, "subcategory": subcat}
+                
+    return {"pillar": "Uncategorized", "subcategory": "General"}
+
+def event_record_type(event):
+    """
+    Compares the event's last modified time with its start time to 
+    determine if it's a pre-planned 'Intention' or a logged 'Actual'.
+    """
+    try:
+        start_str = event['start'].get('dateTime')
+        updated_str = event.get('updated') # The time the event was last modified
+        
+        if not start_str or not updated_str:
+            return "Intention" # Default safely
+
+        start_dt = parser.parse(start_str)
+        updated_dt = parser.parse(updated_str)
+        
+        # If the event was created/modified after the start time, it's an actual log
+        if updated_dt >= start_dt:
+            return "Actual"
+        else:
+            return "Intention"
+            
+    except Exception:
+        return "Unknown"
 
 def parse_calendar_to_intentions(raw_events):
     """
@@ -93,9 +164,14 @@ def parse_calendar_to_intentions(raw_events):
         # 4. Determine "Category Hint" (Maslow Tier guess)
         # This is where we can map Color IDs later. For now, default to General.
         #Determine the Pillar (Label)
-        category_label = determine_category(raw_title, color_id)
+
+        # Determine the Pillar and Subcategory dict
+        category_data = determine_category(raw_title, color_id)
+        
+        # Determine if this was planned or actually done
+        record_type = event_record_type(event)
        
-                # 5. Build the Golden Object
+        # 5. Build the Golden Object
         intention = {
             "source_id": event['id'],
             "title": raw_title,
@@ -107,11 +183,15 @@ def parse_calendar_to_intentions(raw_events):
                 "time_chunk": get_time_chunk(start_dt.hour)
             },
             "meta": {
-                "label": category_label, # The "Personal" learning hook
+                "pillar": category_data["pillar"],
+                "subcategory": category_data["subcategory"],
+                "record_type": record_type, # 'Actual' or 'Intention'
                 "google_color_id": color_id,
-                "is_processed": False # Flag for the Learning Agent to refine later
+                "is_processed": False
             }
         }
+
+        
         formatted_intentions.append(intention)
 
     return formatted_intentions
