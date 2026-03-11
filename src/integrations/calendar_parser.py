@@ -41,7 +41,7 @@ ACTUAL_CATEGORY_MAPPING = {
             "General": ["relaxing", "calling it quits", "movie", "hanging out", "board games", "hiking with dogs"]
         },
         "Interests_related": {
-            "General": ["hobbies", "reading", "activities", "caving", "exploring"]
+            "General": ["hobbies", "reading", "activities", "caving", "exploring","nature", "museum", "drawing" ]
         },
         "Spiritual_related": {
             "General": ["meditate", "pray", "higher power", "religious", "church"]
