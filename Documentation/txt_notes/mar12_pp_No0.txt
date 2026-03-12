@@ -1,0 +1,64 @@
+Mar 12
+
+
+sync_calendar_to_graph
+unresolved imports
+---
+
+So walk though the expect pipeline at this point.(We are going to establish
+what of these are possible outdated and what is nessary) -->
+
+1. 10 scripts in total in 3 subfolders(database, intergration, orchestrators)
+
+
+dir - dir_name
+python_script_name - name_of_script
+{name_of_script}_imports -
+
+{name_of_script}_functions -
+
+
+dir - orchestrators
+python_script_name - sync_calendar_to_graph
+
+sync_calendar_to_graph_imports -
+from src.database.mongo_storage import get_unstaged_events_for_neo4j, mark_as_synced
+from src.integrations.calendar_parser import parse_calendar_to_intentions
+from src.database.inject_hero_calendar import inject_calendar_to_graph
+
+sync_calendar_to_graph_functions -
+def run_sync_pipeline(hero_name="Zeb")
+
+dir - integrations
+
+python_script_name -
+calendar_parser.py
+google_calendar_authentication_helper.py
+google_calendar.py
+
+python_script_name1 - calendar_parser.py
+calendar_parser_imports or valuable thing
+ACTUAL_CATEGORY_MAPPING - This is a constant that I need to pull out.
+
+calendar_parser_functions -
+def get_time_chunk(hour):
+def determine_category(title, color_id):
+def event_record_type(event):
+def parse_calendar_to_intentions(raw_events):
+def save_debug_artifacts(raw_data, formatted_data):
+
+python_script_name2 - google_calendar_authentication_helper.py
+python_script_name3 - google_calendar.py
+both of these functions are used for accessing google calendar
+
+
+dir - database
+
+python_script_name -
+batch_inject_intentions.py
+calendar_sync_util.py
+context_engine.py
+inject_hero_calendar.py
+inject_hero_foundation.py
+mongo_storage.py
+neo4j_db.py

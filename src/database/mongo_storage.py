@@ -1,7 +1,7 @@
 import os
 import json
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timezone, UTC
 from src.config import Config
 
 # Ensure we can import from the src directory when running from helper_scripts
@@ -30,7 +30,7 @@ def stage_raw_events(raw_events):
             continue
             
         # Add a local ingestion timestamp for auditing
-        event['porter_ingested_at'] = datetime.timezone.utc.utcnow()
+        event['porter_ingested_at'] = datetime.now(timezone.utc)
         
         # Replace if exists, insert if new
         collection.replace_one({'_id': event_id}, event, upsert=True)
@@ -51,7 +51,7 @@ def mark_as_synced(event_ids):
     """Updates Mongo records to acknowledge they've hit the graph."""
     collection.update_many(
         {"_id": {"$in": event_ids}},
-        {"$set": {"neo4j_synced": True, "neo4j_last_sync": datetime.timezone.utc.utcnow()}}
+        {"$set": {"neo4j_synced": True, "neo4j_last_sync": datetime.now(timezone.utc)}}
     )
 
 # --- Local Verification ---
