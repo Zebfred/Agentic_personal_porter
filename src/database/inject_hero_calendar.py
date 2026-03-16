@@ -1,9 +1,9 @@
 import json
 from neo4j import GraphDatabase
-from src.config import Config
+from src.config import NeoConfig
 
 # Secure Driver Initialization
-driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 def inject_calendar_to_graph(formatted_events, hero_name="Zeb"):
     """

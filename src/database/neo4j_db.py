@@ -9,9 +9,9 @@ URI = os.getenv("NEO4J_URI")
 AUTH_USER = os.getenv("NEO4J_USERNAME")
 AUTH_PASS = os.getenv("NEO4J_PASSWORD")
 AUTH = (os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD"))
-from src.config import Config
+from src.config import NeoConfig
 
-driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 def get_driver():
     """Establishes a connection to the Neo4j database."""

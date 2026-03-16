@@ -1,7 +1,13 @@
 import json
 import os
+import sys
+from pathlib import Path
 from datetime import datetime
 from dateutil import parser # pip install python-dateutil
+
+root = Path(__file__).resolve().parent.parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
 
 # Define your storage paths
 DATA_DIR = os.path.join(os.getcwd(), 'data', 'google_calendar')
