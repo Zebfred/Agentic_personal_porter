@@ -1,70 +1,105 @@
 import os
 import sys
 import json
-from zipfile import Path
+#from zipfile import Path
 from pymongo import MongoClient
 from datetime import datetime, timezone, UTC
-from src.config import MongoConfig
+from pathlib import Path
     
 # Ensure we can import from the src directory when running from helper_scripts
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
+from src.config import MongoConfig
+#from src.constants import ACTUAL_CATEGORY_MAPPING
+from src.integrations.calendar_parser import parse_single_event 
+
 # --- Mongo Setup ---
-client = MongoClient(MongoConfig.MONGO_URI)
-db = client[MongoConfig.DB_NAME]
-collection = db[MongoConfig.RAW_COLLECTION]
 
-def stage_raw_events(raw_events):
+class SovereignMongoStorage:
     """
-    Upserts raw Google Calendar events into MongoDB.
-    Uses the Google 'id' as the '_id' to prevent duplicates.
+    Modern Mach 2 Storage Handler.
+    Manages the transition from 'Raw' to 'Formatted' collections.
+    This ensures the 'Raw Noise' of GCal is preserved while 'Formatted Signal'
+    is prepared for the Neo4j Identity Graph.
     """
-    if not raw_events:
-        print("⚠️ No raw events provided for staging.")
-        return 0
+    def __init__(self) -> None:
+        self.client = MongoClient(MongoConfig.MONGO_URI)
+        self.db = self.client[MongoConfig.DB_NAME]
+        self.mongo_uri = MongoConfig.MONGO_URI
+        
+        # Collection Pointers
+        self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
+        self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
 
-    ops_count = 0
-    for event in raw_events:
-        # We use the event ID as the document ID for automatic deduplication
-        event_id = event.get('id')
-        if not event_id:
-            continue
+    def process_all_unstaged(self):
+        """
+        Iterates through the raw events in the Landing Zone and formats them for the Graph.
+        Uses 'staged' status to track progress across the 13.5k event history.
+        """
+        # Find raw events not yet formatted
+        raw_events = self.raw_col.find({"sync_status": "staged"})
+        
+        print("--- Processing Raw Events for Formatting ---")
+        
+        success_count = 0
+        for raw in raw_events:
+            # The logic for 'HOW' to parse is delegated to calendar_parser.py
+            formatted = parse_single_event(raw)
             
-        # Add a local ingestion timestamp for auditing
-        event['porter_ingested_at'] = datetime.now(timezone.utc)
-        
-        # Replace if exists, insert if new
-        collection.replace_one({'_id': event_id}, event, upsert=True)
-        ops_count += 1
-        
-    print(f"📦 Staged {ops_count} raw events in MongoDB.")
-    return ops_count
+            if formatted:
+                # Upsert into formatted collection to maintain idempotency
+                self.formatted_col.update_one(
+                    {"gcal_id": formatted['gcal_id']},
+                    {"$set": formatted},
+                    upsert=True
+                )
+                
+                # Update status in raw collection to 'formatted' to mark completion
+                self.raw_col.update_one(
+                    {"_id": raw["_id"]},
+                    {"$set": {"sync_status": "formatted"}}
+                )
+                success_count += 1
+                
+        print(f"Successfully formatted {success_count} events.")
+        return success_count
 
-def get_unstaged_events_for_neo4j():
-    """
-    A helper to fetch events from Mongo that haven't been 
-    successfully processed into the Neo4j graph yet.
-    """
-    # Look for events where we haven't set a 'neo4j_synced' flag
-    return list(collection.find({"neo4j_synced": {"$ne": True}}))
 
-def mark_as_synced(event_ids):
-    """Updates Mongo records to acknowledge they've hit the graph."""
-    collection.update_many(
-        {"_id": {"$in": event_ids}},
-        {"$set": {"neo4j_synced": True, "neo4j_last_sync": datetime.now(timezone.utc)}}
-    )
 
-# --- Local Verification ---
+    def get_formatted_for_neo4j(self):
+        """
+        A helper to fetch events from Mongo that haven't been 
+        successfully processed into the Neo4j graph yet.
+        """
+        # Look for events where we haven't set a 'neo4j_synced' flag
+        return list(self.formatted_col.find({"neo4j_synced": {"$ne": True}}))
+
+    def mark_neo4j_synced(self, gcal_ids):
+        """
+        Finalizes the pipeline status once data hits the Neo4j Graph.
+        """
+        self.formatted_col.update_many(
+            {"gcal_id": {"$in": gcal_ids}},
+            {
+                "$set": {
+                    "neo4j_synced": True, 
+                    "neo4j_last_sync": datetime.now(timezone.utc)
+                }
+            }
+        )
+
+# --- Execution Entry Point ---
 if __name__ == "__main__":
-    # Test with a dummy raw event
-    test_raw = [{
-        "id": "sample_gcal_id_001",
-        "summary": "Deep Dive on LaUIrl",
-        "start": {"dateTime": "2026-03-11T14:00:00Z"},
-        "updated": "2026-03-11T15:00:00Z",
-        "colorId": "9"
-    }]
-    stage_raw_events(test_raw)
+        # Ensure environment variables are loaded if running manually
+    #os.environ["MONGO_URI"] = 
+    
+    storage = SovereignMongoStorage()
+    
+    print(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
+    processed = storage.process_all_unstaged()
+    
+    # Final Verification
+    if processed > 0:
+        print(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")
