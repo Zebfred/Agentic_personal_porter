@@ -1,17 +1,20 @@
 import os
+import sys
 import json
+from zipfile import Path
 from pymongo import MongoClient
 from datetime import datetime, timezone, UTC
-from src.config import Config
-
+from src.config import MongoConfig
+    
 # Ensure we can import from the src directory when running from helper_scripts
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(root))
 
 # --- Mongo Setup ---
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
-db = client["personal_porter"]
-collection = db["raw_calendar_events"]
+client = MongoClient(MongoConfig.MONGO_URI)
+db = client[MongoConfig.DB_NAME]
+collection = db[MongoConfig.RAW_COLLECTION]
 
 def stage_raw_events(raw_events):
     """

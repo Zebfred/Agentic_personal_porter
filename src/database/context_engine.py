@@ -1,14 +1,18 @@
-import json
-from datetime import datetime, timedelta
-from neo4j import GraphDatabase
+import sys
+from pathlib import Path
 import os
 from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone, UTC
+from neo4j import GraphDatabase
+
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(root))
 
 load_dotenv()
 
-from src.config import Config
+from src.config import NeoConfig
 
-driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 
 class SovereignContextEngine:
@@ -16,8 +20,8 @@ class SovereignContextEngine:
     The 'Bridge' between the Neo4j Identity Graph and the CrewAI Agents.
     Extracts high-fidelity context snapshots to ground the LLM.
     """
-    def __init__(self, uri, user, password):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    def __init__(self, NEO4J_URI, NEO4J_USER, NEO4J_PASS):
+        self.driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
     def close(self):
         self.driver.close()

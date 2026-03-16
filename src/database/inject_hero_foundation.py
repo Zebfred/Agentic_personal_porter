@@ -7,10 +7,10 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
-from src.config import Config
+from src.config import NeoConfig
 
 # --- Configuration ---
-driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 ARTIFACTS_DIR = os.path.join(os.getcwd(), 'data', 'hero_artifacts')
 AMBITION_PATH = os.path.join(ARTIFACTS_DIR, 'hero_ambition.json')
