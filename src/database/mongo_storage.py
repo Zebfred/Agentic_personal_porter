@@ -1,8 +1,7 @@
 import os
 import sys
 import json
-#from zipfile import Path
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 from datetime import datetime, timezone, UTC
 from pathlib import Path
     
@@ -39,29 +38,55 @@ class SovereignMongoStorage:
         Uses 'staged' status to track progress across the 13.5k event history.
         """
         # Find raw events not yet formatted
-        raw_events = self.raw_col.find({"sync_status": "staged"})
+        raw_events = list(self.raw_col.find({"sync_status": "staged"}))
         
-        print("--- Processing Raw Events for Formatting ---")
+        print("--- Processing Raw Events for Formatting ((bulk upsert) ---")
         
+        formatted_ops = []
+        raw_ops = []
         success_count = 0
+        batch_size = 1000  # Adjust based on performance testing
         for raw in raw_events:
-            # The logic for 'HOW' to parse is delegated to calendar_parser.py
-            formatted = parse_single_event(raw)
-            
-            if formatted:
-                # Upsert into formatted collection to maintain idempotency
-                self.formatted_col.update_one(
-                    {"gcal_id": formatted['gcal_id']},
-                    {"$set": formatted},
-                    upsert=True
+            try:
+                # The logic for 'HOW' to parse is delegated to calendar_parser.py
+                fmt = parse_single_event(raw)
+                
+                if fmt:
+                    formatted_ops.append(
+                        UpdateOne(
+                            {"gcal_id": fmt.get('gcal_id')}, 
+                            {"$set": fmt}, 
+                            upsert=True
+                        )
+                    )
+
+                raw_ops.append(
+                    UpdateOne(
+                        {"_id": raw["_id"]},
+                        {"$set": {"sync_status": "formatted"}}
+                    )
                 )
                 
-                # Update status in raw collection to 'formatted' to mark completion
-                self.raw_col.update_one(
-                    {"_id": raw["_id"]},
-                    {"$set": {"sync_status": "formatted"}}
-                )
                 success_count += 1
+        
+                if len(raw_ops) >= batch_size:
+                    if formatted_ops:
+                        self.formatted_col.bulk_write(formatted_ops, ordered=False)
+                    if raw_ops:
+                        self.raw_col.bulk_write(raw_ops, ordered=False)
+                            
+                    # Clear the lists for the next batch
+                    formatted_ops = []
+                    raw_ops = []
+                    print(f"Beautifully processed batch... Total so far: {success_count}")
+
+            except Exception as e:
+                print(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
+
+        if formatted_ops:
+            self.formatted_col.bulk_write(formatted_ops, ordered=False)
+        if raw_ops:
+            self.raw_col.bulk_write(raw_ops, ordered=False)
                 
         print(f"Successfully formatted {success_count} events.")
         return success_count
