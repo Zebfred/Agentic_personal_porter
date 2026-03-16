@@ -2,83 +2,19 @@ import json
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil import parser # pip install python-dateutil
 
 root = Path(__file__).resolve().parent.parent.parent
 if str(root) not in sys.path:
     sys.path.append(str(root))
 
-# Define your storage paths
-DATA_DIR = os.path.join(os.getcwd(), 'data', 'google_calendar')
-os.makedirs(DATA_DIR, exist_ok=True)
+from src.constants import ACTUAL_CATEGORY_MAPPING
 
-# --- THE LIFE PILLAR MAP ---
-# This is the "Learning" base. We map keywords and Google Colors to Pillars.
-ACTUAL_CATEGORY_MAPPING = {
-    "intent_to_actual_mapping": {
-        "Career Goal": "Career related", 
-        "Health Goal": "Health related", 
-        "Loved ones": "Loved Ones", 
-        "Leisure Goal": "Leisures_related",
-        "Interest Goal": "Interests_related", 
-        "Spiritual Goal": "Spiritual_related", 
-        "Social Goal": "Social_related", 
-        "Mundane Goal": "Chore_related",
-        "Detriments to Avoid": "Detriments_related"
-    },
-    "actual_categorization_with_keywords": {        
-        "Career related": {
-            "Professional-core": ["dev", "work", "engineer", "data", "deep dive", "development", "working on lauirl"],
-            "Professional-extended": ["meeting", "sync", "interview", "client", "planning"],
-            "Hero's Work": ["project", "porter", "lauirl", "theory", "engineering"]
-        },
-        "Health related": {
-            "Exercise": ["workout", "exercise", "gym"],
-            "Diet": ["lunch", "dinner", "breakfast", "food"],
-            "Sleep": ["sleep", "nap"]
-        },
-        "Loved Ones": {
-            "Romantic_related": ["relationship", "anu", "date", "call with"],
-            "Family_related": ["family", "mom"],
-            "Pet_related": ["pet", "doggy", "dog", "puppy", "walk with dogs"]
-        },
-        "Leisures_related": {
-            "General": ["relaxing", "calling it quits", "movie", "hanging out", "board games", "hiking with dogs"]
-        },
-        "Interests_related": {
-            "General": ["hobbies", "reading", "activities", "caving", "exploring","nature", "museum", "drawing" ]
-        },
-        "Spiritual_related": {
-            "General": ["meditate", "pray", "higher power", "religious", "church"]
-        },
-        "Social_related": {
-            "General": ["fellowship", "friends", "social", "amiable with strangers", "be available to friends and family"]
-        },
-        "Chore_related": {
-            "General": ["laundry", "clean", "grocery", "admin", "setup", "haircut", "waking", "getting started", "jury duty", "bills", "doctor", "therapy", "pharmacy", "vet", "appointment", "travel", "commute"]
-        },
-        "Detriments_related": {
-            "General": ["procrastinate", "ineffective work", "mindlessly engaged", "acting in selfwill/fear"]
-        },
-        "Uncategorized": {
-            "General": []
-        }
-    },
-    "colors": {
-        "1": "Uncategorized",                 # Lavender (Default)
-        "2": "Social_related",                # Sage
-        "3": "Loved Ones",                    # Grape
-        "5": "Chore_related",                 # Banana
-        "6": ("Career related", "Professional-extended"),  # Tangerine
-        "7": ("Career related", "Hero's Work"),            # Peacock
-        "8": ["Health related", "Spiritual_related"],      # Graphite (Shared!)
-        "9": ("Career related", "Professional-core"),      # Blueberry
-        "10": "Leisures_related",             # Basil
-        "11": "Detriments_related",           # Tomato
-        "default": "Uncategorized"
-    }
-}
+# Define your storage paths
+#local storage
+#DATA_DIR = os.path.join(os.getcwd(), 'data', 'google_calendar')
+#os.makedirs(DATA_DIR, exist_ok=True)
 
 def get_time_chunk(hour):
     if 5 <= hour < 9: return "Early Morning"
@@ -106,9 +42,6 @@ def determine_category(title, color_id):
             # Direct match to a single pillar
             return {"pillar": color_match, "subcategory": "General"}
         
-        # If it's a list (like Graphite [Health, Spiritual]), we skip returning here 
-        # and let the keyword logic below break the tie!
-
     # 2. Keyword Fallback & Tie-Breaker
     for pillar, subcategories in ACTUAL_CATEGORY_MAPPING["actual_categorization_with_keywords"].items():
         # If we have a shared color list, only search within those specific pillars to save time
@@ -120,6 +53,51 @@ def determine_category(title, color_id):
                 return {"pillar": pillar, "subcategory": subcat}
                 
     return {"pillar": "Uncategorized", "subcategory": "General"}
+
+def parse_single_event(event):
+    """
+    Transforms a single MongoDB raw event into a Formatted Intention.
+    """
+    raw_data = event.get('raw_data', event) # Handle both Mongo wrapper and direct GCal
+    
+    start_str = raw_data.get('start', {}).get('dateTime') or raw_data.get('start', {}).get('date')
+    end_str = raw_data.get('end', {}).get('dateTime') or raw_data.get('end', {}).get('date')
+    
+    if not start_str or not end_str:
+        return None
+
+    start_dt = parser.parse(start_str)
+    end_dt = parser.parse(end_str)
+    duration = int((end_dt - start_dt).total_seconds() / 60)
+    
+    title = raw_data.get('summary', 'Untitled')
+    color_id = raw_data.get('colorId', '1')
+    
+    category_data = determine_category(title, color_id)
+    
+    # Determine Record Type (Mock logic for now)
+    updated_str = raw_data.get('updated')
+    record_type = "Intention"
+    if updated_str:
+        updated_dt = parser.parse(updated_str)
+        
+        # Ensure comparison is possible by making naive datetimes aware (e.g. from 'date' field)
+        if start_dt.tzinfo is None: start_dt = start_dt.replace(tzinfo=timezone.utc)
+        if updated_dt.tzinfo is None: updated_dt = updated_dt.replace(tzinfo=timezone.utc)
+
+        if updated_dt > start_dt:
+            record_type = "Actual"
+
+    return {
+        "gcal_id": event.get('gcal_id') or raw_data.get('id'),
+        "title": title,
+        "pillar": category_data["pillar"],
+        "subcategory": category_data["subcategory"],
+        "start": start_dt.isoformat(),
+        "duration_minutes": duration,
+        "record_type": record_type,
+        "processed_at": datetime.now().isoformat()
+    }
 
 def event_record_type(event):
     """
@@ -136,6 +114,10 @@ def event_record_type(event):
         start_dt = parser.parse(start_str)
         updated_dt = parser.parse(updated_str)
         
+        # Ensure comparison is possible by making naive datetimes aware (e.g. from 'date' field)
+        if start_dt.tzinfo is None: start_dt = start_dt.replace(tzinfo=timezone.utc)
+        if updated_dt.tzinfo is None: updated_dt = updated_dt.replace(tzinfo=timezone.utc)
+
         # If the event was created/modified after the start time, it's an actual log
         if updated_dt >= start_dt:
             return "Actual"

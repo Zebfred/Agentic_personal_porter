@@ -15,3 +15,4 @@ class MongoConfig:
     MONGO_URI = os.getenv("MONGO_URI")
     DB_NAME = "porter_mach2"
     RAW_COLLECTION = "raw_calendar_events"
+    FORMATTED_COLLECTION = "formatted_calendar_events"
