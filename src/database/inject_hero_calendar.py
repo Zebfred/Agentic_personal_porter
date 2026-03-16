@@ -1,68 +1,110 @@
-import json
 from neo4j import GraphDatabase
+import sys
+import os
+from pathlib import Path
+    
+# Ensure we can import from the src directory when running from helper_scripts
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(root))
+
 from src.config import NeoConfig
+from src.constants import ACTUAL_CATEGORY_MAPPING
 
-# Secure Driver Initialization
-driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
+class SovereignGraphInjector:
+    """
+    Handles the high-stakes MERGE logic into the Neo4j Identity Graph.
+    Uses the 'Twin-Track' ingestion logic to separate Intent from Actual.
+    """
+    # Programmatically reverse your dictionary so we map Mongo Pillar -> Neo4j Intent
+    REVERSE_INTENT_MAP = {
+        v: k for k, v in ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].items()
+    }
 
-def inject_calendar_to_graph(formatted_events, hero_name="Zeb"):
-    """
-    Takes the 'Golden Objects' from your calendar_parser.py and 
-    wires them into the existing Hero/Intent graph.
-    """
-    
-    # This query creates the Event and links it to the Intent from hero_ambition.json
-    # using the 'pillar' (e.g., 'Career related') as the bridge.
-    query = """
-    MATCH (h:Hero {name: $hero_name})
-    
-    // 1. Ensure a Calendar node exists for the Hero
-    MERGE (h)-[:HAS_CALENDAR]->(c:Calendar {name: "Primary"})
-    
-    WITH h, c
-    UNWIND $events AS event_data
-    
-    // 2. Create the Event Node
-    MERGE (e:Event {source_id: event_data.source_id})
-    SET e.title = event_data.title,
-        e.start_iso = event_data.timing.start_iso,
-        e.duration_min = event_data.timing.duration_minutes,
-        e.record_type = event_data.meta.record_type,
-        e.processed = event_data.meta.is_processed
+    def __init__(self):
+        self.driver = GraphDatabase.driver(
+            NeoConfig.NEO4J_URI, 
+            auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
+        )
+
+    def close(self):
+        self.driver.close()
+
+    def inject_calendar_to_graph(self, formatted_events, hero_name="Zeb"):
+        """
+        Takes the 'Golden Objects' into wires them into the existing Hero/Intent graph.
+        """
+        # Pre-process the events in Python to attach the precise Graph Intent Target
+        for event in formatted_events:
+            pillar = event.get("pillar", "Uncategorized")
+            # Translate "Career related" to "Career Goal" using your dynamic map
+            event["graph_intent_target"] = self.REVERSE_INTENT_MAP.get(pillar, pillar)
+
+        # This query creates the Event and links it to the Intent from hero_ambition.json
+        # using the 'pillar' (e.g., 'Career related') as the bridge.
+        query = """
+        MATCH (h:Hero {name: $hero_name})
         
-    MERGE (c)-[:HAS_EVENT]->(e)
-    
-    // 3. Link the Event to the corresponding Intent
-    // We match the 'pillar' from the parser to the 'category' in the Intent nodes
-    WITH e, event_data
-    MATCH (i:Intent)
-    WHERE i.category = event_data.meta.pillar 
-       OR i.category = event_data.meta.subcategory
-    MERGE (e)-[:FULFILLS]->(i)
-    """
+        // 1. Ensure a Calendar node exists for the Hero
+        MERGE (h)-[:HAS_CALENDAR]->(c:Calendar {name: "Primary"})
+        
+        WITH h, c
+        UNWIND $events AS event_data
+        
+        // 2. Create the Event Node using GCal ID for Idempotency
+        MERGE (e:Event {source_id: event_data.gcal_id})
+        SET e.title = event_data.title,
+            e.start_iso = event_data.timing.start_iso,
+            e.duration_min = event_data.timing.duration_minutes,
+            e.record_type = event_data.meta.record_type,
+            e.pillar = event_data.meta.pillar,
+            e.subcategory = event_data.meta.subcategory,
+            e.processed_at = datetime()
+            
+        MERGE (c)-[:HAS_EVENT]->(e)
+        
+        // 3. Bridge to Intent nodes based on Pillar/Category
+        // We match the 'pillar' from the parser to the 'category' in the Intent nodes
+        WITH e, event_data
+        MATCH (i:Intent)
+        WHERE i.category = event_data.graph_intent_target 
+           OR i.category = event_data.meta.subcategory
+        MERGE (e)-[:FULFILLS]->(i)
+        
+        RETURN count(e) as injected_count
+        """
 
-    with driver.session() as session:
-        session.run(query, hero_name=hero_name, events=formatted_events)
-        print(f"✅ Successfully mapped {len(formatted_events)} events to your Hero's Intents!")
+        try:
+            with self.driver.session() as session:
+                result = session.run(query, hero_name=hero_name, events=formatted_events)
+                summary = result.single()
+                return summary["injected_count"] if summary else 0
+        except Exception as e:
+            print(f"![GRAPH ERROR]: Failed to inject events: {e}")
+            return 0
 
-# --- Local Test Logic ---
 if __name__ == "__main__":
-    # In a real run, this would pull from your NoSQL 'Staging' data
-    # For now, we use a sample formatted from your calendar_parser.py
-    sample_formatted = [
-        {
-            "source_id": "test_123",
-            "title": "Deep Dive on LaUIrl",
-            "timing": {"start_iso": "2026-03-11T09:00:00", "duration_minutes": 120},
-            "meta": {
-                "pillar": "Career related", 
-                "subcategory": "Professional-core",
-                "record_type": "Actual"
-            }
-        }
-    ]
-    
+    # Test block for manual verification
+    injector = SovereignGraphInjector()
     try:
-        inject_calendar_to_graph(sample_formatted)
+        sample_mongo_payload = [{
+            "gcal_id": "63ervd579l8n4aoqh4dj0mp0io",
+            "duration_minutes": 75,
+            "pillar": "Career related",
+            "processed_at": "2026-03-16T10:42:38.515566",
+            "record_type": "Actual",
+            "start": "2026-03-03T09:00:00-06:00",
+            "subcategory": "Hero's Work",
+            "title": "Replan of implimentation for Porter Project"
+        }],
+        sample = [{
+            "gcal_id": "test_sync_1",
+            "title": "Paul5 Architecture Session",
+            "timing": {"start_iso": "2026-03-16T20:00:00", "duration_minutes": 60},
+            "meta": {"pillar": "Career related", "subcategory": "Hero's Work", "record_type": "Actual"}
+        }]
+        #count = injector.inject_calendar_to_graph(sample)
+        count = injector.inject_calendar_to_graph(sample_mongo_payload)
+        print(f"Injected {count} test events into Neo4j.")
     finally:
-        driver.close()
+        injector.close()
