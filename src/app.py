@@ -9,8 +9,9 @@ if str(project_root) not in sys.path:
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, time, timedelta
-from src.agents.crew_manager import run_crew
+from src.agents.crew_manager_mach2 import run_crew
 from src.database.neo4j_db import log_to_neo4j
+from src.database.mongo_storage import SovereignMongoStorage
 from src.integrations.google_calendar import get_calendar_service
 
 
@@ -19,10 +20,12 @@ CORS(app)  # This will enable CORS for all routes
 
 # Serve front-end files
 @app.route('/')
+@app.route('/index.html')
 def index():
     return send_from_directory('../frontend', 'index.html')
 
 @app.route('/inventory')
+@app.route('/inventory.html')
 def inventory():
     return send_from_directory('../frontend', 'inventory.html')
 
@@ -134,7 +137,7 @@ def process_journal():
                 print(f"Could not fetch calendar events (non-critical): {cal_error}")
             
             # Run the CrewAI workflow with enhanced context
-            crew_result = run_crew(enhanced_journal_entry)
+            crew_result = run_crew(enhanced_journal_entry, log_data)
 
             # Extract the reflection text (simplified from iteration file)
             if crew_result and hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
@@ -148,7 +151,12 @@ def process_journal():
             # Add reflection to the log data for the database
             log_data['reflection'] = result_text
 
-            # Save the complete log to Neo4j
+            # 1. Save pristine Frontend log to MongoDB Landing Zone
+            mongo_storage = SovereignMongoStorage()
+            mongo_doc_id = mongo_storage.save_journal_entry(log_data)
+            print(f"MongoDB Journal Saved: {mongo_doc_id}")
+
+            # 2. Save the complete log as a distinct node to Neo4j Identity Graph
             db_confirmation = log_to_neo4j(log_data)
             print(f"Neo4j Confirmation: {db_confirmation}")
 
@@ -169,6 +177,19 @@ def process_journal():
     except Exception as e:
         # This outer block catches errors in getting the initial JSON data
         print(f"Error reading request data: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/inventory', methods=['GET'])
+def get_inventory():
+    """
+    Fetches the 'Valuable Detours' and skills acquired by the user from Neo4j.
+    """
+    try:
+        from src.database.neo4j_db import get_valuable_detours
+        detours = get_valuable_detours(user_name="Zeb")
+        return jsonify({"valuable_detours": detours})
+    except Exception as e:
+        print(f"Error fetching inventory: {e}")
         return jsonify({"error": str(e)}), 500
 
 
