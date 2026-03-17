@@ -1,11 +1,16 @@
 import os
+from pathlib import Path
+import sys
 import pickle
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# This defines what our app is allowed to do. We're asking for read-only access.
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# This defines what our app is allowed to do. Defaulting to full calendar access for syncing.
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(root))
 
 
 def get_auth_paths():
@@ -28,10 +33,11 @@ def get_auth_paths():
         "token": os.path.join(auth_dir, 'token.pickle')
     }
 
-def get_calendar_credentials():
+def get_calendar_credentials(scopes=None):
     """Handles the OAuth2 flow and returns valid credentials."""
     paths = get_auth_paths()
     creds = None
+    target_scopes = scopes if scopes else SCOPES
 
     # Load existing token if it exists
     if os.path.exists(paths["token"]):
@@ -41,8 +47,13 @@ def get_calendar_credentials():
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except Exception:
+                # If refresh fails, set creds to None to trigger a fresh login flow below
+                creds = None
+
+        if not creds or not creds.valid:
             if not os.path.exists(paths["credentials"]):
                 raise FileNotFoundError(
                     f"Missing credentials file at {paths['credentials']}. "
@@ -50,7 +61,7 @@ def get_calendar_credentials():
                 )
             
             flow = InstalledAppFlow.from_client_secrets_file(
-                paths["credentials"], SCOPES
+                paths["credentials"], target_scopes
             )
             creds = flow.run_local_server(port=0)
 

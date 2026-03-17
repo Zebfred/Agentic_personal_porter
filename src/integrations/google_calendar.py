@@ -1,15 +1,22 @@
 import os
-import pickle
-import logging
+import sys
 from pathlib import Path
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+from dotenv import load_dotenv
+import logging
 from googleapiclient.discovery import build
-from google.auth.exceptions import RefreshError
-from .google_calendar_authentication_helper import get_calendar_credentials
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+root = Path(__file__).resolve().parent.parent.parent
+if str(root) not in sys.path:
+    sys.path.append(str(root))
+
+from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
+
+# Load environment variables from the correct .env path
+load_dotenv(root / ".auth" / ".env")
 
 # This defines what our app is allowed to do. 
 # Using read-write access to enable syncing actual activities back to calendar
@@ -32,7 +39,7 @@ def get_calendar_service():
         Exception: If OAuth flow fails
     """
     try:
-        creds = get_calendar_credentials()
+        creds = get_calendar_credentials(scopes=SCOPES)
         service = build('calendar', 'v3', credentials=creds)
         logger.info("Calendar service initialized successfully via helper.")
         return service

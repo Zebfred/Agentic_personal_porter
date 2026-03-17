@@ -1,23 +1,33 @@
+import sys
 import os
-from dotenv import load_dotenv
-from neo4j import GraphDatabase
 import requests
+from neo4j import GraphDatabase
 
-load_dotenv()
+# Ensure we can import from the src directory when running from helper_scripts
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src.config import Config
 
-def check_neo4j():
-    print("--- Checking Neo4j ---")
-    uri = os.getenv("NEO4J_URI")
-    user = os.getenv("NEO4J_USER")
-    pwd = os.getenv("NEO4J_PASSWORD")
+def test_neo4j_connection():
+    """Attempts to connect to Neo4j and run a basic verification query."""
+    print("✨ Attempting to connect to Neo4j...")
+    
     try:
-        driver = GraphDatabase.driver(uri, auth=(user, pwd))
+        # Initialize the driver using your gorgeous Config class
+        driver = GraphDatabase.driver(Config.NEO4J_URI, auth=(Config.NEO4J_USER, Config.NEO4J_PASS))
+        
+        # Open a session and run a simple test query
         with driver.session() as session:
-            res = session.run("RETURN 'Connection Successful' as msg")
-            print(f"Result: {res.single()['msg']}")
-        driver.close()
+            result = session.run("RETURN 'Connection Successful!' AS message")
+            message = result.single()["message"]
+            print(f"✅ Success! Database responded with: {message}")
+            
     except Exception as e:
-        print(f"Neo4j Connection Failed: {e}")
+        print("❌ Oh no, darling! Could not connect to the database. Error details:")
+        print(e)
+    finally:
+        if 'driver' in locals():
+            driver.close()
+            print("🔌 Connection securely closed.")
 
 def check_flask():
     print("\n--- Checking Flask Server ---")
@@ -29,5 +39,5 @@ def check_flask():
         print("Flask server not responding. Is it running?")
 
 if __name__ == "__main__":
-    check_neo4j()
+    test_neo4j_connection()
     check_flask()

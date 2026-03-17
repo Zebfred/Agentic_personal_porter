@@ -1,0 +1,12 @@
+
+MATCH path = (h:Hero {name: "Zeb"})-[:HAS_ORIGIN]->(o:Origin)-[:HAS_EPOCH]->(e:Epoch)-[:HAS_EXPERIENCE]->(x:Experience)
+RETURN path
+
+MATCH path = (h:Hero {name: "Zeb"})-[*1..3]->(n)
+RETURN path
+
+#The Mach 3 Agent Target List
+MATCH (e:Epoch)-[:HAS_EXPERIENCE]->(x:Experience)
+WHERE x.status IN ['Candidate', 'Needs_Detail']
+RETURN e.name AS Epoch, x.title AS Topic, x.status AS Status
+ORDER BY e.timeframe
