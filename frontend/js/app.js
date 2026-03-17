@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Fetching calendar events for ${day} (${dateStr})...`);
             
             // Using the endpoint from server.py
-            const response = await fetch(`http://localhost:5000/get_calendar_events?date=${dateStr}`);
+            const response = await fetch(`http://localhost:5090/get_calendar_events?date=${dateStr}`);
             
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             
@@ -320,11 +320,11 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                const response = await fetch('http://localhost:5000/process_journal', {
+                const response = await fetch('http://localhost:5090/process_journal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
-                        journal_entry_text: journalEntry, // FIXED: Matches server expectation
+                        journal_entry: journalEntry, // FIXED: Matches server expectation
                         log_data: logDataForDb 
                     }),
                 });
