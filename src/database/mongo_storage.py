@@ -31,6 +31,16 @@ class SovereignMongoStorage:
         # Collection Pointers
         self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
         self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
+        self.journal_col = self.db['journal_entries']
+
+    def save_journal_entry(self, log_data: dict):
+        """
+        Saves a direct Journal Entry from the Frontend (Mach 2 App) into MongoDB.
+        Returns the inserted object's string ID.
+        """
+        log_data["processed_at"] = datetime.now(timezone.utc)
+        result = self.journal_col.insert_one(log_data)
+        return str(result.inserted_id)
 
     def process_all_unstaged(self):
         """

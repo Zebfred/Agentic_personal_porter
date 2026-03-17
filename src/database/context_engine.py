@@ -38,15 +38,16 @@ class SovereignContextEngine:
 
     @staticmethod
     def _fetch_context(tx, name):
-        # Query updated to handle standard 'Hero' naming conventions in Neo4j
+        # Using the correct schema defined in SovereignGraphInjector:
+        # (h:Hero)-[:HAS_CALENDAR]->(c:Calendar)-[:HAS_EVENT]->(e:Event)-[:FULFILLS]->(i:Intent)
         query = """
         MATCH (u:User) WHERE u.name CONTAINS $name
-        OPTIONAL MATCH (u)-[:GUIDED_BY]->(p:Principle)
-        OPTIONAL MATCH (u)-[:PURSUES]->(i:Intention)
-        WHERE i.status = 'active' OR i.status IS NULL
+        //OPTIONAL MATCH (u)-[:GUIDED_BY]->(p:Principle)
+        //OPTIONAL MATCH (u)-[:PURSUES]->(i:Intention)
+        // WHERE i.status = 'active' OR i.status IS NULL
         RETURN 
             collect(distinct p.text)[..3] as principles,
-            collect(distinct i.title)[..5] as active_intentions
+            collect(distinct i.category)[..5] as active_intentions
         """
         result = tx.run(query, name=name)
         record = result.single()
