@@ -1,21 +1,19 @@
 import os
+import sys
+from pathlib import Path
 from neo4j import GraphDatabase
-from dotenv import load_dotenv
 
-load_dotenv()
+root = Path(__file__).resolve().parent.parent.parent
+sys.path.append(str(root))
 
-# --- Database Connection ---
-URI = os.getenv("NEO4J_URI")
-AUTH_USER = os.getenv("NEO4J_USERNAME")
-AUTH_PASS = os.getenv("NEO4J_PASSWORD")
-AUTH = (os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD"))
 from src.config import NeoConfig
 
+# --- Configuration ---
 driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 def get_driver():
     """Establishes a connection to the Neo4j database."""
-    return GraphDatabase.driver(URI, auth=(AUTH_USER, AUTH_PASS))
+    return GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
 
 # --- Logging Function ---
 def log_to_neo4j(log_data: dict) -> str:
@@ -29,8 +27,8 @@ def log_to_neo4j(log_data: dict) -> str:
         
         # another potential fix
         # We must check if result_node is not None before trying to access it.
-        if result_node and 'actual' in result_node:
-            return f"Successfully logged entry for '{result_node['actual']}'"
+        if result_node and 'activity' in result_node:
+            return f"Successfully logged entry for '{result_node['activity']}'"
         else:
             print("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
@@ -61,8 +59,8 @@ def _create_log_entry(tx, log_data: dict):
     
     query = (
         """
-        // Find or create user
-        MERGE (u:User {id: $userId})
+        // Find or create Hero
+        MERGE (u:Hero {name: $userName})
         
         // Create day and link to user
         MERGE (d:Day {date: $day})
@@ -102,14 +100,15 @@ def _create_log_entry(tx, log_data: dict):
         
         // Create Achievement if valuable detour
         WITH a, u, int, r, $isValuableDetour as isDetour, $inventoryNote as note
-        WHERE isDetour = true AND note IS NOT NULL AND note <> ''
-        CREATE (ach:Achievement {
-            description: note,
-            value: 'positive',
-            timestamp: datetime()
-        })
-        MERGE (a)-[:ACHIEVED]->(ach)
-        MERGE (u)-[:HAS_ACHIEVEMENT]->(ach)
+        FOREACH (x IN CASE WHEN isDetour = true AND note IS NOT NULL AND note <> '' THEN [1] ELSE [] END |
+            CREATE (ach:Achievement {
+                description: note,
+                value: 'positive',
+                timestamp: datetime()
+            })
+            MERGE (a)-[:ACHIEVED]->(ach)
+            MERGE (u)-[:HAS_ACHIEVEMENT]->(ach)
+        )
         
         // Create Affected States
         WITH a, u, int, r, $feeling as feeling, $brainFog as fog, $timeOfDay as tod
@@ -132,13 +131,14 @@ def _create_log_entry(tx, log_data: dict):
         MERGE (a)-[:AFFECTED_BY]->(enState)
         MERGE (a)-[:AFFECTED_BY]->(timeState)
         
-                // Try to link to existing Goal if intention matches goal pattern
+        // Try to link to existing Goal if intention matches goal pattern
         // (This is a simple pattern match - can be enhanced with AI)
         WITH a, u, int, r, $intention as intentionText
-        WHERE intentionText IS NOT NULL AND intentionText <> ''
         OPTIONAL MATCH (g:Goal)
-        WHERE toLower(g.description) CONTAINS toLower(intentionText) 
+        WHERE (intentionText IS NOT NULL AND intentionText <> '') AND (
+              toLower(g.description) CONTAINS toLower(intentionText) 
            OR toLower(intentionText) CONTAINS toLower(g.description)
+        )
         WITH a, u, int, r, g
         FOREACH (x IN CASE WHEN g IS NOT NULL THEN [1] ELSE [] END |
             MERGE (int)-[:TARGETS]->(g)
@@ -151,7 +151,7 @@ def _create_log_entry(tx, log_data: dict):
     )
     
     result = tx.run(query,
-                    userId="default_user",
+                    userName="Zeb",
                     day=log_data.get('day'),
                     timeChunkId=log_data.get('timeChunk'),
                     intention=intention_text,
@@ -168,6 +168,24 @@ def _create_log_entry(tx, log_data: dict):
     if record:
         return record.get('a')
     return None
+
+def get_valuable_detours(user_name="Zeb"):
+    """
+    Retrieves all 'Valuable Detours' (Achievements) logged for the given Hero.
+    Returns a list of dictionaries with inventoryNote and the original Activity title.
+    """
+    driver = get_driver()
+    query = """
+    MATCH (u:Hero {name: $userName})-[:HAS_ACHIEVEMENT]->(ach:Achievement)
+    MATCH (a:Actual)-[:ACHIEVED]->(ach)
+    RETURN ach.description AS inventoryNote, a.activity AS title, ach.timestamp AS timestamp
+    ORDER BY ach.timestamp DESC
+    """
+    with driver.session() as session:
+        result = session.run(query, userName=user_name)
+        detours = [{"inventoryNote": record["inventoryNote"], "title": record["title"], "timestamp": str(record["timestamp"])} for record in result]
+    driver.close()
+    return detours
 
 # ---- Gtky agent functions for querying and insights will go here ----
 

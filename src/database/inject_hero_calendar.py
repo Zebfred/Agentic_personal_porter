@@ -39,6 +39,14 @@ class SovereignGraphInjector:
             pillar = event.get("pillar", "Uncategorized")
             # Translate "Career related" to "Career Goal" using your dynamic map
             event["graph_intent_target"] = self.REVERSE_INTENT_MAP.get(pillar, pillar)
+            
+            # Neo4j cannot serialize Mongo ObjectIds, so we remove it
+            if '_id' in event:
+                del event['_id']
+            
+            # Neo4j python driver prefers string ISOs rather than datetime objects for dict params
+            if 'processed_at' in event and not isinstance(event['processed_at'], str):
+                event['processed_at'] = str(event['processed_at'])
 
         # This query creates the Event and links it to the Intent from hero_ambition.json
         # using the 'pillar' (e.g., 'Career related') as the bridge.
@@ -52,13 +60,13 @@ class SovereignGraphInjector:
         UNWIND $events AS event_data
         
         // 2. Create the Event Node using GCal ID for Idempotency
-        MERGE (e:Event {source_id: event_data.gcal_id})
+        MERGE (e:Event {gcal_id: event_data.gcal_id})
         SET e.title = event_data.title,
-            e.start_iso = event_data.timing.start_iso,
-            e.duration_min = event_data.timing.duration_minutes,
-            e.record_type = event_data.meta.record_type,
-            e.pillar = event_data.meta.pillar,
-            e.subcategory = event_data.meta.subcategory,
+            e.start_iso = event_data.start,
+            e.duration_min = event_data.duration_minutes,
+            e.record_type = event_data.record_type,
+            e.pillar = event_data.pillar,
+            e.subcategory = event_data.subcategory,
             e.processed_at = datetime()
             
         MERGE (c)-[:HAS_EVENT]->(e)
@@ -68,7 +76,7 @@ class SovereignGraphInjector:
         WITH e, event_data
         MATCH (i:Intent)
         WHERE i.category = event_data.graph_intent_target 
-           OR i.category = event_data.meta.subcategory
+           OR i.category = event_data.subcategory
         MERGE (e)-[:FULFILLS]->(i)
         
         RETURN count(e) as injected_count
@@ -96,14 +104,7 @@ if __name__ == "__main__":
             "start": "2026-03-03T09:00:00-06:00",
             "subcategory": "Hero's Work",
             "title": "Replan of implimentation for Porter Project"
-        }],
-        sample = [{
-            "gcal_id": "test_sync_1",
-            "title": "Paul5 Architecture Session",
-            "timing": {"start_iso": "2026-03-16T20:00:00", "duration_minutes": 60},
-            "meta": {"pillar": "Career related", "subcategory": "Hero's Work", "record_type": "Actual"}
         }]
-        #count = injector.inject_calendar_to_graph(sample)
         count = injector.inject_calendar_to_graph(sample_mongo_payload)
         print(f"Injected {count} test events into Neo4j.")
     finally:

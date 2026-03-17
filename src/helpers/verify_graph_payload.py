@@ -40,16 +40,16 @@ def verify_local_graph_structure(hero_name="Zeb"):
 
     for event in events:
         # Extract metadata for classification mapping
-        record_type = event.get('meta', {}).get('record_type', 'Unknown')
-        pillar = event.get('meta', {}).get('pillar', 'Uncategorized')
-        subcategory = event.get('meta', {}).get('subcategory', 'General')
+        record_type = event.get('record_type', 'Unknown')
+        pillar = event.get('pillar', 'Uncategorized')
+        subcategory = event.get('subcategory', 'General')
         
         # Build the leaf node
         event_node = {
             "title": event.get('title'),
-            "start": event.get('timing', {}).get('start_iso'),
-            "duration": f"{event.get('timing', {}).get('duration_minutes')}m",
-            "source_id": event.get('source_id'),
+            "start": event.get('start'),
+            "duration": f"{event.get('duration_minutes')}m",
+            "gcal_id": event.get('gcal_id'),
             "classification": {
                 "intent_bridge": pillar,
                 "goal_detail": subcategory
