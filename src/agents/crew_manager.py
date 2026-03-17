@@ -18,7 +18,7 @@ env_path = get_auth_file('.env')
 load_dotenv(dotenv_path=env_path)
 
 # Set up the language model
-llm = ChatGroq(
+llm_gtky = ChatGroq(
     api_key=SecretStr(raw_api_key),
     model="groq/compound",
     verbose=True,
@@ -51,7 +51,18 @@ llm_librarian = ChatGroq(
 
 # --- 1. Defined Agents (The Porters) ---
 
-# Agent 1: The Goal Ingestion Agent (The Scribe)
+# Agent 1: The GTKY Agent (The Porter)
+"""
+gtky_agent = Agent(
+    role='Get To Know You (GTKY) Specialist.The Biographer / Strategic Planner.',
+    goal=(
+        "Extract structured entities (Traits, Roles, Quests) from unstructured rambles."
+        "To gather comprehensive information about the user, including their background, "
+        "goals, preferences, and any other relevant details that will help in tailoring "
+        "the reflection and inventory processes to their unique context."
+    ),
+"""
+# Agent 2: The Goal Ingestion Agent (The Scribe)
 # This agent's job is to read the user's raw input and structure it.
 goal_ingester = Agent(
   role='Goal and Activity Analyst',
@@ -67,7 +78,7 @@ goal_ingester = Agent(
 )
 
 
-# Agent 2: The Socratic Reflection Agent (The Coach)
+# Agent 3: The Socratic Reflection Agent (The Coach)
 # This is the core agent that facilitates self-discovery.
 reflection_agent = Agent(
   role='Empathetic Self-Reflection Coach',
@@ -84,7 +95,7 @@ reflection_agent = Agent(
 )
 
 
-# Agent 3: The Inventory Curator Agent (The Librarian)
+# Agent 4: The Inventory Curator Agent (The Librarian)
 # This agent logs the "wins" and valuable detours.
 inventory_curator = Agent(
   role='Personal Growth Librarian',
