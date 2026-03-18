@@ -1,9 +1,7 @@
-# Dockerfile for ResearchAgent RAG Service
-# Multi-stage build for optimized image size
-
+# Use the official Python base image
 FROM python:3.11-slim as builder
 
-# Set working directory
+# Set the working directory in the container
 WORKDIR /app
 
 # Install system dependencies
@@ -12,50 +10,47 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install dependencies in the builder stage
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install gunicorn
 
-# Production stage
+# --- Production Stage ---
 FROM python:3.11-slim
 
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python packages from builder
+# Copy python packages from the builder stage
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY rag_service.py .
-COPY rag_core/ ./rag_core/
-COPY build_rag_index.py .
-COPY data_pipeline/ ./data_pipeline/
+# Copy application files (ignoring items in .dockerignore)
+COPY src/ ./src/
+COPY frontend/ ./frontend/
 
-# Create data directory for vector store and chunks
-RUN mkdir -p /app/data/chroma_db && \
-    mkdir -p /app/data/chunks && \
-    mkdir -p /app/data/papers
+# Create data directory structure for CrewAI artifacts and logs
+RUN mkdir -p /app/data/reflections
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONPATH=/app
 
-# Expose port
-EXPOSE 8000
+# Expose the Flask Port
+EXPOSE 5090
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Health check to ensure the server is responsive
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5090/ || exit 1
 
-# Run the service
-CMD ["uvicorn", "rag_service:app", "--host", "0.0.0.0", "--port", "8000"]
-
+# Start the application using Gunicorn (WSGI)
+CMD ["gunicorn", "--bind", "0.0.0.0:5090", "--workers", "1", "--threads", "4", "src.app:app"]
