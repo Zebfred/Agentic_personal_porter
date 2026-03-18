@@ -28,7 +28,7 @@ def get_calendar_service():
     
     Note: 
     - credentials.json should be from Google Cloud project (zebfred.nexus@gmail.com)
-    - token.pickle will be created for the user account (zebfred22@gmail.com) during OAuth flow
+    - token.json will be created for the user account (zebfred22@gmail.com) during OAuth flow
     - Token is cached so user doesn't need to re-authenticate every time
     
     Returns:

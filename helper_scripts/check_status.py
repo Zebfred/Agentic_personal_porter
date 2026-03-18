@@ -121,7 +121,7 @@ def check_google_calendar_credentials():
     print("="*60)
     
     credentials_file = Path("credentials.json")
-    token_file = Path("token.pickle")
+    token_file = Path("token.json")
     
     if credentials_file.exists():
         print(f"  ✅ credentials.json found ({credentials_file.stat().st_size} bytes)")
@@ -132,11 +132,11 @@ def check_google_calendar_credentials():
         return False
     
     if token_file.exists():
-        print("  ✅ token.pickle found (user token exists)")
+        print("  ✅ token.json found (user token exists)")
         print("     This means OAuth flow has been completed")
         print("     Token is for the user account (zebfred22@gmail.com)")
     else:
-        print("  ⚠️  token.pickle NOT FOUND")
+        print("  ⚠️  token.json NOT FOUND")
         print("     OAuth flow will need to be completed on first run")
         print("     User will need to authorize with zebfred22@gmail.com")
     
@@ -156,7 +156,7 @@ def check_google_calendar_credentials():
                 print("     This may require re-authentication")
                 return False
         else:
-            print("  ⚠️  Cannot test service without token.pickle")
+            print("  ⚠️  Cannot test service without token.json")
             return True  # Not a failure, just needs auth
             
     except ImportError as e:
