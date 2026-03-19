@@ -1,3 +1,275 @@
+# DEVELOPER GUIDE
+
+## FEATURE_BRANCH_SETUP.md
+
+# Feature Branch Setup Complete
+
+## Branch Created
+**feat/restore-functionality-calendar-neo4j-enhancement**
+
+Created from: `main`
+Current status: All changes staged, ready to commit
+
+## Changes Summary
+
+### Modified Files
+- `server.py` - Fixed response format, added calendar endpoint, calendar context for agents
+- `app.js` - Added calendar fetching and auto-population
+- `neo4j_db.py` - Enhanced schema with Goals, Achievements, States, new query functions
+- `google_calendar_authentication_helper.py` - Read-write access, better error handling
+
+### New Files
+- `check_status.py` - System status verification script
+- `IMPLEMENTATION_SUMMARY.md` - Detailed implementation documentation
+- `QUICK_START.md` - Quick reference guide
+- `.cursorignore` - Token optimization (excludes data/, cache, logs, etc.)
+- `BRANCH_CONFLICT_ANALYSIS.md` - Analysis of potential merge conflicts
+
+### Moved Files (to Documentation/)
+- All documentation files moved to `Documentation/` folder for better organization
+
+## Token Optimization
+
+Created `.cursorignore` to exclude:
+- `data/` directory (large binary files, PDFs, vector DB)
+- Python cache (`__pycache__/`, `*.pyc`)
+- Virtual environments (including your conda env path)
+- Test outputs and reports
+- Log files
+- Credentials and environment files
+- Large model files
+
+This should significantly reduce token usage when Cursor indexes your codebase.
+
+## Potential Conflicts Identified
+
+### High Risk Areas
+
+1. **google-cal-intergration branch**
+   - `server.py`: Different structure (has auth, uses different calendar module)
+   - `app.js`: Has authentication UI, our branch has calendar features
+   - Module naming: `google_calendar_auth.py` vs `google_calendar_authentication_helper.py`
+
+2. **feat/user-authentication branch**
+   - May conflict with our calendar integration if auth is required
+
+See `BRANCH_CONFLICT_ANALYSIS.md` for detailed conflict analysis.
+
+## Next Steps
+
+### Option 1: Commit and Test Current Changes
+```bash
+git commit -m "feat: Restore functionality, add calendar integration, enhance Neo4j schema
+
+- Fix response format mismatch (reflection -> result)
+- Add /get_calendar_events endpoint
+- Implement calendar auto-population in front-end
+- Enhance Neo4j schema with Goals, Achievements, States
+- Add calendar context to agent workflow
+- Create status check script
+- Add .cursorignore for token optimization"
+```
+
+### Option 2: Test Before Committing
+```bash
+# Test the changes
+python check_status.py
+python server.py  # In another terminal
+# Test in browser
+```
+
+### Option 3: Compare with Other Branches First
+```bash
+# See what's different
+git diff main google-cal-intergration -- server.py
+git diff main google-cal-intergration -- app.js
+
+# Or create a comparison branch
+git checkout -b compare-with-google-cal
+git merge google-cal-intergration --no-commit --no-ff
+# Review conflicts, then abort
+git merge --abort
+```
+
+## Recommended Approach
+
+Given your experience that bugs are inevitable:
+
+1. **Commit current changes** to feature branch
+2. **Test thoroughly** on this branch
+3. **Document any bugs** found
+4. **Create bug fix commits** as needed
+5. **Only merge to main** when stable
+6. **Then handle** integration with other branches
+
+This way you have:
+- ✅ Clean feature branch with all changes
+- ✅ Ability to test and fix bugs
+- ✅ Clear history of what changed
+- ✅ Easy rollback if needed
+- ✅ Separate from main until proven stable
+
+## Testing Checklist
+
+Before merging to main:
+- [ ] Run `python check_status.py` - all checks pass
+- [ ] Start Flask server - no errors
+- [ ] Test calendar endpoint: `curl "http://localhost:5000/get_calendar_events?date=2026-01-25"`
+- [ ] Test front-end calendar auto-population
+- [ ] Test journal processing with calendar context
+- [ ] Verify Neo4j creates enhanced relationships
+- [ ] Check for any console errors in browser
+- [ ] Test with actual calendar events
+
+## Current Branch Status
+
+```bash
+# View staged changes
+git diff --cached --stat
+
+# View what will be committed
+git status
+
+# Commit when ready
+git commit -m "Your commit message"
+```
+
+## Conda Environment
+
+Your conda environment is at:
+`/mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/conda_envs/agentic_porter`
+
+This path is now excluded in `.cursorignore` to optimize token usage.
+
+---
+
+**Ready to commit?** All changes are staged. You can review with `git diff --cached` before committing.
+
+
+---
+
+## BRANCH_CONFLICT_ANALYSIS.md
+
+# Branch Conflict Analysis
+
+## Current Branch
+**feat/restore-functionality-calendar-neo4j-enhancement** (from main)
+
+## Potential Conflicts with Other Branches
+
+### 1. google-cal-intergration Branch
+
+#### Files with Potential Conflicts:
+
+**server.py** - HIGH CONFLICT RISK
+- **google-cal-intergration**: Uses `google_calendar_auth` module, has authentication/session management, different structure
+- **Our branch**: Uses `google_calendar_authentication_helper`, simpler structure, no auth
+- **Resolution**: Will need to merge authentication features from google-cal-intergration if we want user auth
+
+**app.js** - HIGH CONFLICT RISK
+- **google-cal-intergration**: Has `checkLoginStatus()`, authentication UI, session management
+- **Our branch**: Has calendar fetching, auto-population, no auth
+- **Resolution**: Need to combine calendar features with auth features
+
+**neo4j_db.py** - MEDIUM CONFLICT RISK
+- **google-cal-intergration**: May have different schema or user management
+- **Our branch**: Enhanced schema with Goals, Achievements, States
+- **Resolution**: Schema changes should be additive, but need to verify
+
+**google_calendar_authentication_helper.py** - NEW FILE
+- **Our branch**: New file with read-write access
+- **google-cal-intergration**: Uses different module name (`google_calendar_auth`)
+- **Resolution**: May need to rename or merge approaches
+
+### 2. feat/user-authentication Branch
+
+**Potential Conflicts:**
+- Authentication logic in server.py
+- User session management
+- May conflict with our calendar integration if auth is required
+
+### 3. neo4j-intergration Branch
+
+**Potential Conflicts:**
+- **neo4j_db.py**: May have different schema or functions
+- **Resolution**: Our enhanced schema should be reviewed against this branch
+
+### 4. feature/crewai-backend Branch
+
+**Potential Conflicts:**
+- **main.py**: May have different agent configurations
+- **server.py**: May have different endpoint structures
+- **Resolution**: Our calendar context integration should be compatible
+
+## Recommended Merge Strategy
+
+### Option 1: Merge google-cal-intergration First
+1. Merge google-cal-intergration into our feature branch
+2. Resolve conflicts (likely in server.py and app.js)
+3. Test authentication + calendar integration together
+4. Then merge to main
+
+### Option 2: Keep Separate, Merge to Main Sequentially
+1. Complete our feature branch
+2. Merge to main
+3. Then merge google-cal-intergration
+4. Resolve conflicts in main
+
+### Option 3: Create Integration Branch
+1. Create new branch from main
+2. Merge both google-cal-intergration and our branch
+3. Resolve all conflicts in integration branch
+4. Test thoroughly
+5. Merge to main
+
+## Key Differences to Resolve
+
+### Authentication
+- **google-cal-intergration**: Has full user authentication
+- **Our branch**: No authentication (assumes single user)
+- **Decision needed**: Do we want auth? If yes, merge from google-cal-intergration
+
+### Calendar Module Name
+- **google-cal-intergration**: `google_calendar_auth.py`
+- **Our branch**: `google_calendar_authentication_helper.py`
+- **Decision needed**: Standardize on one name
+
+### Server Structure
+- **google-cal-intergration**: More complex with sessions, auth routes
+- **Our branch**: Simpler, focused on calendar endpoint
+- **Decision needed**: Combine both approaches
+
+## Testing Checklist After Merge
+
+- [ ] User authentication still works (if merged)
+- [ ] Calendar events fetch correctly
+- [ ] Calendar auto-population works
+- [ ] Neo4j enhanced schema creates correct relationships
+- [ ] Journal processing with calendar context works
+- [ ] No breaking changes to existing functionality
+
+## Files to Watch During Merge
+
+1. **server.py** - Highest conflict risk
+2. **app.js** - Authentication vs calendar features
+3. **neo4j_db.py** - Schema differences
+4. **google_calendar_authentication_helper.py** vs **google_calendar_auth.py** - Module naming
+
+## Next Steps
+
+1. ✅ Created feature branch
+2. ✅ Created .cursorignore for token optimization
+3. ⏳ Stage and commit current changes
+4. ⏳ Test current implementation
+5. ⏳ Compare with google-cal-intergration in detail
+6. ⏳ Decide on merge strategy
+7. ⏳ Create merge plan document
+
+
+---
+
+## Known_issues_and_improvements.md
+
 # Known Issues and Improvements
 
 ## Current Issues
@@ -597,4 +869,8 @@ The fine-tuning dataset is **NOT** the PDFs. It's a "gold standard" set of quest
 - Chunking strategies can be tested independently or compared side-by-side using the comparison test
 - **Scaling**: Current architecture works for 10-100 papers; distributed architecture needed for 10,000+
 - **Fine-Tuning**: 1,000-5,000 high-quality Q&A pairs needed for 90% success rate with robust OOS handling
+
+
+
+---
 
