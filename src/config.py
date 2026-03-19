@@ -2,9 +2,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+from src.utils.path_utils import load_env_vars
+
 # Find root and load .env once
-root_dir = Path(__file__).resolve().parent.parent
-load_dotenv(root_dir / ".auth" / ".env")
+load_env_vars()
 
 class NeoConfig:
     NEO4J_URI = os.getenv("NEO4J_URI")
