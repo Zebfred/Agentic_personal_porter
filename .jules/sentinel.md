@@ -1,0 +1,4 @@
+## 2025-03-19 - Flask Debugger Exposed to 0.0.0.0
+**Vulnerability:** The Flask app was hardcoded to run with `debug=True` and `host='0.0.0.0'` in `src/app.py`. This exposes the Werkzeug interactive debugger to any network interface, allowing potential Remote Code Execution (RCE) and sensitive data leakage if an error occurs.
+**Learning:** Hardcoded debug configurations in entry point files are a common and critical security flaw, especially when the application is bound to all public interfaces (`0.0.0.0`). It must always be configurable via environment variables and default to `False`.
+**Prevention:** Never hardcode `debug=True` in production-facing web servers. Use `os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'` to conditionally enable debugging only in local development environments.
