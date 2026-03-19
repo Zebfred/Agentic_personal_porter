@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -263,4 +264,5 @@ def get_calendar_events():
 
 if __name__ == '__main__':
     print("Agentic Personal Porter Server starting on port 5090...")
-    app.run(debug=True, host='0.0.0.0', port=5090)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=5090)
