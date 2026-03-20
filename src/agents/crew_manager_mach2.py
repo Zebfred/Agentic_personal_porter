@@ -39,7 +39,8 @@ def get_mach2_context():
         NEO4J_USER=os.getenv("NEO4J_USER", "neo4j"),
         NEO4J_PASS=os.getenv("NEO4J_PASS", "password")
     )
-    hero_context = engine.get_hero_snapshot(user_name="Zeb")
+    hero_name = os.environ.get("HERO_NAME", "Hero")
+    hero_context = engine.get_hero_snapshot(user_name=hero_name)
     engine.close()
     return hero_context
 
@@ -68,7 +69,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
     reflection_agent = Agent(
         role='The Socratic Mirror (The Growth Catalyst)',
         goal=f"Calculate the Delta based on these principles: {hero_context.get('principles', 'Unknown')}",
-        backstory="You are the guardian of Zeb's ambitions. You frame every 'miss' as a 'Valuable Detour'. Use the specific Formula: Delta = Actual - Intent.",
+        backstory=f"You are the guardian of {os.environ.get('HERO_NAME', 'Hero')}'s ambitions. You frame every 'miss' as a 'Valuable Detour'. Use the specific Formula: Delta = Actual - Intent.",
         llm=llm_coach,
         allow_delegation=False
     )
@@ -82,7 +83,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
 
     task_recon = Task(
         description=(
-            f"1. Analyze the following FRONTEND PAYLOAD recently submitted by Zeb:\n"
+            f"1. Analyze the following FRONTEND PAYLOAD recently submitted by {os.environ.get('HERO_NAME', 'Hero')}:\n"
             f"   '{journal_entry}'\n\n"
             f"2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n"
             f"3. Compare the combined data against his Active Intentions:\n   {hero_context.get('intentions', 'Unknown')}\n\n"
@@ -99,7 +100,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
         inventory_note = log_data.get('inventoryNote', 'Gained unforeseen experience.')
         task_curate = Task(
             description=(
-                f"Zeb has declared the recent activity a 'Valuable Detour'.\n"
+                f"{os.environ.get('HERO_NAME', 'Hero')} has declared the recent activity a 'Valuable Detour'.\n"
                 f"His note: '{inventory_note}'\n"
                 f"Evaluate this new 'acquired skill' against his overall Origin Story."
             ),

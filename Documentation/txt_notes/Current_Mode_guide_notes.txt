@@ -1,3 +1,5 @@
+#Outdated info. Still relevent but needs update with most up to date research
+
 Groq Model Guide: Advantages & Use Cases
 This document provides a summary of the key advantages for the general-purpose, English-language models available through your Groq API key. This can help in selecting the right model for different tasks within the Agentic Personal Porter project.
 👑 System-Level Models (Intelligent Agents)

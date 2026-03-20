@@ -10,13 +10,61 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime, time, timedelta
 from src.agents.crew_manager_mach2 import run_crew
-from src.database.neo4j_db import log_to_neo4j
+from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.integrations.google_calendar import get_calendar_service
+from functools import wraps
+import os
+import json
+from dotenv import load_dotenv
+from pydantic import ValidationError
+from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
+
+import logging
+from logging.handlers import RotatingFileHandler
+
+# Load auth env vars
+root = Path(__file__).resolve().parent.parent
+load_dotenv(root / ".auth" / ".env")
+API_KEY = os.environ.get("PORTER_API_KEY", "default_dev_key")
+
+# Set up logging
+log_dir = root / "logs"
+log_dir.mkdir(exist_ok=True)
+log_file = log_dir / "app.log"
+
+logger = logging.getLogger("APP_ROUTER")
+logger.setLevel(logging.INFO)
+# Remove default handlers
+if logger.hasHandlers():
+    logger.handlers.clear()
+file_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=2)
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+logger.addHandler(file_handler)
+# Also log to console
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+logger.addHandler(console_handler)
 
 
 app = Flask(__name__)
-CORS(app)  # This will enable CORS for all routes
+# Restrict CORS to specific local origins instead of '*'
+cors_origins = [
+    "http://localhost:5000",
+    "http://127.0.0.1:5000", 
+    "http://localhost:5090",
+    "http://127.0.0.1:5090"
+]
+CORS(app, resources={r"/*": {"origins": cors_origins}})
+
+def require_api_key(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        supplied_key = request.headers.get("Authorization")
+        if not supplied_key or supplied_key.replace("Bearer ", "") != API_KEY:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Serve front-end files
 @app.route('/')
@@ -28,6 +76,11 @@ def index():
 @app.route('/inventory.html')
 def inventory():
     return send_from_directory('../frontend', 'inventory.html')
+
+@app.route('/artifacts')
+@app.route('/artifacts.html')
+def artifacts():
+    return send_from_directory('../frontend', 'artifacts.html')
 
 # Serve static files (JS, CSS, etc.)
 @app.route('/js/<path:filename>')
@@ -74,10 +127,11 @@ def fetch_calendar_events_for_date(target_date_str: str):
         events = events_result.get('items', [])
         return events
     except Exception as e:
-        print(f"Error fetching calendar events internally: {e}")
+        logger.error(f"Error fetching calendar events internally: {e}")
         return []
 
-@app.route('/process_journal', methods=['POST'])
+@app.route('/process_journal', methods=['POST', 'OPTIONS'])
+@require_api_key
 def process_journal():
     """
     Receives a journal entry and full log data, gets an AI reflection,
@@ -88,22 +142,16 @@ def process_journal():
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
         
-        journal_entry = data.get('journal_entry')
-        log_data = data.get('log_data')
-        
-        # Validation with more descriptive error messages, list comprehensions for clarity
-        print(f"Received journal entry: {journal_entry[:100] if journal_entry else 'None'}...")
-        print(f"Received log data for day: {log_data.get('day') if log_data else 'None'}")
-        
-        if not journal_entry or not log_data:
-            # --- MORE DESCRIPTIVE 400 ERROR ---
-            error_message = "Incomplete data. "
-            if not journal_entry:
-                error_message += "'journal_entry' is missing. "
-            if not log_data:
-                error_message += "'log_data' is missing. Check app.js payload construction."
-            print(f"Returning 400 error: {error_message}")
-            return jsonify({"error": error_message}), 400
+        try:
+            validated_data = JournalRequestSchema(**data)
+            journal_entry = validated_data.journal_entry
+            log_data = validated_data.log_data.model_dump() if hasattr(validated_data.log_data, 'model_dump') else validated_data.log_data.dict()
+        except ValidationError as e:
+            logger.error(f"Validation Error: {e}")
+            return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+            
+        logger.info("Received journal entry request (content redacted for PII)...")
+        logger.info(f"Received log data for day: {log_data.get('day')}")
         
         try:
             # Enhance journal entry with calendar context if available
@@ -131,10 +179,10 @@ def process_journal():
                         event_titles = [e.get('summary', 'Untitled') for e in events]
                         calendar_context = f"\n\nCalendar Events for {day}: {', '.join(event_titles)}"
                         enhanced_journal_entry = journal_entry + calendar_context
-                        print(f"Added {len(events)} calendar events to journal context")
+                        logger.info(f"Added {len(events)} calendar events to journal context")
             except Exception as cal_error:
                 # Calendar fetch failed, but continue without it
-                print(f"Could not fetch calendar events (non-critical): {cal_error}")
+                logger.warning(f"Could not fetch calendar events (non-critical): {cal_error}")
             
             # Run the CrewAI workflow with enhanced context
             crew_result = run_crew(enhanced_journal_entry, log_data)
@@ -154,11 +202,11 @@ def process_journal():
             # 1. Save pristine Frontend log to MongoDB Landing Zone
             mongo_storage = SovereignMongoStorage()
             mongo_doc_id = mongo_storage.save_journal_entry(log_data)
-            print(f"MongoDB Journal Saved: {mongo_doc_id}")
+            logger.info(f"MongoDB Journal Saved: {mongo_doc_id}")
 
             # 2. Save the complete log as a distinct node to Neo4j Identity Graph
             db_confirmation = log_to_neo4j(log_data)
-            print(f"Neo4j Confirmation: {db_confirmation}")
+            logger.info(f"Neo4j Confirmation: {db_confirmation}")
 
             # Return the successful result to the front-end
             # Note: app.js expects "result" key, not "reflection"
@@ -169,31 +217,82 @@ def process_journal():
         
         except Exception as e:
             # Log error with traceback for debugging
-            print(f"Backend Error during CrewAI execution: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Backend Error during CrewAI execution: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         # This outer block catches errors in getting the initial JSON data
-        print(f"Error reading request data: {e}")
+        logger.error(f"Error reading request data: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/inventory', methods=['GET'])
+@require_api_key
 def get_inventory():
     """
     Fetches the 'Valuable Detours' and skills acquired by the user from Neo4j.
     """
     try:
-        from src.database.neo4j_db import get_valuable_detours
-        detours = get_valuable_detours(user_name="Zeb")
-        return jsonify({"valuable_detours": detours})
+        from src.database.neo4j_client import get_valuable_detours
+        detours = get_valuable_detours(user_name=os.environ.get("HERO_NAME", "Hero"))
+        
+        response_data = {
+            "valuable_detours": detours,
+            "quests": [],
+            "skills": [],
+            "equipment": [],
+            "stats": {"level": 5, "strength": 10, "intelligence": 15, "charisma": 12},
+            "finances": {"gold": 1500, "investment_growth": "+5%"}
+        }
+        return jsonify(response_data)
     except Exception as e:
-        print(f"Error fetching inventory: {e}")
+        logger.error(f"Error fetching inventory: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/artifacts/<artifact_name>', methods=['GET', 'POST', 'OPTIONS'])
+@require_api_key
+def manage_artifact(artifact_name):
+    """
+    Fetch or update a JSON artifact.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    allowed_artifacts = ['hero_origin.json', 'hero_ambition.json', 'hero_detriments.json']
+    if artifact_name not in allowed_artifacts:
+        return jsonify({"error": "Invalid artifact name"}), 400
+        
+    artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
+    
+    if request.method == 'GET':
+        try:
+            if not artifact_path.exists():
+                return jsonify({"error": "Artifact not found"}), 404
+            with open(artifact_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return jsonify(data)
+        except Exception as e:
+            logger.error(f"Error fetching artifact {artifact_name}: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
+            
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+                
+            artifact_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(artifact_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
+                
+            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully"})
+        except Exception as e:
+            logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
 
 
 @app.route('/get_calendar_events', methods=['GET'])
+@require_api_key
 def get_calendar_events():
     """
     Fetches calendar events for a specific date.
@@ -209,18 +308,24 @@ def get_calendar_events():
         - description: Event description (if available)
     """
     try:
-        # Get date parameter or use today
-        date_str = request.args.get('date')
+        try:
+            req = CalendarRequestSchema(date=request.args.get('date'))
+        except ValidationError as e:
+            return jsonify({"error": f"Invalid query parameters: {str(e)}"}), 400
+
+        date_str = req.date
         if not date_str:
             date_str = datetime.now().strftime('%Y-%m-%d')
         
-        # Validate date format
+        # Validate date format strictly
         try:
+            if len(date_str) != 10:
+                raise ValueError("Strict length check failed")
             datetime.strptime(date_str, '%Y-%m-%d')
         except ValueError:
-            return jsonify({"error": f"Invalid date format. Use YYYY-MM-DD. Got: {date_str}"}), 400
+            return jsonify({"error": "Invalid date format. Use strict YYYY-MM-DD."}), 400
         
-        print(f"Fetching calendar events for date: {date_str}")
+        logger.info(f"Fetching calendar events for date: {date_str}")
         
         # Fetch events using helper function
         try:
@@ -246,7 +351,7 @@ def get_calendar_events():
                 'id': event.get('id', '')
             })
         
-        print(f"Found {len(formatted_events)} events for {date_str}")
+        logger.info(f"Found {len(formatted_events)} events for {date_str}")
         
         return jsonify({
             "date": date_str,
@@ -255,12 +360,44 @@ def get_calendar_events():
         })
         
     except Exception as e:
-        print(f"Error fetching calendar events: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error fetching calendar events: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected error occurred while fetching calendar events: {str(e)}"}), 500
+
+@app.route('/api/admin/sync_calendar', methods=['POST'])
+@require_api_key
+def admin_sync_calendar():
+    """
+    Triggers the Google Calendar sync pipeline to Neo4j.
+    """
+    try:
+        from src.orchestrators.sync_calendar_to_graph import run_sync_pipeline
+        run_sync_pipeline()
+        return jsonify({"message": "Calendar sync completed successfully."})
+    except Exception as e:
+        logger.error(f"Error syncing calendar: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/inject_foundation', methods=['POST'])
+@require_api_key
+def admin_inject_foundation():
+    """
+    Triggers the Hero Foundation (Origin/Ambition) injection to Neo4j.
+    """
+    try:
+        from src.database.inject_hero_foundation import inject_hero_data
+        inject_hero_data()
+        return jsonify({"message": "Hero foundation injected successfully."})
+    except Exception as e:
+        logger.error(f"Error injecting foundation: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
-    print("Agentic Personal Porter Server starting on port 5090...")
+    logger.info("==================================================================================")
+    logger.warning("Starting the Agentic Personal Porter via Flask's built-in development server.")
+    logger.warning("This server is not suitable for production deployments.")
+    logger.info("For a production WSGI server, please execute: ./run_production.sh (which uses Gunicorn)")
+    logger.info("==================================================================================")
+    logger.info("Server starting on port 5090...")
     app.run(debug=True, host='0.0.0.0', port=5090)
+

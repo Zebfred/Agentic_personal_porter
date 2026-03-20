@@ -4,7 +4,7 @@ import logging
 from pydantic import SecretStr
 from langchain_groq import ChatGroq
 from src.utils.path_utils import load_env_vars, get_auth_file
-from src.database.neo4j_db import get_driver
+from src.database.neo4j_client import get_driver
 
 # Configure logging
 logger = logging.getLogger(__name__)

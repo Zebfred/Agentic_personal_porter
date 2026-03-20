@@ -6,8 +6,8 @@ from src.database.mongo_storage import SovereignMongoStorage
 class SocraticMirrorEngine:
     """
     The 'Logic' behind the Socratic Mirror.
-    Calculates the Delta between what Zeb intended (Neo4j) 
-    and what Zeb actually did (MongoDB/GCal).
+    Calculates the Delta between what the hero intended (Neo4j) 
+    and what they actually did (MongoDB/GCal).
     """
     def __init__(self):
         self.context = SovereignContextEngine()
@@ -18,7 +18,8 @@ class SocraticMirrorEngine:
         Performs the Mach 2 Delta Calculation: Delta = Intent - Actual.
         """
         # 1. Get Hero DNA (Principles/Active Intentions)
-        hero_dna = self.context.get_hero_snapshot(user_name="Zeb")
+        hero_name = os.environ.get("HERO_NAME", "Hero")
+        hero_dna = self.context.get_hero_snapshot(user_name=hero_name)
         
         # 2. Get Formatted Events from the last 24 hours
         # In a demo, we might pull a specific 'high-friction' day
@@ -67,7 +68,7 @@ class SocraticMirrorEngine:
         
         TASK:
         As the Socratic Mirror, identify the most significant 'Valuable Detour'. 
-        Instead of judging, ask ONE question that helps Zeb understand if his 
+        Instead of judging, ask ONE question that helps the hero understand if his 
         Current Epoch (Action) is drifting from his Sovereign Intent (Graph).
         """
         return prompt
