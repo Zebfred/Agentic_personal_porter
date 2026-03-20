@@ -16,6 +16,7 @@ from src.integrations.google_calendar import get_calendar_service
 from functools import wraps
 import os
 import json
+import hmac
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
@@ -26,7 +27,10 @@ from logging.handlers import RotatingFileHandler
 # Load auth env vars
 root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
-API_KEY = os.environ.get("PORTER_API_KEY", "default_dev_key")
+API_KEY = os.environ.get("PORTER_API_KEY")
+
+if not API_KEY:
+    raise ValueError("PORTER_API_KEY environment variable is not set. Please check your .auth/.env file.")
 
 # Set up logging
 log_dir = root / "logs"
@@ -61,8 +65,13 @@ def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         supplied_key = request.headers.get("Authorization")
-        if not supplied_key or supplied_key.replace("Bearer ", "") != API_KEY:
+        if not supplied_key:
             return jsonify({"error": "Unauthorized"}), 401
+
+        token = supplied_key.replace("Bearer ", "")
+        if not hmac.compare_digest(token, API_KEY):
+            return jsonify({"error": "Unauthorized"}), 401
+
         return f(*args, **kwargs)
     return decorated_function
 
