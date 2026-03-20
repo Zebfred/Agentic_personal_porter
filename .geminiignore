@@ -79,8 +79,9 @@ data/extraction_results.json
 # Git files
 .git/
 
-# Docker
+# ignores
 .dockerignore
+.legacy_hr/*
 
 # Large model files (if any)
 *.pt

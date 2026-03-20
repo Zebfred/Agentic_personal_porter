@@ -1,4 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Utility functions for security and API
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return str.replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag])
+        );
+    };
+
+    const getApiKey = () => {
+        let key = localStorage.getItem('porterApiKey');
+        if (!key) {
+            key = prompt("Please enter the API Key to access Porter backend:");
+            if (key) localStorage.setItem('porterApiKey', key);
+        }
+        return key || '';
+    };
+
     const dayNav = document.getElementById('day-nav');
     const dayViewContainer = document.getElementById('day-view-container');
     const currentDayHeader = document.getElementById('current-day-header');
@@ -141,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     
                     <div id="ai-output-${chunkId}" class="ai-output-container mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400 ${chunkData.aiReflection ? '' : 'hidden'}">
-                        <p class="text-gray-700 italic text-sm">${chunkData.aiReflection || ''}</p>
+                        <p class="text-gray-700 italic text-sm">${chunkData.aiReflection ? escapeHTML(chunkData.aiReflection).replace(/\\n/g, '<br>') : ''}</p>
                     </div>
                 </div>
             `;
@@ -166,8 +189,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log(`Fetching calendar events for ${day} (${dateStr})...`);
             
-            // Using the endpoint from server.py
-            const response = await fetch(`http://localhost:5090/get_calendar_events?date=${dateStr}`);
+            // Using the endpoint from server.py with Auth
+            const response = await fetch(`http://localhost:5090/get_calendar_events?date=${dateStr}`, {
+                headers: {
+                    'Authorization': `Bearer ${getApiKey()}`
+                }
+            });
             
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             
@@ -322,7 +349,10 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await fetch('http://localhost:5090/process_journal', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getApiKey()}`
+                    },
                     body: JSON.stringify({ 
                         journal_entry: journalEntry, // FIXED: Matches server expectation
                         log_data: logDataForDb 
@@ -333,16 +363,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const data = await response.json();
                 
-                // Handle different potential response structures
-                const reflectionText = (data.result || data.reflection || "Insight recorded.").replace(/\n/g, '<br>');
-
-                // Display
-                aiOutputContainer.innerHTML = `<p class="text-gray-700 italic leading-relaxed">${reflectionText}</p>`;
-                aiOutputContainer.classList.remove('hidden');
+                // Handle different potential response structures securely
+                const rawReflection = data.result || data.reflection || "Insight recorded.";
                 
-                // Save Result
-                weeklyLog[day][chunkId].aiReflection = reflectionText;
+                // Save raw text
+                weeklyLog[day][chunkId].aiReflection = rawReflection;
                 saveWeeklyLog();
+
+                // Display securely with escaping
+                const safeHTML = escapeHTML(rawReflection).replace(/\\n/g, '<br>');
+                aiOutputContainer.innerHTML = `<p class="text-gray-700 italic leading-relaxed">${safeHTML}</p>`;
+                aiOutputContainer.classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error processing journal entry:', error);

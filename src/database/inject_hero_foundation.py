@@ -102,7 +102,11 @@ def process_epochs(raw_epochs):
 
     return processed_epochs, processed_experiences
 
-def inject_hero_data(hero_name="Zeb"):
+import os
+
+def inject_hero_data(hero_name=None):
+    if hero_name is None:
+        hero_name = os.environ.get("HERO_NAME", "Hero")
     """Reads the JSON and runs the Cypher queries to build the Hero foundation."""
     
     # 1. Load Ambitions
@@ -190,6 +194,6 @@ def inject_hero_data(hero_name="Zeb"):
 
 if __name__ == "__main__":
     try:
-        inject_hero_data("Zeb")
+        inject_hero_data()
     finally:
         driver.close()
