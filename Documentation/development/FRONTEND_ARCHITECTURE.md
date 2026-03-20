@@ -4,8 +4,8 @@ The user interface of the Agentic Personal Porter operates as a lightweight, lig
 
 ## Tech Stack
 - **HTML5:** Semantic structure housing the "Hero's Dashboard."
-- **Vanilla JavaScript (`app.js`):** Lightweight asynchronous state manager replacing heavy frameworks.
-- **Tailwind CSS (`index.css`):** Utility-first styling avoiding massive external dependency trees.
+- **Vanilla JavaScript (`app.js`, `script.js`, `artifacts.js`):** Lightweight asynchronous state managers replacing heavy frameworks.
+- **Tailwind CSS:** Utility-first styling via CDN to avoid massive external dependency trees. Leveraging modern aesthetics like glassmorphism.
 
 ## Component Layout
 
@@ -16,10 +16,14 @@ The user interface of the Agentic Personal Porter operates as a lightweight, lig
 
 2. **The Hero's Inventory (`inventory.html`)**
    - Functions as the leaderboard or RPG character sheet.
-   - A grid layout fetching metadata from Neo4j (via the API) regarding Quests, Goals, Skill Logs, and Life Pillars.
+   - A glassmorphic grid layout fetching mock and real metadata from the backend (`/api/inventory`) regarding Quests, Goals, Skill Logs, and Life Pillars. Managed by `script.js`.
+
+3. **Hero Artifacts Management (`artifacts.html`)**
+   - A dedicated UI mapping securely to JSON files (`hero_origin.json` and `hero_ambition.json`) via backend endpoints.
+   - Operated by `artifacts.js`, taking a recursive dynamic form-builder approach to let the user update deeply nested origin and ambition metadata natively.
 
 ## Asynchronous Data Flow
 1. **On Load / Day Select:** The app listens for a Day `<select>` change. Upon change, it requests `/get_calendar_events` and pre-fills the Intention column, drastically reducing manual typing.
 2. **On Submit:** `app.js` constructs the overarching `JSON` payload representing the `log_data` (Day, TimeChunk, Realities, Feelings).
 3. **The Reflection Wait:** An asynchronous `fetch` request is routed to `/process_journal`. 
-4. **HTML Sanitization:** Before the returned AI reflection string is loaded into the interface, `app.js` runs it through an `escapeHTML` utility function to prevent XSS payloads, updating line breaks into safe `<br>` variants prior to altering the actual un-editable DOM innerHTML.
+4. **HTML Sanitization:** Before the returned AI reflection string is loaded into the interface, JS utilities run it through string filtering mechanisms to prevent XSS payloads prior to altering the actual un-editable DOM innerHTML.

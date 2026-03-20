@@ -3,7 +3,7 @@ import json
 import logging
 from typing import List, Dict, Any
 from src.utils.path_utils import load_env_vars, get_project_root
-from src.database.neo4j_db import get_driver
+from src.database.neo4j_client import get_driver
 
 # Configure logging to monitor our "Librarian"
 logging.basicConfig(level=logging.INFO)
