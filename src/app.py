@@ -16,6 +16,7 @@ from src.integrations.google_calendar import get_calendar_service
 from functools import wraps
 import os
 import json
+import hmac
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
@@ -61,7 +62,7 @@ def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         supplied_key = request.headers.get("Authorization")
-        if not supplied_key or supplied_key.replace("Bearer ", "") != API_KEY:
+        if not supplied_key or not hmac.compare_digest(supplied_key.replace("Bearer ", ""), API_KEY):
             return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated_function
