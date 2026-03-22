@@ -11,6 +11,7 @@ tmp/
 temp/
 __pycache__/
 *.bk
+.ipynb_checkpoints/
 .legacy_hr/*
 
 # Ignore sensitive information (e.g., configuration files with credentials)

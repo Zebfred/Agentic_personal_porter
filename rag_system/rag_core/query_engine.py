@@ -12,8 +12,8 @@ import os
 from typing import Dict, List, Optional
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-from rag_core.embeddings import SciBERTEmbedder
-from rag_core.vector_store import VectorStore
+from rag_system.rag_core.embeddings import SciBERTEmbedder
+from rag_system.rag_core.vector_store import VectorStore
 
 load_dotenv()
 
