@@ -1,3 +1,4 @@
+import os
 from .connection import get_driver
 
 def log_to_neo4j(log_data: dict) -> str:
