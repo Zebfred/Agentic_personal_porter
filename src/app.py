@@ -16,6 +16,7 @@ from src.integrations.google_calendar import get_calendar_service
 from functools import wraps
 import os
 import json
+import jwt
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
@@ -27,6 +28,7 @@ from logging.handlers import RotatingFileHandler
 root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
 API_KEY = os.environ.get("PORTER_API_KEY", "default_dev_key")
+JWT_SECRET = os.environ.get("JWT_SECRET", "fallback_jwt_secret_for_dev_only")
 
 # Set up logging
 log_dir = root / "logs"
@@ -60,10 +62,30 @@ CORS(app, resources={r"/*": {"origins": cors_origins}})
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            return '', 204
+            
         supplied_key = request.headers.get("Authorization")
-        if not supplied_key or supplied_key.replace("Bearer ", "") != API_KEY:
-            return jsonify({"error": "Unauthorized"}), 401
-        return f(*args, **kwargs)
+        if not supplied_key:
+            return jsonify({"error": "Unauthorized: Missing Authorization header"}), 401
+            
+        token_str = supplied_key.replace("Bearer ", "")
+        
+        # Check if it's the raw API Key (used by background python scripts usually)
+        if token_str == API_KEY:
+            return f(*args, **kwargs)
+            
+        # Try checking if it's a valid JWT from the frontend login UI
+        try:
+            decoded = jwt.decode(token_str, JWT_SECRET, algorithms=["HS256"])
+            if decoded.get("role") == "admin":
+                return f(*args, **kwargs)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Unauthorized: Token expired"}), 401
+        except jwt.InvalidTokenError:
+            pass
+            
+        return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
     return decorated_function
 
 # Serve front-end files
@@ -82,10 +104,19 @@ def inventory():
 def artifacts():
     return send_from_directory('../frontend', 'artifacts.html')
 
+@app.route('/login')
+@app.route('/login.html')
+def login_page():
+    return send_from_directory('../frontend', 'login.html')
+
 # Serve static files (JS, CSS, etc.)
 @app.route('/js/<path:filename>')
 def serve_js(filename):
     return send_from_directory('../frontend/js', filename)
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory('../frontend/css', filename)
 
 # Initialize Google Calendar service (lazy initialization)
 _calendar_service = None
@@ -223,6 +254,36 @@ def process_journal():
     except Exception as e:
         # This outer block catches errors in getting the initial JSON data
         logger.error(f"Error reading request data: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
+def login():
+    """
+    Validates the provided password against the PORTER_API_KEY.
+    If valid, returns a JWT token valid for 24 hours.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        data = request.get_json()
+        if not data or 'password' not in data:
+            return jsonify({"error": "Password required"}), 400
+            
+        if data['password'] == API_KEY:
+            # Generate JWT Token valid for 24 hours
+            expiration = datetime.utcnow() + timedelta(hours=24)
+            token = jwt.encode(
+                {"role": "admin", "exp": expiration},
+                JWT_SECRET,
+                algorithm="HS256"
+            )
+            return jsonify({"token": token, "message": "Login successful"})
+        else:
+            return jsonify({"error": "Invalid password"}), 401
+            
+    except Exception as e:
+        logger.error(f"Error during login: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/inventory', methods=['GET'])

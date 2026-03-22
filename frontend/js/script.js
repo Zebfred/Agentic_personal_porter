@@ -1,12 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const getApiKey = () => {
-        let key = localStorage.getItem('porterApiKey');
-        if (!key) {
-            key = prompt("Please enter the API Key to access Porter backend:");
-            if (key) localStorage.setItem('porterApiKey', key);
-        }
-        return key || '';
-    };
+    // getApiKey removed in favor of Auth module
 
     const ui = {
         inventory: document.getElementById('valuable-detours-list'),
@@ -81,9 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-        const response = await fetch('http://localhost:5090/api/inventory', {
-            headers: { 'Authorization': `Bearer ${getApiKey()}` }
-        });
+        const response = await Auth.fetchWithAuth('http://localhost:5090/api/inventory');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         renderInventory(data);

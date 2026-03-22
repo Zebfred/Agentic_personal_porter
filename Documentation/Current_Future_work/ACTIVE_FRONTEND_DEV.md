@@ -18,3 +18,17 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 - [x] **Hero's Stats:** Design a visual representation (e.g., progress bars, radar charts) quantifying user growth from "Hero Numbers." (Awaiting human verification)
 - [x] **Finances:** Create a specialized input/display tool for tracking financial variables aligned with quest goals. (Awaiting human verification)
 - [x] **Origin/Ambition Collection:** Develop entirely new UI input variants designed strictly to capture the user's "Origin Story" and "Long-term Ambitions" for the GTKY agent context. (Awaiting human verification)
+
+## Tertiary Priority: Finalize the "Daily Recon" UI (Mach 2)
+*Status: Missing from active development tracker, importing from Mach 2 Roadmap.*
+
+- [ ] **The 20-Second Verification Loop:** The frontend (`index.html` / `app.js`) must be optimized to prioritize lightning-fast daily verification of the twin-track data.
+- [ ] **Low Cognitive Load:** Agent-inferred labels for activities (from the Mongo staging) must be visibly flagged on the frontend, easily correctable by the user, and confirmable with a single click.
+- [ ] **Artifact UI Hook:** Update the `inject_hero_foundation` logic to pull smoothly from the new Artifact Management UI rather than existing strictly as a backend dev script.
+
+## Upcoming Priority: Formal Production Login System
+*Status: Completed and awaiting human verification.*
+
+- [x] **Authentication UI:** Design and build a secure, polished login and registration screen for the application. (Awaiting human verification)
+- [x] **Session Management:** Implement frontend token handling (e.g., JWT) securely stored in memory or HTTP-only cookies, replacing the current prompt-based local storage API key method. (Awaiting human verification)
+- [x] **Route Protection:** Ensure all frontend pages proactively check authentication state and redirect unauthenticated users to the new login screen. (Awaiting human verification)
