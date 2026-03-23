@@ -18,6 +18,7 @@ from functools import wraps
 import os
 import json
 import jwt
+import hmac
 from dotenv import load_dotenv
 from pydantic import ValidationError
 from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
@@ -79,7 +80,7 @@ def require_api_key(f):
         token_str = supplied_key.replace("Bearer ", "")
         
         # Check if it's the raw API Key (used by background python scripts usually)
-        if token_str == API_KEY:
+        if hmac.compare_digest(token_str, API_KEY):
             return f(*args, **kwargs)
             
         # Try checking if it's a valid JWT from the frontend login UI
@@ -316,7 +317,7 @@ def login():
         if not data or 'password' not in data:
             return jsonify({"error": "Password required"}), 400
             
-        if data['password'] == API_KEY:
+        if hmac.compare_digest(data['password'], API_KEY):
             # Generate JWT Token valid for 24 hours
             expiration = datetime.utcnow() + timedelta(hours=24)
             token = jwt.encode(
