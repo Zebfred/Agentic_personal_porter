@@ -11,6 +11,9 @@ Have a proper intergration with calendar or have this application live as an ext
 
 A frontend endpoint for reviewing past journal entries and agent reflections for those entries
 have a subpage of that journal page for Communicating with the classifications and giving the agent feedback on those audit records
+---
+21:45 still need a proper login for other users , but not going to worry about that tonight
+
 ----------
 Mar 19
 Future research agent

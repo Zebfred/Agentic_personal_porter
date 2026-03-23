@@ -53,7 +53,7 @@
                 <!-- Porter Chat Terminal -->
                 <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-blue-500 shadow-lg">
                     <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🤖</span> First-Serving Porter</h3>
-                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
+                    <div id="porter-chat-container" class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
                         <div class="flex gap-4">
                             <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
                             <div class="bg-gray-100 rounded-2xl rounded-tl-none p-4 text-gray-800">
@@ -63,8 +63,8 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <input type="text" class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
-                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">Send</button>
+                        <input id="porter-chat-input" type="text" class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
+                        <button id="porter-chat-send" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">Send</button>
                     </div>
                 </section>
 
@@ -127,5 +127,6 @@
     </main>
 
     <script src="./js/auth.js"></script>
+    <script type="module" src="./js/hub.js"></script>
 </body>
 </html>

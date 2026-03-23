@@ -50,3 +50,21 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.
+
+# Active Backend Tasks
+
+This document tracks backend development tasks, architectural shifts, and long-term storage requirements for the Agentic Personal Porter application.
+
+## Long-Term Memory Storage (Vector DB)
+- **Objective:** Integrate a Vector Database to serve as long-term memory for the Agentic Porter Ecosystem.
+- **Context:** Currently, we rely on Neo4j for semantic Identity Graph relationships and MongoDB for raw time-series data. However, as the user interacts via chat (the First-Serving Porter), retaining unstructured semantic memory over extended periods requires vector similarity embeddings.
+- **Status:** Planning Phase. This will be tackled in a future session after the initial Agent drafts are finalized.
+
+## JSON Artifact Storage Migration
+- **Objective:** Migrate JSON configuration architectures like `hero_ambition.json` and `hero_origin.json` to MongoDB.
+- **Context:** MongoDB is well-suited for document storage and time-series logging, providing better resilience and query-ability compared to flat filesystem JSON files.
+- **Status:** Pending implementation.
+
+## Integration of New Agents
+- **Objective:** Expand the agent capabilities in the backend and ensure they share the same LLM primitives.
+- **Frameworks:** We are operating a dual-framework setup where CrewAI is utilized for intensive, batch, multi-agent synchronized executions (e.g. daily Socratic Mirror reflections) and LangChain generic agents handle low-latency direct user-chat interactions (e.g., First-Serving Porter).
