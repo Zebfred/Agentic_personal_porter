@@ -162,7 +162,7 @@ def inject_hero_data(hero_name=None):
     MATCH (h:Hero {name: $hero_name})-[:HAS_ARTIFACTS]->(art:Artifacts)
 
     // Create the Origin node and link it to Artifacts
-    MERGE (o:Origin {hero_name: $hero_name})
+    MERGE (o:Origin {hero_name: $hero_name, name: "Hero_Origins"})
     MERGE (art)-[:HAS_ORIGIN]->(o)
     WITH o
 
