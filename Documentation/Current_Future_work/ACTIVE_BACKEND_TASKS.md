@@ -26,3 +26,9 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 *Status: Architecture defined.*
 
 - [ ] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler or AWS EventBridge) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
+
+## Priority: Artifacts & Inventory API Support
+*Status: Investigating why frontend endpoints are non-functional.*
+
+- [ ] **Artifacts API:** Debug the `GET` and `POST` routes for `/api/artifacts/<artifact_name>` to ensure JSON data is being properly fetched and saved without permissions or pathing errors.
+- [ ] **Inventory API:** Debug `GET /api/inventory` to ensure the payload format correctly matches what `script.js` expects to render the glassmorphic grid.

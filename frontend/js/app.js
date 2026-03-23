@@ -118,15 +118,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
                                 ${['happy', 'neutral', 'sad'].map(feeling => `
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="feeling-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
+                                <label for="feeling-${chunkId}-${feeling}" class="cursor-pointer">
+                                    <input type="radio" id="feeling-${chunkId}-${feeling}" name="feeling-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
                                     <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
                                 </label>
                                 `).join('')}
                             </div>
                             
                             <div class="flex-grow">
-                                <label class="flex justify-between text-xs font-bold text-gray-500 mb-1">
+                                <label for="brain-fog-${chunkId}" class="flex justify-between text-xs font-bold text-gray-500 mb-1">
                                     <span>FOG: <span id="brain-fog-value-${chunkId}">${chunkData.brainFog}</span>%</span>
                                 </label>
                                 <input type="range" id="brain-fog-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog}" class="brain-fog-slider w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">

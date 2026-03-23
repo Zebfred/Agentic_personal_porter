@@ -59,11 +59,17 @@ cors_origins = [
 ]
 CORS(app, resources={r"/*": {"origins": cors_origins}})
 
+from flask import make_response
+
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if request.method == 'OPTIONS':
-            return '', 204
+            response = make_response()
+            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            return response, 204
             
         supplied_key = request.headers.get("Authorization")
         if not supplied_key:
