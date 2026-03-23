@@ -27,3 +27,4 @@ credentials.json
 data/google_calendar/*
 
 tailwindcss
+venv/
