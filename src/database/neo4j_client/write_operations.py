@@ -39,9 +39,13 @@ def _create_log_entry(tx, log_data: dict):
         // Find or create Hero
         MERGE (u:Hero {name: $userName})
         
-        // Create day and link to user
+        // Create journal and link to hero
+        MERGE (j:Journal {name: 'Daily Log'})
+        MERGE (u)-[:HAS_JOURNAL]->(j)
+        
+        // Create day and link to journal
         MERGE (d:Day {date: $day})
-        MERGE (u)-[:HAS_DAY]->(d)
+        MERGE (j)-[:HAS_DAY]->(d)
         
         // Create time chunk
         MERGE (tc:TimeChunk {id: $timeChunkId})
@@ -153,7 +157,7 @@ def create_identity_graph(user_id, origin_story, ambitions):
     """
     driver = get_driver()
     query = """
-    MATCH (u:User {id: $user_id})
+    MATCH (u:Hero {id: $user_id})
     
     // 1. Map the Origin Story (Who you are)
     FOREACH (trait IN $origin_story.traits |
@@ -202,7 +206,7 @@ def _create_goal_tx(tx, user_id: str, description: str, category: str,
     """Transaction function to create a goal."""
     query = (
         """
-        MATCH (u:User {id: $userId})
+        MATCH (u:Hero {id: $userId})
         CREATE (g:Goal {
             description: $description,
             category: $category,

@@ -32,6 +32,7 @@ class SovereignMongoStorage:
         self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
         self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
         self.journal_col = self.db['journal_entries']
+        self.artifacts_col = self.db['hero_artifacts']
 
     def save_journal_entry(self, log_data: dict):
         """
@@ -41,6 +42,23 @@ class SovereignMongoStorage:
         log_data["processed_at"] = datetime.now(timezone.utc)
         result = self.journal_col.insert_one(log_data)
         return str(result.inserted_id)
+
+    def get_hero_artifact(self, artifact_name: str) -> dict:
+        """
+        Retrieves a JSON artifact from MongoDB. Returns None if not found.
+        """
+        doc = self.artifacts_col.find_one({"artifact_name": artifact_name}, {"_id": 0})
+        return doc.get("data") if doc else None
+        
+    def save_hero_artifact(self, artifact_name: str, data: dict):
+        """
+        Saves or updates a JSON artifact in MongoDB.
+        """
+        self.artifacts_col.update_one(
+            {"artifact_name": artifact_name},
+            {"$set": {"data": data, "updated_at": datetime.now(timezone.utc)}},
+            upsert=True
+        )
 
     def process_all_unstaged(self):
         """

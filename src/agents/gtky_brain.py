@@ -3,7 +3,7 @@ import json
 import logging
 from pydantic import SecretStr
 from langchain_groq import ChatGroq
-from src.utils.path_utils import load_env_vars, get_auth_file
+from src.utils.path_utils import load_env_vars, get_project_root
 from src.database.neo4j_client import get_driver
 
 # Configure logging
@@ -18,7 +18,7 @@ class GTKYBrain:
     def __init__(self):
         self.api_key = SecretStr(os.getenv("GROQ_API_KEY"))
         self.llm = ChatGroq(api_key=self.api_key, model_name="groq/llama-3.3-70b-versatile")
-        self.origin_file = get_auth_file("origin_story.json")
+        self.origin_file = get_project_root() / "data" / "hero_artifacts" / "hero_origin.json"
         self.driver = get_driver()
 
     def load_origin_story(self):
@@ -38,20 +38,20 @@ class GTKYBrain:
             # 1. Create User and Past Epochs
             for item in data['origin_story']['past_authoring']:
                 session.run("""
-                    MERGE (u:User {name: $user})
+                    MERGE (h:Hero {name: $user})
                     MERGE (e:Epoch {title: $epoch})
                     SET e.experience = $experience
-                    MERGE (u)-[:LIVED_THROUGH]->(e)
-                """, user=data['user'], epoch=item['epoch'], experience=item['experience'])
+                    MERGE (h)-[:LIVED_THROUGH]->(e)
+                """, user=data.get('user', os.environ.get("HERO_NAME", "Hero")), epoch=item['epoch'], experience=item['experience'])
 
             # 2. Map Future Ambitions as Quests/Goals
             for ambition in data['origin_story']['future_authoring']['ambitions']:
                 session.run("""
-                    MATCH (u:User {name: $user})
+                    MATCH (h:Hero {name: $user})
                     MERGE (q:Quest {title: $ambition})
                     SET q.status = 'active'
-                    MERGE (u)-[:PURSUING]->(q)
-                """, user=data['user'], ambition=ambition)
+                    MERGE (h)-[:PURSUING]->(q)
+                """, user=data.get('user', os.environ.get("HERO_NAME", "Hero")), ambition=ambition)
         
         logger.info("✅ Identity Graph synchronized successfully.")
 

@@ -13,6 +13,7 @@ from src.agents.crew_manager_mach2 import run_crew
 from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.integrations.google_calendar import get_calendar_service
+from src.agents.first_serving_porter import run_first_serving_porter
 from functools import wraps
 import os
 import json
@@ -277,6 +278,30 @@ def process_journal():
         logger.error(f"Error reading request data: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/chat/porter', methods=['POST', 'OPTIONS'])
+@require_api_key
+def chat_porter():
+    """
+    Handles chat interaction with the First-Serving Porter agent.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({"error": "Message required"}), 400
+            
+        user_msg = data['message']
+        logger.info("Received Porter chat message.")
+        
+        result = run_first_serving_porter(user_msg)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in First-Serving Porter chat: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
 def login():
     """
@@ -343,14 +368,24 @@ def manage_artifact(artifact_name):
     if artifact_name not in allowed_artifacts:
         return jsonify({"error": "Invalid artifact name"}), 400
         
-    artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
+    if artifact_name == 'hero_detriments.json':
+        artifact_path = project_root / '.auth' / artifact_name
+    else:
+        artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
     
     if request.method == 'GET':
         try:
-            if not artifact_path.exists():
-                return jsonify({"error": "Artifact not found"}), 404
-            with open(artifact_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            mongo_storage = SovereignMongoStorage()
+            data = mongo_storage.get_hero_artifact(artifact_name)
+            
+            # If not in MongoDB yet, seed it from the filesystem
+            if not data:
+                if not artifact_path.exists():
+                    return jsonify({"error": "Artifact not found"}), 404
+                with open(artifact_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                mongo_storage.save_hero_artifact(artifact_name, data)
+                
             return jsonify(data)
         except Exception as e:
             logger.error(f"Error fetching artifact {artifact_name}: {e}", exc_info=True)
@@ -362,12 +397,16 @@ def manage_artifact(artifact_name):
             if not data:
                 return jsonify({"error": "No JSON data provided"}), 400
                 
+            # Keep flat-file synchronized as a fallback
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            
             with open(artifact_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4)
                 
-            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully"})
+            # Update Mongo as Source of Truth
+            mongo_storage = SovereignMongoStorage()
+            mongo_storage.save_hero_artifact(artifact_name, data)
+                
+            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB"})
         except Exception as e:
             logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500
