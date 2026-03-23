@@ -52,7 +52,7 @@ tmp/
 temp/
 *.bak
 *.backup
-
+*.bk*
 # Test outputs and reports
 .pytest_cache/
 .coverage
