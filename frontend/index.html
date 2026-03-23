@@ -3,41 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Life's Adventure Time log - Weekly Planner</title>
+    <title>Hub - Agentic Personal Porter</title>
     <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <nav class="bg-gray-800 p-4 text-white">
-        <div class="container mx-auto flex justify-between">
-            <h1 class="text-xl font-bold">Life's Adventure Time Log</h1>
-            <div class="flex space-x-4 text-sm font-semibold">
-                <a href="inventory.html" class="text-white hover:text-amber-300 transition-colors">Inventory</a>
-                <a href="artifacts.html" class="text-white hover:text-amber-300 transition-colors">Artifacts</a>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 text-white shadow-md z-10 sticky top-0">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-tight">Agentic Personal Porter</h1>
+            <div class="space-x-4 text-sm font-medium">
+                <a href="/index.html" class="text-blue-400 font-bold border-b-2 border-blue-400 pb-1">Hub</a>
+                <a href="/adventure_log" class="hover:text-blue-300 transition">Adventure Log</a>
+                <a href="/inventory.html" class="hover:text-blue-300 transition">Inventory</a>
+                <a href="/artifacts.html" class="hover:text-blue-300 transition">Artifacts</a>
+                <a href="/journal_review" class="hover:text-blue-300 transition">Journal Review</a>
+                <a href="/oracle_predictions" class="hover:text-blue-300 transition">Oracle</a>
             </div>
         </div>
     </nav>
 
-    <div class="container mx-auto p-4">
-        <!-- Day of the week navigation -->
-        <div id="day-nav" class="flex flex-wrap justify-center space-x-2 mb-4">
-            <button data-day="monday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Monday</button>
-            <button data-day="tuesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Tuesday</button>
-            <button data-day="wednesday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Wednesday</button>
-            <button data-day="thursday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Thursday</button>
-            <button data-day="friday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Friday</button>
-            <button data-day="saturday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Saturday</button>
-            <button data-day="sunday" class="day-btn px-4 py-2 rounded-lg bg-gray-300 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">Sunday</button>
-        </div>
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">Welcome Back, Hero</h2>
+                <p class="text-gray-600">Your high-level metrics and direct porter communications.</p>
+            </div>
+            <button id="sync-calendar-btn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+                📅 Sync Calendar
+            </button>
+        </header>
 
-        <h2 id="current-day-header" class="text-3xl font-bold text-center mb-4">Loading...</h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Intelligence & Interaction -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Porter Chat Terminal -->
+                <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-blue-500 shadow-lg">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🤖</span> First-Serving Porter</h3>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+                            <div class="bg-gray-100 rounded-2xl rounded-tl-none p-4 text-gray-800">
+                                <p class="mb-2">Greetings! I've analyzed your current <strong>Identity Graph</strong>.</p>
+                                <p class="text-sm border-t pt-2 mt-2 text-gray-600 italic">I noticed your <span class="font-bold text-blue-600">Origin Story</span> is missing the section detailing your primary motivations. Would you like to fill that out now?</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
+                        <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">Send</button>
+                    </div>
+                </section>
 
-        <!-- Container for the selected day's log -->
-        <div id="day-view-container" class="space-y-6">
-            <!-- Time chunk cards will be dynamically inserted here by app.js -->
+                <!-- Missing Artifacts Prompts -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-yellow-400">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2"><span>📂</span> Missing Artifact Scans</h3>
+                    <p class="text-gray-600 mb-4">Your Porter has detected incomplete data models.</p>
+                    
+                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-xl">
+                        <h4 class="font-bold text-yellow-800 mb-1">hero_origin.json -> "Motivation"</h4>
+                        <p class="text-sm text-yellow-700 mb-3">You haven't defined the core reasons that drive your current quest goals.</p>
+                        <textarea class="w-full bg-white border border-yellow-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-yellow-400 mb-2" rows="2" placeholder="Write a short paragraph about what motivates you..."></textarea>
+                        <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-sm">Save to Graph</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Metrics & Calendar -->
+            <div class="space-y-8">
+                <!-- Overview Stats -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg bg-gradient-to-br from-white to-gray-50">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Identity Graph Pulses</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                            <span class="text-gray-600 font-medium">Synced Events (<span class="text-xs">All Time</span>)</span>
+                            <span class="text-2xl font-bold text-blue-600">13,542</span>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                            <span class="text-gray-600 font-medium">Valuable Detours (<span class="text-xs">This Week</span>)</span>
+                            <span class="text-2xl font-bold text-green-500">4</span>
+                        </div>
+                         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                            <span class="text-gray-600 font-medium">Logged Reflections</span>
+                            <span class="text-2xl font-bold text-purple-500">12</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Daily/Weekly Goals Snapshot -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-indigo-500">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Current Week Trajectory</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-3">
+                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
+                            <span class="text-sm text-gray-700">Map out Database connections</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
+                            <span class="text-sm text-gray-700">Finalize Hub overhaul</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
+                            <span class="text-sm text-gray-700">Audit Socratic Mirror prompts</span>
+                        </li>
+                    </ul>
+                </section>
+            </div>
         </div>
-    </div>
+    </main>
 
     <script src="./js/auth.js"></script>
-    <script src="./js/app.js"></script>
 </body>
 </html>

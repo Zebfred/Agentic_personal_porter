@@ -100,6 +100,21 @@ def require_api_key(f):
 def index():
     return send_from_directory('../frontend', 'index.html')
 
+@app.route('/adventure_log')
+@app.route('/Adventure_Time_log.html')
+def adventure_log():
+    return send_from_directory('../frontend', 'Adventure_Time_log.html')
+
+@app.route('/journal_review')
+@app.route('/journal_review.html')
+def journal_review():
+    return send_from_directory('../frontend', 'journal_review.html')
+
+@app.route('/oracle_predictions')
+@app.route('/Oracle_predictions.html')
+def oracle_predictions():
+    return send_from_directory('../frontend', 'Oracle_predictions.html')
+
 @app.route('/inventory')
 @app.route('/inventory.html')
 def inventory():

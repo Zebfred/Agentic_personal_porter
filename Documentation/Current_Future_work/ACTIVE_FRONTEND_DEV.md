@@ -2,6 +2,14 @@
 
 This document tracks immediate, actionable tasks for the frontend interface (`app.js`, `index.html`, `inventory.html`).
 
+## Highest Priority: Frontend Hub Overhaul
+*Status: Planning Phase - Branch: feature/frontend-hub-overhaul*
+
+- [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying Identity Graph metrics, a "Sync Calendar" action, and an interactive Agent chat interface that queries missing hero artifacts.
+- [ ] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route.
+- [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications.
+- [ ] **Oracle Predictions (`Oracle_predictions.html`):** Create a placeholder UI for future predictive agent features.
+
 ## Highest Priority: Hero Artifacts Management UI
 *Status: Architecture conceptualized, UI completely missing.*
 
