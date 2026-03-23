@@ -10,7 +10,7 @@
 tmp/
 temp/
 __pycache__/
-*.bk
+*.bk*
 .ipynb_checkpoints/
 .legacy_hr/*
 
@@ -26,3 +26,4 @@ credentials.json
 # Ignore sensitive data
 data/google_calendar/*
 
+tailwindcss
