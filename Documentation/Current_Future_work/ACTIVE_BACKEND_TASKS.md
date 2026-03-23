@@ -32,3 +32,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 
 - [ ] **Artifacts API:** Debug the `GET` and `POST` routes for `/api/artifacts/<artifact_name>` to ensure JSON data is being properly fetched and saved without permissions or pathing errors.
 - [ ] **Inventory API:** Debug `GET /api/inventory` to ensure the payload format correctly matches what `script.js` expects to render the glassmorphic grid.
+
+Updating our mongo related scripts to be able to pull automatically from the calendar in progressing further back in time. 
+Being able to pull the data and store in a time series connection
+Setting up a proper vector database for production and long term storage.
