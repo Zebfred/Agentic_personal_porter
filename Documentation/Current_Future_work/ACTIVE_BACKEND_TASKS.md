@@ -2,6 +2,14 @@
 
 This document tracks immediate, high-priority tasks for the Python backend infrastructure (`app.py`, agent pipelines, data ingestion, and cloud deployments).
 
+## Priority: First-Serving Agent API & Hub Support
+*Status: Requirements drafted in ACTIVE_AGENT_DEV.md*
+
+- [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub.
+- [ ] **Graph Metric Endpoints:** Build endpoints that explicitly query Neo4j for high-level progress metrics to populate the Hub dashboard.
+- [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.
+- [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI.
+
 ## Highest Priority: Server Networking & Cloud Deployment Fixes
 *Status: Investigating structural connection issues for production.*
 
@@ -28,11 +36,17 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler or AWS EventBridge) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
 
 ## Priority: Artifacts & Inventory API Support
-*Status: Investigating why frontend endpoints are non-functional.*
+*Status: Severe file-naming collisions identified, API endpoints failing.*
 
-- [ ] **Artifacts API:** Debug the `GET` and `POST` routes for `/api/artifacts/<artifact_name>` to ensure JSON data is being properly fetched and saved without permissions or pathing errors.
+- [ ] **Artifact Naming Standardization:** Massive mismatches exist across the backend. `gtky_brain.py` calls for `origin_story.json`, `gtky_librarian.py` calls for `hero_intent.json`, while `inject_hero_foundation.py` calls for `hero_ambition.json` and `hero_origin.json`. These must all be rigidly standardized to point exclusively to the `.auth/` or `data/hero_artifacts/` directory correctly.
+- [ ] **Artifacts API:** Debug the `GET` and `POST` routes for `/api/artifacts/<artifact_name>` to ensure JSON data is being properly fetched and saved without permissions or pathing errors. Include `hero_detriments.json` in this fix.
 - [ ] **Inventory API:** Debug `GET /api/inventory` to ensure the payload format correctly matches what `script.js` expects to render the glassmorphic grid.
 
-Updating our mongo related scripts to be able to pull automatically from the calendar in progressing further back in time. 
-Being able to pull the data and store in a time series connection
-Setting up a proper vector database for production and long term storage.
+## Priority: Database Architecture & Ecosystem Verification
+*Status: Planning phase for long-term storage and connection integrity.*
+
+- [ ] **Vector Database Integration:** Set up a proper production vector database (e.g., Pinecone, Weaviate, or Qdrant) that these agents will interact with for long-term semantic search and massive document storage.
+- [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar, progressing further back in time, and establishing a robust time-series connection for historical data.
+- [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
+- [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
+- [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.

@@ -18,7 +18,7 @@ gcloud run deploy agentic-porter \
   --allow-unauthenticated \
   --port 5090 \
   --memory 1024Mi \
-  --set-env-vars="GROQ_API_KEY=${GROQ_API_KEY},MONGO_URI=${MONGO_URI},NEO4J_URI=${NEO4J_URI},NEO4J_USERNAME=${NEO4J_USERNAME},NEO4J_PASSWORD=${NEO4J_PASSWORD}" \
+  --set-env-vars="GROQ_API_KEY=${GROQ_API_KEY},MONGO_URI=${MONGO_URI},NEO4J_URI=${NEO4J_URI},NEO4J_USERNAME=${NEO4J_USERNAME},NEO4J_PASSWORD=${NEO4J_PASSWORD},PORTER_API_KEY=${PORTER_API_KEY},JWT_SECRET=${JWT_SECRET}" \
   --project="long-facet-473520-n0" \
   --quiet
 
