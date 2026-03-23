@@ -4,6 +4,11 @@ We need to setup to add events from calendar that can be grab from the oldest ti
 > Yes! The current script `src/database/calendar_raw_sync_to_mongo.py` has a method `pull_large_batch(days=90)`. You can simply change `days=365` or `days=3650` (10 years) to grab everything from the oldest time!
 
 
+Update index to be Adventure_Time_log.html to have a button to trigger the sync_calendar
+Update index to be a general hub for the app. Maybe a hub for first serving porter to communicate with user directly?
+-have a place for general day/week goals. Show calendar info perhaps?
+Have a proper intergration with calendar or have this application live as an extention potentially?
+ 
 ----------
 Mar 19
 Future research agent
