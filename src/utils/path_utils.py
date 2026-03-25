@@ -15,14 +15,23 @@ def load_env_vars():
     Locates the .auth/.env file and loads it into the environment.
     """
     root = get_project_root()
-    env_path = root / ".auth" / ".env"
+    possible_paths = [
+        root / ".auth" / ".env",
+        Path("/.auth/.env"),
+        Path("/.auth/Porter_auth_env")
+    ]
     
-    if env_path.exists():
-        load_dotenv(dotenv_path=env_path)
-    else:
+    loaded = False
+    for env_path in possible_paths:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+            loaded = True
+            break
+            
+    if not loaded:
         # We'll use a print here instead of a raise so we don't 
         # crash scripts that don't actually need the .env
-        print(f"⚠️ Warning: .env file not found at {env_path}")
+        print(f"⚠️ Warning: .env file not found at any expected path.")
 
 def get_auth_file(filename: str) -> str:
     """
