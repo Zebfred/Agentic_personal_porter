@@ -1,3 +1,7 @@
+## 2025-02-14 - Fix Insecure Deserialization of Google Calendar Tokens
+**Vulnerability:** Google Calendar credentials were being serialized and stored as a `pickle` file (`token.pickle`).
+**Learning:** `pickle` deserialization can result in arbitrary code execution if the file is tampered with by an attacker.
+**Prevention:** Always use secure, language-agnostic data serialization formats like JSON (via `Credentials.from_authorized_user_file` and `to_json()`) instead of binary `pickle` objects to store sensitive user credentials or states.
 ## 2025-03-19 - Flask Debugger Exposed to 0.0.0.0
 **Vulnerability:** The Flask app was hardcoded to run with `debug=True` and `host='0.0.0.0'` in `src/app.py`. This exposes the Werkzeug interactive debugger to any network interface, allowing potential Remote Code Execution (RCE) and sensitive data leakage if an error occurs.
 **Learning:** Hardcoded debug configurations in entry point files are a common and critical security flaw, especially when the application is bound to all public interfaces (`0.0.0.0`). It must always be configurable via environment variables and default to `False`.
