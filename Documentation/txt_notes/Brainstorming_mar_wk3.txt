@@ -1,0 +1,89 @@
+Mar 22
+
+We need to setup to add events from calendar that can be grab from the oldest time?
+> Yes! The current script `src/database/calendar_raw_sync_to_mongo.py` has a method `pull_large_batch(days=90)`. You can simply change `days=365` or `days=3650` (10 years) to grab everything from the oldest time!
+
+
+Update index to be Adventure_Time_log.html to have a button to trigger the sync_calendar
+Update index to be a general hub for the app. Maybe a hub for first serving porter to communicate with user directly?
+-have a place for general day/week goals. Show calendar info perhaps?
+Have a proper intergration with calendar or have this application live as an extention potentially?
+
+A frontend endpoint for reviewing past journal entries and agent reflections for those entries
+have a subpage of that journal page for Communicating with the classifications and giving the agent feedback on those audit records
+---
+21:45 still need a proper login for other users , but not going to worry about that tonight
+
+----------
+Mar 19
+Future research agent
+
+Equipment and Knowledge tab. I need do to some hard thinking for this one.
+
+I want to make the Tasks/bags thing. Basically have tasks intergrated from trello or google tasks for a given time
+Be able to make a suggestions of the tasks done by ( time needed and/or a specific Pillar classifcation)
+
+Potential Pool of tasks	
+Journaling tool for how user conducts their time and how they feel about that	
+A reflector to thoughts shared	
+-----
+Mar 18 and before :
+
+Potential Pool of tasks	
+Journaling tool for how user conducts their time and how they feel about that	
+A reflector to thoughts shared	
+	
+Analyzer number of Hero’s Intent and Actual matching up either in their micro actions or in their macro goals	
+Ingesting and correct classification of Calendar Data	
+Collecting More and More info related to Intent and Origin story in a substable way that user regularly wants to contribute too?	
+Displays info and insights related to Intent, Origin, and present actions	
+Low friction, ease to the user	
+	
+Potential Pool of Agents Potential Tasks or Role fufillments	
+First_Serving_Porter should be my crew manager of the rest of the ecosystem. As the front man it gives a final recommendation(might give two or three options, asking the user for a preference) and the weight of the source on why it is giving this recommendation. It can take user input. If we change certain things based on the quota or like can it be automatically updated so many minutes? Or do an update for the change.	
+	
+helps take Hero Milestones, Hero’s Intent,Hero quota’s, Hero Reflections, and Hero Numbers to turn into daily/weekly Porter_first_serving recommendation for necessary action	
+	
+GTKY knows past and future Simple the curator of Hero’s Intent, Origin Story, and Google Calendar	
+	
+helps project longterm Milestones and prioritizes them based on user Input?	
+GTKY can take an output number, calculating differences in Actual and Intent that can be used for Analyzer	
+	
+For the Core GTKY. I need it able to take what the AIM is, Where you have been, and Intent vs reality.	
+	
+A combination of automatic classifications and the ability for human overwrite for classification( of events classification, intent/actual, space for detours.)	
+	
+GTKY agent should just process info. An executive info of what is in the past Epochs, and how to continually fill the gaps of the Origin story and Hero’s Intent. Processes Intent vs actual from calendar, possible gives numbers to the Analyzer_porter? Anything not gain in original intake ( To be fully comprehensive will likely take several hours of writing and rewriting. So It be in charge of collecting and processing). I think once I take/get the proper structure of Hero’s Intent. I will see a number of tasks that will need to be pursued on a daily/weekly basic.	
+	
+Analyzer	
+	
+Analyzer_Porter ( number of Hero’s Intent and Actual matching up either in their micro actions or in their macro goals	
+	
+(really, this is a small LLM and/or regression) can help show a numerical difference between intent and actual. Maybe we can label the day and/or time periods as Forward Progress in Hero’s Intent, Alight/neutral, or Backstepping in the Hero’s Intent. Takes those labels days and/or time periods, plus distinctions in Actual and Intent to help given data driven nudges based on historical data and Hero’s Intent.	
+	
+It basically takes hard number scores between intent and actual. Hero Numbers	
+	
+Socratic Coach handles the daily reflections. On differences between Intent and Actual and give meaningful written reflections	
+	
+handles the daily reflections. On differences between Intent and Actual and give meaningful written reflections( Breaking down possible whys on differences between Actual and Intent, this agent can also be in charge of taking classifications of valuable detours, reframing viewpoint to more constructive nature. Have it count as halve credit in differences) - Hero Connections/Hero Reflections.	
+	
+	
+Grand visionary Porter - responsible for +3 year goals 5year, 10year, 20year, end of life goal. Might be an extension. Will be just an extension of GTKY until I feel confident that I can actually make fun predictive analytics of different path trajectories.	
+	
+Campaign_Porter will help take a longer Hero intent and break it down into Workable Milestones. Hero Milestones(Quarter objs, year objectives).	
+Sergeant_Porter - Makes Hero Missions?( weekly/monthly) Hero quota objs - offers a quanty of what tasks should be pursued for a given week. ( can be adjusted with user input)	
+Corrector porter? Helps fixes mistakes of other agents	    
+
+
+---
+Overhaul the Inventory Page (inventory.html) - Placeholders set, but no actual development.
+Change the main heading of the page from "Valuable Detours" to "The Hero's Inventory".
+Restructure the page to display a series of distinct sections or "cards".
+Keep the "Valuable Detours" Section: This section should remain functional. Ensure it has a container (e.g., a div with an ID like valuable-detours-list) where inventory items generated by the AI can be dynamically added later.
+Add the following new placeholder sections:
+Quests & Goals: Add a section with this title. Inside, include placeholder text like: [Future Feature: A log for your active, completed, and abandoned quests will be managed here.]
+Skill Log: Add a section with this title. Inside, include placeholder text like: [Future Feature: A dedicated record of the skills you are building will be tracked here.]
+Equipment & Knowledge Repository: Add a section with this title. Inside, include placeholder text like: [Future Feature: A repository for your tools, books, notes, and other key items will be organized here.]
+Hero's Stats: Add a section with this title. Inside, include placeholder text like: [Future Feature: Your personal stats, reflecting your growth and well-being, will be displayed here.]
+Finances: Add a section with this title. Inside, include placeholder text like: [Future Feature: A simple tool for tracking finances related to your quests and goals will be available here.]
+Styling: Please use a clean, card-based layout (using Flexbox or CSS Grid) to make the different inventory categories look organized and distinct.

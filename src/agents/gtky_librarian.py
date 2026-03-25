@@ -38,8 +38,8 @@ class GTKYLibrarian:
         logger.info("♻️ Identity Graph nodes wiped for fresh ingestion.")
 
     def ingest_hero_origin(self):
-        """Maps hero_origin.json to (User)-[:LIVED_THROUGH]->(Epoch) structure."""
-        data = self.load_json("hero_origin.json")
+        """Maps hero_origin.json to (Hero)-[:LIVED_THROUGH]->(Epoch) structure."""
+        data = self._load_json("hero_origin.json")
         if not data: return
 
         with self.driver.session() as session:
@@ -48,31 +48,31 @@ class GTKYLibrarian:
                 if not epoch['name']: continue
                 
                 session.run("""
-                    MERGE (u:User {name: 'Jimmy'})
+                    MERGE (h:Hero {name: $hero_name})
                     MERGE (e:Epoch {name: $name})
                     SET e.timeframe = $timeframe
-                    MERGE (u)-[:LIVED_THROUGH]->(e)
+                    MERGE (h)-[:LIVED_THROUGH]->(e)
                     WITH e
                     UNWIND $experiences AS exp
                     MERGE (x:Experience {title: exp.title})
                     SET x.description = exp.description
                     MERGE (e)-[:CONTAINS]->(x)
-                """, name=epoch['name'], timeframe=epoch['timeframe'], experiences=epoch['experiences'])
+                """, name=epoch['name'], timeframe=epoch['timeframe'], experiences=epoch['experiences'], hero_name=os.environ.get("HERO_NAME", "Hero"))
         logger.info("✅ Hero Origin artifacts archived in Graph.")
 
     def ingest_hero_intent(self):
-        """Maps hero_intent.json principles and goals as graph anchors."""
-        data = self._load_json("hero_intent.json")
+        """Maps hero_ambition.json principles and goals as graph anchors."""
+        data = self._load_json("hero_ambition.json")
         if not data: return
 
         with self.driver.session() as session:
             # Ingest Principles
             for principle in data['Principles']:
                 session.run("""
-                    MATCH (u:User {name: 'Jimmy'})
+                    MATCH (h:Hero {name: $hero_name})
                     MERGE (p:Principle {text: $text})
-                    MERGE (u)-[:GUIDED_BY]->(p)
-                """, text=principle)
+                    MERGE (h)-[:GUIDED_BY]->(p)
+                """, text=principle, hero_name=os.environ.get("HERO_NAME", "Hero"))
 
             # Ingest Specific Intents (Social, Career, etc.)
             for item in data['Intent']:
@@ -80,11 +80,11 @@ class GTKYLibrarian:
                     # Handle both list and string detail types from your draft
                     description = ", ".join(details) if isinstance(details, list) else details
                     session.run("""
-                        MATCH (u:User {name: 'Jimmy'})
+                        MATCH (h:Hero {name: $hero_name})
                         MERGE (i:Intent {category: $category})
                         SET i.description = $description
-                        MERGE (u)-[:ASPIRES_TO]->(i)
-                    """, category=category, description=description)
+                        MERGE (h)-[:ASPIRES_TO]->(i)
+                    """, category=category, description=description, hero_name=os.environ.get("HERO_NAME", "Hero"))
         logger.info("🎯 Hero Intent anchors synchronized.")
 
     def run_full_sync(self):

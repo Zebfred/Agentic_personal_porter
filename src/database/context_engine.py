@@ -39,14 +39,14 @@ class SovereignContextEngine:
     @staticmethod
     def _fetch_context(tx, name):
         # Using the correct schema defined in SovereignGraphInjector:
-        # (h:Hero)-[:HAS_CALENDAR]->(c:Calendar)-[:HAS_EVENT]->(e:Event)-[:FULFILLS]->(i:Intent)
+        # (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)
         query = """
-        MATCH (u:User) WHERE u.name CONTAINS $name
-        //OPTIONAL MATCH (u)-[:GUIDED_BY]->(p:Principle)
-        //OPTIONAL MATCH (u)-[:PURSUES]->(i:Intention)
-        // WHERE i.status = 'active' OR i.status IS NULL
+        MATCH (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)
+        WHERE h.name CONTAINS $name
+        OPTIONAL MATCH (art)-[:GUIDED_BY]->(p:Principle)
+        OPTIONAL MATCH (art)-[:HAS_INTENT]->(i:Intent)
         RETURN 
-            collect(distinct p.text)[..3] as principles,
+            collect(distinct p.text) as principles,
             collect(distinct i.category)[..5] as active_intentions
         """
         result = tx.run(query, name=name)
