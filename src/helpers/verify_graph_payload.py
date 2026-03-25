@@ -9,7 +9,11 @@ sys.path.append(str(root))
 
 from src.database.mongo_storage import SovereignMongoStorage
 
-def verify_local_graph_structure(hero_name="Zeb"):
+import os
+
+def verify_local_graph_structure(hero_name=None):
+    if hero_name is None:
+        hero_name = os.environ.get("HERO_NAME", "Hero")
     """
     Pulls formatted data from MongoDB and constructs a local representation 
     of the Neo4j Graph to verify relationships and classifications.
