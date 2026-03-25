@@ -38,15 +38,15 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 ## Priority: Artifacts & Inventory API Support
 *Status: Severe file-naming collisions identified, API endpoints failing.*
 
-- [ ] **Artifact Naming Standardization:** Massive mismatches exist across the backend. `gtky_brain.py` calls for `origin_story.json`, `gtky_librarian.py` calls for `hero_intent.json`, while `inject_hero_foundation.py` calls for `hero_ambition.json` and `hero_origin.json`. These must all be rigidly standardized to point exclusively to the `.auth/` or `data/hero_artifacts/` directory correctly.
-- [ ] **Artifacts API:** Debug the `GET` and `POST` routes for `/api/artifacts/<artifact_name>` to ensure JSON data is being properly fetched and saved without permissions or pathing errors. Include `hero_detriments.json` in this fix.
-- [ ] **Inventory API:** Debug `GET /api/inventory` to ensure the payload format correctly matches what `script.js` expects to render the glassmorphic grid.
+- [x] **Artifact Naming Standardization:** Standardized across the backend to `hero_origin.json`, `hero_ambition.json`, and `hero_detriments.json`.
+- [x] **Artifacts API:** Debugged and verified. Standardized pathing to `.auth/` for detriments and `data/hero_artifacts/` for origins/ambitions.
+- [x] **Inventory API:** Debugged and verified. Payload format correctly matches `script.js` expectations.
 
 ## Priority: Database Architecture & Ecosystem Verification
 *Status: Planning phase for long-term storage and connection integrity.*
 
-- [ ] **Vector Database Integration:** Set up a proper production vector database (e.g., Pinecone, Weaviate, or Qdrant) that these agents will interact with for long-term semantic search and massive document storage.
-- [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar, progressing further back in time, and establishing a robust time-series connection for historical data.
+- [ ] **Vector Database Integration:** Set up a proper production vector database (MongoDB Atlas Vector Search setup in `vector_storage.py`) that the Corrector and GTKY agents will interact with for long-term semantic search and massive document storage.
+- [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar via `calendar_timeseries.py`, progressing further back in time, and establishing a robust time-series connection for historical data. The backend logic is now shifted to cleanly divide events into `raw_gcal_timeseries`, `event_intentions`, `event_actuals`, and `unified_events` using a consistent event UUID.
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.
@@ -57,14 +57,20 @@ This document tracks backend development tasks, architectural shifts, and long-t
 
 ## Long-Term Memory Storage (Vector DB)
 - **Objective:** Integrate a Vector Database to serve as long-term memory for the Agentic Porter Ecosystem.
+- **Optimization (IVF/PQ Clustering):** Implement Inverted File Index (IVF) and Product Quantization (PQ) to aggressively compress vectors and restrict the memory footprint to the 1GB budget.
 - **Context:** Currently, we rely on Neo4j for semantic Identity Graph relationships and MongoDB for raw time-series data. However, as the user interacts via chat (the First-Serving Porter), retaining unstructured semantic memory over extended periods requires vector similarity embeddings.
 - **Status:** Planning Phase. This will be tackled in a future session after the initial Agent drafts are finalized.
 
-## JSON Artifact Storage Migration
-- **Objective:** Migrate JSON configuration architectures like `hero_ambition.json` and `hero_origin.json` to MongoDB.
-- **Context:** MongoDB is well-suited for document storage and time-series logging, providing better resilience and query-ability compared to flat filesystem JSON files.
+## MongoDB Time Series & Migration
+- **Objective:** Migrate JSON configuration architectures like `hero_ambition.json` and `hero_origin.json` to MongoDB while implementing formal Time Series Collections for calendar data.
+- **Intent-Actual Schema:** Refactor calendar ingestion to produce a unified `Intent-Actual` JSON document. This allows a single query to calculate the "Delta" (alignment score) natively.
+- **Summarization Echelons:** Do not store full text recursively. Store Echelon 1 (Daily details), Echelon 2 (Weekly Agent Recaps), and Echelon 3 (Monthly 'Hero Numbers').
 - **Status:** Pending implementation.
 
 ## Integration of New Agents
 - **Objective:** Expand the agent capabilities in the backend and ensure they share the same LLM primitives.
 - **Frameworks:** We are operating a dual-framework setup where CrewAI is utilized for intensive, batch, multi-agent synchronized executions (e.g. daily Socratic Mirror reflections) and LangChain generic agents handle low-latency direct user-chat interactions (e.g., First-Serving Porter).
+
+
+Step 4: Optimization & "Budget" Engineering
+Working with a learning agent, there a large chunk of text in Mar23_brainstorming.txt that needs to be processed and encoded into the system. Which recommendations on checks to  
