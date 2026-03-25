@@ -1,6 +1,10 @@
 # Agent Registry
 
-The Porter's core AI intelligence relies on the CrewAI framework powered by the Groq API. Below is the registry defining the active "Crew" that processes user journals into structured Neo4j data.
+The Porter's core AI intelligence relies on a **Dual System Architecture** powered by the Groq API (via LangChain primitives). We use:
+- **CrewAI**: For batch-processing, multi-agent reflection (e.g., end-of-day Socratic Mirror analysis).
+- **LangChain Tool-Calling Agents**: For instantaneous, low-latency, direct user-chat interactions on the Hub frontend.
+
+Below is the registry defining the active agents.
 
 ## 1. Goal Ingestion Agent
 - **Alias:** The Logistics Coordinator
@@ -15,10 +19,16 @@ The Porter's core AI intelligence relies on the CrewAI framework powered by the 
 - **Guidelines:** The tone must be supportive, professional, and slightly witty. They act like a good butler ("Sir..."). If they notice "The Fog of War" (unaccounted time), they do not scold; they gently ask if it was a necessary detour for rest or a distraction. 
 
 ## 3. Inventory Curator Agent
-- **Alias:** The Quartermaster (or GTKY Librarian)
+- **Alias:** The Quartermaster
 - **Role:** Analyzes the `Actual` tasks to discover newly earned "XP", skills, or insights and logs them into long-term tracking nodes.
 - **Objective:** Automatically categorizes tasks into life pillars (Professional-growth, Relationship-depth) and adds positive "Valuable Detours" into the Hero's Inventory.
 - **Expected Output:** Emits the metadata bound for `(Achievement)` nodes.
+
+## 4. First-Serving Porter
+- **Alias:** The Front Man (Chief of Staff)
+- **Framework:** LangChain Tool-Calling Agent
+- **Role:** The primary user-facing recommender and chat interface on the Hub.
+- **Function:** Operates under the Sovereign Data Protocol. Bridges the User's Hero Intent (Neo4j) and Ground Truth. It triggers tools to update Artifacts (Origin Story/Ambitions) and emits `[TRANSPARENCY HANDOFF]` logs when it intends to route a complex background task to the CrewAI sub-agents.
 
 ---
 
@@ -26,11 +36,7 @@ The Porter's core AI intelligence relies on the CrewAI framework powered by the 
 
 The future scale of the Porter relies on a sprawling, highly specialized crew of distinct agents operating on the Identity Graph:
 
-1. **First_Serving_Porter (The Front Man)**
-   - **Role:** The crew manager of the rest of the ecosystem.
-   - **Function:** Serves as the primary user-facing recommender. Aggregates Milestones, Intentions, Quotas, Reflections, and "Hero Numbers" to provide 2-3 weighted options for daily/weekly necessary action. Highly responsive to dynamic user input for rapid adjustments.
-
-2. **GTKY Agent (Getting To Know You)**
+1. **GTKY Agent (Getting To Know You)**
    - **Role:** Curator of the Hero's Intent, Origin Story, and Calendar space.
    - **Function:** Fully processes past and future contexts to fill gaps between the Origin Story and Hero's Intent. Calculates and passes raw difference integers representing Actual vs Intent (the "Hero Numbers") downward to the Analyzer.
 

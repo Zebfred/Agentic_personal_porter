@@ -2,19 +2,44 @@
 
 This document tracks immediate, actionable tasks for the frontend interface (`app.js`, `index.html`, `inventory.html`).
 
+## Highest Priority: Frontend Hub Overhaul
+*Status: UI Scaffolding complete - Merged to main*
+
+- [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying Identity Graph metrics, a "Sync Calendar" action, and an interactive Agent chat interface that queries missing hero artifacts. *(Pending backend and Agent development)*
+- [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route.
+- [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
+- [ ] **Oracle Predictions (`Oracle_predictions.html`):** Create a placeholder UI for future predictive agent features. *(Pending backend and Agent development)*
+- [ ] **Weekly Goal Artifact Selector:** Build a simple UI module on the Hub allowing the user to explicitly define the "Priority Pillar" for the current week, setting the weights for backend agent logic.
+
 ## Highest Priority: Hero Artifacts Management UI
 *Status: Architecture conceptualized, UI completely missing.*
 
-- [x] **Artifact Builder UI:** Create a dedicated, polished frontend interface allowing the user to seamlessly view, build out, and manually update their core hero artifacts (specifically `hero_origin.json` and `hero_ambition.json`). (Awaiting human verification)
+- [x] **Artifact Builder UI:** Standardized API paths to relative URLs, resolving CORS issues. Artifacts securely viewable and updatable via the new interface.
 - [ ] **Proactive Refinements (Future Work):** Implement a mechanism to proactively prompt the user during their daily recon to fill out missing artifact sections or provide minor refinements over time.
+- [ ] **Future Artifact Builder (`hero_future.json`):** Create UI input variants specifically designed to capture the user's ambitions over distinct periods of time (short, mid, and long term).
 
 ## Secondary Priority: The Hero's Inventory Overhaul
-*Status: Placeholders set, but no actual development.*
+*Status: UI overhaul developed but currently non-functional.*
 
-- [x] **Dynamic Injection:** Ensure the "Valuable Detours" `<div>` (`#valuable-detours-list`) successfully handles dynamic injection from the backend without breaking the new CSS grid. (Awaiting human verification)
-- [x] **Quests & Goals:** Replace the empty placeholder with actual fetch logic bridging to Neo4j `Intention` pathways. (Awaiting human verification)
-- [x] **Skill Log:** Build out the UI component that maps to newly acquired `Achievement` nodes. (Awaiting human verification)
-- [x] **Equipment & Knowledge Repository:** Build out the UI component mapping to stored artifacts and notes. (Awaiting human verification)
-- [x] **Hero's Stats:** Design a visual representation (e.g., progress bars, radar charts) quantifying user growth from "Hero Numbers." (Awaiting human verification)
-- [x] **Finances:** Create a specialized input/display tool for tracking financial variables aligned with quest goals. (Awaiting human verification)
-- [x] **Origin/Ambition Collection:** Develop entirely new UI input variants designed strictly to capture the user's "Origin Story" and "Long-term Ambitions" for the GTKY agent context. (Awaiting human verification)
+- [x] **Dynamic Injection:** Successfully connected and debugged the inventory injection logic using relative API paths and expanded CORS support.
+- [ ] **Quests & Goals:** Debug fetch logic bridging to Neo4j `Intention` pathways.
+- [ ] **Skill Log:** Debug the UI component mapping to `Achievement` nodes.
+- [ ] **Equipment & Knowledge Repository:** Debug UI component for artifacts/notes.
+- [ ] **Hero's Stats:** Debug visual representation logic.
+- [ ] **Finances:** Debug financial tracking variables.
+- [ ] **Origin/Ambition Collection:** Debug the Origin Story frontend data handlers.
+
+## Tertiary Priority: Finalize the "Daily Recon" UI (Mach 2)
+*Status: Missing from active development tracker, importing from Mach 2 Roadmap.*
+
+- [ ] **The 20-Second Verification Loop:** The frontend (`index.html` / `app.js`) must be optimized to prioritize lightning-fast daily verification of the twin-track data.
+- [ ] **Low Cognitive Load:** Agent-inferred labels for activities (from the Mongo staging) must be visibly flagged on the frontend, easily correctable by the user, and confirmable with a single click.
+- [ ] **Artifact UI Hook:** Update the `inject_hero_foundation` logic to pull smoothly from the new Artifact Management UI rather than existing strictly as a backend dev script.
+
+## Upcoming Priority: Formal Production Login System
+*Status: Completed and awaiting human verification.*
+
+- [x] **Authentication UI:** Design and build a secure, polished login and registration screen for the application. (Awaiting human verification)
+- [x] **Session Management:** Implement frontend token handling (e.g., JWT) securely stored in memory or HTTP-only cookies, replacing the current prompt-based local storage API key method. (Awaiting human verification)
+- [x] **Route Protection:** Ensure all frontend pages proactively check authentication state and redirect unauthenticated users to the new login screen. (Awaiting human verification)
+Building a proper user login

@@ -8,13 +8,13 @@ root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
 from src.config import NeoConfig
+from src.database.mongo_storage import SovereignMongoStorage
 
 # --- Configuration ---
 driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
+mongo_storage = SovereignMongoStorage()
 
-ARTIFACTS_DIR = os.path.join(os.getcwd(), 'data', 'hero_artifacts')
-AMBITION_PATH = os.path.join(ARTIFACTS_DIR, 'hero_ambition.json')
-ORIGIN_PATH = os.path.join(ARTIFACTS_DIR, 'hero_origin.json')
+
 
 def flatten_intents(raw_intents):
     """
@@ -109,9 +109,10 @@ def inject_hero_data(hero_name=None):
         hero_name = os.environ.get("HERO_NAME", "Hero")
     """Reads the JSON and runs the Cypher queries to build the Hero foundation."""
     
-    # 1. Load Ambitions
-    with open(AMBITION_PATH, 'r') as file:
-        ambition_data = json.load(file)
+    ambition_data = mongo_storage.get_hero_artifact('hero_ambition.json')
+    if not ambition_data:
+        print("Error: hero_ambition.json not found in MongoDB.")
+        return
     principles = ambition_data.get("Principles", [])
     raw_intents = ambition_data.get("Intent", [])
     flat_intents = flatten_intents(raw_intents)
@@ -119,9 +120,10 @@ def inject_hero_data(hero_name=None):
     #flat_intents = flatten_intents(ambition_data.get("Intent", []))
 
     
-    # --- 2. Load Origins ---
-    with open(ORIGIN_PATH, 'r') as file:
-        origin_data = json.load(file)
+    origin_data = mongo_storage.get_hero_artifact('hero_origin.json')
+    if not origin_data:
+        print("Error: hero_origin.json not found in MongoDB.")
+        return
     raw_epochs = origin_data.get("origin_story", {}).get("epochs", [])
     epochs_data, experiences_data = process_epochs(raw_epochs)
     
@@ -129,22 +131,23 @@ def inject_hero_data(hero_name=None):
     # 3. Cypher Queries
     merge_hero_and_principles_query = """
     MERGE (h:Hero {name: $hero_name})
-    WITH h
+    MERGE (h)-[:HAS_ARTIFACTS]->(art:Artifacts {name: "Hero Artifacts"})
+    WITH art
     UNWIND $principles AS principle_text
     MERGE (p:Principle {text: principle_text})
-    MERGE (h)-[:GUIDED_BY]->(p)
+    MERGE (art)-[:GUIDED_BY]->(p)
     """
 
     merge_intents_query = """
-    MATCH (h:Hero {name: $hero_name})
+    MATCH (h:Hero {name: $hero_name})-[:HAS_ARTIFACTS]->(art:Artifacts)
     UNWIND $intents AS intent
     MERGE (i:Intent {category: intent.category})
     SET i.description = intent.description,
         i.parent_category = intent.parent_category
     
-    // Link top-level intents directly to the Hero
+    // Link top-level intents directly to the Artifacts node
     FOREACH (_ IN CASE WHEN intent.parent_category = 'None' THEN [1] ELSE [] END |
-        MERGE (h)-[:HAS_INTENT]->(i)
+        MERGE (art)-[:HAS_INTENT]->(i)
     )
     
     // Link sub-intents (like Romantic Goal) to their parent (Loved ones)
@@ -156,11 +159,11 @@ def inject_hero_data(hero_name=None):
 
     # Timeline & Memories
     merge_epochs_query = """
-    MATCH (h:Hero {name: $hero_name})
+    MATCH (h:Hero {name: $hero_name})-[:HAS_ARTIFACTS]->(art:Artifacts)
 
-    // Create the Origin node and link it to the Hero
-    MERGE (o:Origin {hero_name: $hero_name})
-    MERGE (h)-[:HAS_ORIGIN]->(o)
+    // Create the Origin node and link it to Artifacts
+    MERGE (o:Origin {hero_name: $hero_name, name: "Hero_Origins"})
+    MERGE (art)-[:HAS_ORIGIN]->(o)
     WITH o
 
     // Now attach the Epochs to the Origin node

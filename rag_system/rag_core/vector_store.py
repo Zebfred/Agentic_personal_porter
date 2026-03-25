@@ -176,7 +176,7 @@ class VectorStore:
 def main():
     """Main function for testing vector store."""
     import json
-    from rag_core.embeddings import SciBERTEmbedder
+    from rag_system.rag_core.embeddings import SciBERTEmbedder
     
     # Load chunks with embeddings
     chunks_file = Path("data/chunks_with_embeddings.json")
