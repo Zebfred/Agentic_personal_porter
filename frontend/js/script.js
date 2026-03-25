@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-        const response = await Auth.fetchWithAuth('http://localhost:5090/api/inventory');
+        const response = await Auth.fetchWithAuth('/api/inventory');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         renderInventory(data);
