@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentArtifactName = artifactName;
 
         try {
-            const response = await Auth.fetchWithAuth(`http://localhost:5090/api/artifacts/${artifactName}`);
+            const response = await Auth.fetchWithAuth(`/api/artifacts/${artifactName}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             currentData = await response.json();
             buildForm(currentData, formContainer, currentData);
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.innerHTML = '<div class="inline-block animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div> Saving...';
         
         try {
-            const response = await Auth.fetchWithAuth(`http://localhost:5090/api/artifacts/${currentArtifactName}`, {
+            const response = await Auth.fetchWithAuth(`/api/artifacts/${currentArtifactName}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

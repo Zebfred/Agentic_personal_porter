@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use Auth.fetchWithAuth from auth.js if available
             const fetchFn = window.Auth && window.Auth.fetchWithAuth ? window.Auth.fetchWithAuth : fetch;
             
-            const response = await fetchFn('http://localhost:5090/api/chat/porter', {
+            const response = await fetchFn('/api/chat/porter', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
