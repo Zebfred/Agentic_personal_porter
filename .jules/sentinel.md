@@ -1,3 +1,7 @@
+## 2025-03-19 - Flask Debugger Exposed to 0.0.0.0
+**Vulnerability:** The Flask app was hardcoded to run with `debug=True` and `host='0.0.0.0'` in `src/app.py`. This exposes the Werkzeug interactive debugger to any network interface, allowing potential Remote Code Execution (RCE) and sensitive data leakage if an error occurs.
+**Learning:** Hardcoded debug configurations in entry point files are a common and critical security flaw, especially when the application is bound to all public interfaces (`0.0.0.0`). It must always be configurable via environment variables and default to `False`.
+**Prevention:** Never hardcode `debug=True` in production-facing web servers. Use `os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'` to conditionally enable debugging only in local development environments.
 ## 2025-03-20 - Hardcoded API Key & Insecure String Comparison Fix
 **Vulnerability:** A hardcoded default API key `"default_dev_key"` was present in `src/app.py` for `PORTER_API_KEY`. Additionally, string comparison `!=` was used for evaluating the API key, which is susceptible to timing attacks.
 **Learning:** Hardcoded default secrets are risky and string evaluation for cryptographic keys can lead to timing attacks. The application used an insecure fallback instead of failing securely when environment configuration is incomplete.

@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -519,13 +520,15 @@ def admin_inject_foundation():
         logger.error(f"Error injecting foundation: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 if __name__ == '__main__':
     logger.info("==================================================================================")
     logger.warning("Starting the Agentic Personal Porter via Flask's built-in development server.")
     logger.warning("This server is not suitable for production deployments.")
     logger.info("For a production WSGI server, please execute: ./run_production.sh (which uses Gunicorn)")
     logger.info("==================================================================================")
-    logger.info("Server starting on port 5090...")
-    app.run(debug=True, host='0.0.0.0', port=5090)
-
+    
+    # Securely check for debug mode via environment variable
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    logger.info(f"Server starting on port 5090 (Debug Mode: {debug_mode})...")
+    
+    app.run(debug=debug_mode, host='0.0.0.0', port=5090)
