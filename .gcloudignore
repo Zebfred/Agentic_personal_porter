@@ -1,0 +1,35 @@
+# .gcloudignore
+.gcloudignore
+.git
+.gitignore
+
+# Large binaries and data
+tailwindcss
+data/
+data_pipeline_pdf/
+logs/
+.legacy_hr/
+
+# Environment and secrets
+.auth/
+.env
+.env.*
+
+# Python caches
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+.cursorrules
+
+# Only specifically what Dockerfile needs will be uploaded

@@ -1,12 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const getApiKey = () => {
-        let key = localStorage.getItem('porterApiKey');
-        if (!key) {
-            key = prompt("Please enter the API Key to access Porter backend:");
-            if (key) localStorage.setItem('porterApiKey', key);
-        }
-        return key || '';
-    };
+    // getApiKey removed in favor of Auth module
 
     const tabOrigin = document.getElementById('tab-origin');
     const tabAmbition = document.getElementById('tab-ambition');
@@ -42,9 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentArtifactName = artifactName;
 
         try {
-            const response = await fetch(`http://localhost:5090/api/artifacts/${artifactName}`, {
-                headers: { 'Authorization': `Bearer ${getApiKey()}` }
-            });
+            const response = await Auth.fetchWithAuth(`/api/artifacts/${artifactName}`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             currentData = await response.json();
             buildForm(currentData, formContainer, currentData);
@@ -63,10 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveBtn.innerHTML = '<div class="inline-block animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent mr-2"></div> Saving...';
         
         try {
-            const response = await fetch(`http://localhost:5090/api/artifacts/${currentArtifactName}`, {
+            const response = await Auth.fetchWithAuth(`/api/artifacts/${currentArtifactName}`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${getApiKey()}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(currentData)

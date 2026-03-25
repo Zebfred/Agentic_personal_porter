@@ -12,15 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }[tag])
         );
     };
-
-    const getApiKey = () => {
-        let key = localStorage.getItem('porterApiKey');
-        if (!key) {
-            key = prompt("Please enter the API Key to access Porter backend:");
-            if (key) localStorage.setItem('porterApiKey', key);
-        }
-        return key || '';
-    };
+    // getApiKey removed in favor of Auth module in auth.js
 
     const dayNav = document.getElementById('day-nav');
     const dayViewContainer = document.getElementById('day-view-container');
@@ -65,6 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         brainFog: 0,
                         valuableDetour: false,
                         inventoryNote: '',
+                        detrimentalDetour: false,
+                        detrimentNote: '',
                         aiReflection: ''
                     };
                 });
@@ -124,15 +118,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
                                 ${['happy', 'neutral', 'sad'].map(feeling => `
-                                <label class="cursor-pointer">
-                                    <input type="radio" name="feeling-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
+                                <label for="feeling-${chunkId}-${feeling}" class="cursor-pointer">
+                                    <input type="radio" id="feeling-${chunkId}-${feeling}" name="feeling-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
                                     <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
                                 </label>
                                 `).join('')}
                             </div>
                             
                             <div class="flex-grow">
-                                <label class="flex justify-between text-xs font-bold text-gray-500 mb-1">
+                                <label for="brain-fog-${chunkId}" class="flex justify-between text-xs font-bold text-gray-500 mb-1">
                                     <span>FOG: <span id="brain-fog-value-${chunkId}">${chunkData.brainFog}</span>%</span>
                                 </label>
                                 <input type="range" id="brain-fog-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog}" class="brain-fog-slider w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
@@ -149,6 +143,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div id="inventory-note-container-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
                             <label for="inventory-note-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inventory Note</label>
                             <textarea id="inventory-note-${chunkId}" rows="2" class="inventory-note-textarea w-full border border-yellow-200 bg-yellow-50 rounded-md p-2 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="What did you gain?">${chunkData.inventoryNote}</textarea>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="detrimental-detour-${chunkId}" class="detrimental-detour-checkbox form-checkbox h-4 w-4 text-red-600 rounded" ${chunkData.detrimentalDetour ? 'checked' : ''}>
+                                <span class="ml-2 text-sm font-medium text-gray-600">Mark as Detrimental Detour</span>
+                            </label>
+                        </div>
+
+                        <div id="detriment-note-container-${chunkId}" class="${chunkData.detrimentalDetour ? '' : 'hidden'}">
+                            <label for="detriment-note-${chunkId}" class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">What did we lose?</label>
+                            <textarea id="detriment-note-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${chunkData.detrimentNote}</textarea>
                         </div>
                     </div>
                 </div>
@@ -189,12 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log(`Fetching calendar events for ${day} (${dateStr})...`);
             
-            // Using the endpoint from server.py with Auth
-            const response = await fetch(`http://localhost:5090/get_calendar_events?date=${dateStr}`, {
-                headers: {
-                    'Authorization': `Bearer ${getApiKey()}`
-                }
-            });
+            // Using the endpoint from server.py with Auth module handling token
+            const response = await Auth.fetchWithAuth(`/get_calendar_events?date=${dateStr}`);
             
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             
@@ -302,6 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('valuable-detour-checkbox')) {
             const chunkId = e.target.closest('.time-chunk-card').dataset.chunk;
             document.getElementById(`inventory-note-container-${chunkId}`).classList.toggle('hidden', !e.target.checked);
+        } else if (e.target.classList.contains('detrimental-detour-checkbox')) {
+            const chunkId = e.target.closest('.time-chunk-card').dataset.chunk;
+            document.getElementById(`detriment-note-container-${chunkId}`).classList.toggle('hidden', !e.target.checked);
         }
     });
 
@@ -321,10 +326,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const brainFog = card.querySelector(`#brain-fog-${chunkId}`).value;
             const valuableDetour = card.querySelector(`#valuable-detour-${chunkId}`).checked;
             const inventoryNote = card.querySelector(`#inventory-note-${chunkId}`).value;
+            const detrimentalDetour = card.querySelector(`#detrimental-detour-${chunkId}`).checked;
+            const detrimentNote = card.querySelector(`#detriment-note-${chunkId}`).value;
 
             // Update Local State
             const chunkData = {
-                intention, activityTitle, feeling, brainFog, valuableDetour, inventoryNote,
+                intention, activityTitle, feeling, brainFog, 
+                valuableDetour, inventoryNote, 
+                detrimentalDetour, detrimentNote,
                 aiReflection: weeklyLog[day][chunkId].aiReflection
             };
             weeklyLog[day][chunkId] = chunkData;
@@ -343,15 +352,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const journalEntry = `Intention: ${intention}. Actual: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
             const logDataForDb = {
                 day, timeChunk: chunkId, intention, actual: activityTitle,
-                feeling, brainFog: parseInt(brainFog), isValuableDetour: valuableDetour, inventoryNote
+                feeling, brainFog: parseInt(brainFog), 
+                isValuableDetour: valuableDetour, inventoryNote,
+                isDetrimentalDetour: detrimentalDetour, detrimentNote
             };
 
             try {
-                const response = await fetch('http://localhost:5090/process_journal', {
+                const response = await Auth.fetchWithAuth('/process_journal', {
                     method: 'POST',
                     headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${getApiKey()}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ 
                         journal_entry: journalEntry, // FIXED: Matches server expectation

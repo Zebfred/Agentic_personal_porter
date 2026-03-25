@@ -1,145 +1,90 @@
-# Quick Start Guide - After Implementation
+# Quick Start Guide
 
-## Getting Back Up and Running
+## The Current State of the Application (Mach 2)
 
-### Step 1: Check System Status
+**IMPORTANT NOTE:** We are actively transitioning into the completed Mach 2 architecture. While many backend agent pipelines are completed, **the server connection and automated "Twin-Track" ingestion (Google Calendar -> Mongo -> Neo4j) are actively being wired in and are not fully functional end-to-end via the UI yet.** 
+
+However, you can still boot the server, run the frontend, and utilize the diagnostic scripts.
+
+---
+
+## 1. Zero-Trust Authentication Setup (Prerequisite)
+
+Before running anything, you MUST establish the `.auth` quarantine directory.
+
+1. Create a folder named `.auth` in the project root.
+2. Inside `.auth`, create a `.env` file with the following:
+   ```env
+   GROQ_API_KEY="your_groq_key"
+   NEO4J_URI="bolt://localhost:7687"
+   NEO4J_USERNAME="neo4j"
+   NEO4J_PASSWORD="your_password"
+   MONGO_URI="mongodb://localhost:27017/"
+   ```
+3. Place your Google API `credentials.json` directly into the `.auth/` directory.
+
+---
+
+## 2. Diagnostics: Checking System Health
+
+Always run the status check before attempting to boot the server to verify your `.auth` paths and database connections are live.
+
 ```bash
-python check_status.py
+python helper_scripts/check_status.py
 ```
+This script will formally verify that your Neo4j database is reachable, Python dependencies are met, and the `.auth` keys are properly positioned.
 
-This will verify:
-- Environment variables are set
-- Neo4j connection works
-- Google Calendar credentials exist
-- All dependencies are installed
+---
 
-### Step 2: Start Flask Server
-```bash
-python server.py
-```
+## 3. Running Locally (Development Mode)
 
-Server will start on `http://localhost:5000`
+1. **Activate Environment:** Ensure your conda environment or virtualenv is active.
+   ```bash
+   conda activate agentic_porter
+   pip install -r requirements.txt
+   ```
+2. **Start the Backend API:**
+   ```bash
+   python src/app.py
+   ```
+   *The Flask dev server will spin up on port 5000.*
 
-**First Time**: If `token.pickle` doesn't exist, you'll be prompted to authenticate:
-1. Copy the URL from terminal
-2. Paste in browser
-3. Sign in with **zebfred22@gmail.com**
-4. Authorize calendar access
-5. Token will be saved for future use
+3. **Start the Frontend UI:**
+   Open `frontend/index.html` via Visual Studio Code's **Live Server** extension.
 
-### Step 3: Open Front-End
-- Open `index.html` in browser (or use Live Server in VS Code)
-- Select a day - calendar events will auto-populate intentions
-- Fill in actual activities
-- Click "Save & Reflect" to get AI reflection
+---
 
-## Key URLs and Endpoints
+## 4. Running via Docker (Production Mode)
 
-### Flask Server (Port 5000)
-- Main app: `http://localhost:5000` (no route, just the server)
-- Process journal: `POST http://localhost:5000/process_journal`
-- Get calendar events: `GET http://localhost:5000/get_calendar_events?date=2026-01-25`
+We have containerized the Mach 2 environment utilizing Gunicorn. 
 
-### Front-End
-- Main app: Open `index.html` in browser
-- Inventory page: `inventory.html`
+1. **Build the Docker Image:**
+   ```bash
+   docker build -t agentic-porter:mach2 .
+   ```
+2. **Run the Container:**
+   ```bash
+   docker run -d \
+     --name porter_server \
+     -p 5090:5090 \
+     -v $(pwd)/.auth:/app/.auth \
+     -v $(pwd)/logs:/app/logs \
+     agentic-porter:mach2
+   ```
+   *Note: We dynamically mount the `.auth` directory so your sensitive keys are never baked directly into the Docker image.*
 
-## Environment Variables Needed
+3. **Access the Application:** The production server will be exposed on `http://localhost:5090`.
 
-Create/update `.env` file:
-```
-GROQ_API_KEY=your_groq_key
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=your_password
-FLASK_SECRET_KEY=your_secret_key
-```
+---
 
-## Google Calendar Setup
+## 5. Key URLs and Endpoints
 
-1. **Credentials File**: `credentials.json` should be in project root
-   - Download from Google Cloud Console
-   - Project: zebfred.nexus@gmail.com
-   - OAuth 2.0 Client ID
+### Backend Server (`app.py`)
+- Main API Root: `http://localhost:5000` (or `5090` via Docker)
+- Process Journal: `POST /process_journal`
+- Fetch Events: `GET /get_calendar_events?date=2026-03-24`
+- Hero Artifacts: `GET /artifacts/hero_origin`
 
-2. **First Run**: 
-   - Will create `token.pickle` for zebfred22@gmail.com
-   - User will authorize during OAuth flow
-
-## Testing the Integration
-
-### Test Calendar Endpoint
-```bash
-curl "http://localhost:5000/get_calendar_events?date=2026-01-25"
-```
-
-### Test Journal Processing
-```bash
-curl -X POST http://localhost:5000/process_journal \
-  -H "Content-Type: application/json" \
-  -d '{
-    "journal_entry": "Intention: Work on project. Activity: Coded for 2 hours. Feeling: happy. Brain Fog: 20%.",
-    "log_data": {
-      "day": "monday",
-      "timeChunk": "afternoon",
-      "intention": "Work on project",
-      "actual": "Coded for 2 hours",
-      "feeling": "happy",
-      "brainFog": 20,
-      "isValuableDetour": false,
-      "inventoryNote": ""
-    }
-  }'
-```
-
-## Neo4j Browser Queries
-
-### View All Data
-```cypher
-MATCH (n) RETURN n LIMIT 50
-```
-
-### View Enhanced Relationships
-```cypher
-MATCH (a:Actual)-[r]->(n)
-RETURN a, r, n
-LIMIT 20
-```
-
-### View Achievements
-```cypher
-MATCH (u:User)-[:HAS_ACHIEVEMENT]->(ach:Achievement)
-RETURN u, ach
-```
-
-### View State Correlations
-```cypher
-MATCH (a:Actual)-[:AFFECTED_BY]->(s:State)
-RETURN a.activity, s.type, s.value
-```
-
-## Troubleshooting
-
-### Calendar Events Not Showing
-1. Check `token.pickle` exists
-2. Check `credentials.json` exists
-3. Run status check: `python check_status.py`
-4. Check browser console for errors
-
-### Neo4j Not Saving
-1. Verify connection: `python check_status.py`
-2. Check environment variables
-3. Check Neo4j is running
-4. Check server logs for errors
-
-### Response Format Error
-- Fixed: server now returns `{"result": ...}` instead of `{"reflection": ...}`
-
-## What's New
-
-1. **Calendar Integration**: Auto-populates intentions from Google Calendar
-2. **Enhanced Neo4j Schema**: Creates meaningful relationships between intentions, actions, achievements, and states
-3. **Status Check Script**: Easy way to verify everything is working
-4. **Agent Calendar Context**: Agents can reference calendar events in reflections
-
-Enjoy your enhanced Agentic Personal Porter! 🚀
+### Administrative Maintenance Endpoints (Work-In-Progress)
+- Sync Calendar to Graph: `POST /admin/sync_calendar`
+- Inject Foundation: `POST /admin/inject_foundation`
