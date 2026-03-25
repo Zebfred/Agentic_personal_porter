@@ -2,9 +2,10 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+from src.utils.path_utils import load_env_vars
+
 # Find root and load .env once
-root_dir = Path(__file__).resolve().parent.parent
-load_dotenv(root_dir / ".auth" / ".env")
+load_env_vars()
 
 class NeoConfig:
     NEO4J_URI = os.getenv("NEO4J_URI")
@@ -16,3 +17,12 @@ class MongoConfig:
     DB_NAME = "porter_mach2"
     RAW_COLLECTION = "raw_calendar_events"
     FORMATTED_COLLECTION = "formatted_calendar_events"
+    
+    # New Event Schema Collections
+    RAW_TIMESERIES_COLLECTION = "raw_gcal_timeseries"
+    INTENT_COLLECTION = "event_intentions"
+    ACTUAL_COLLECTION = "event_actuals"
+    UNIFIED_EVENTS_COLLECTION = "unified_events"
+    
+    # Vector DB Collection for Agents
+    VECTOR_DB_COLLECTION = "semantic_vectors"
