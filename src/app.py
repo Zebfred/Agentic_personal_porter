@@ -29,8 +29,13 @@ from logging.handlers import RotatingFileHandler
 # Load auth env vars
 root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
-API_KEY = os.environ.get("PORTER_API_KEY", "default_dev_key")
-JWT_SECRET = os.environ.get("JWT_SECRET", "fallback_jwt_secret_for_dev_only")
+API_KEY = os.environ.get("PORTER_API_KEY")
+if not API_KEY:
+    raise ValueError("CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. It must be set in .auth/.env for secure authentication.")
+
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. It must be set in .auth/.env for secure token generation.")
 
 # Set up logging
 log_dir = root / "logs"
