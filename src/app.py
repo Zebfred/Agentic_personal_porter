@@ -13,9 +13,11 @@ from src.agents.crew_manager_mach2 import run_crew
 from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.integrations.google_calendar import get_calendar_service
+from src.agents.first_serving_porter import run_first_serving_porter
 from functools import wraps
 import os
 import json
+import jwt
 import hmac
 from dotenv import load_dotenv
 from pydantic import ValidationError
@@ -28,9 +30,12 @@ from logging.handlers import RotatingFileHandler
 root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
 API_KEY = os.environ.get("PORTER_API_KEY")
-
 if not API_KEY:
-    raise ValueError("PORTER_API_KEY environment variable is not set. Please check your .auth/.env file.")
+    raise ValueError("CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. It must be set in .auth/.env for secure authentication.")
+
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. It must be set in .auth/.env for secure token generation.")
 
 # Set up logging
 log_dir = root / "logs"
@@ -52,27 +57,49 @@ logger.addHandler(console_handler)
 
 
 app = Flask(__name__)
-# Restrict CORS to specific local origins instead of '*'
+# Restrict CORS to common local origins and private IP ranges
 cors_origins = [
     "http://localhost:5000",
     "http://127.0.0.1:5000", 
     "http://localhost:5090",
-    "http://127.0.0.1:5090"
+    "http://127.0.0.1:5090",
+    "http://192.168.0.104:5090" # User's specific local IP
 ]
 CORS(app, resources={r"/*": {"origins": cors_origins}})
+
+from flask import make_response
 
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        if request.method == 'OPTIONS':
+            response = make_response()
+            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
+            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            return response, 204
+            
         supplied_key = request.headers.get("Authorization")
         if not supplied_key:
-            return jsonify({"error": "Unauthorized"}), 401
-
-        token = supplied_key.replace("Bearer ", "")
-        if not hmac.compare_digest(token, API_KEY):
-            return jsonify({"error": "Unauthorized"}), 401
-
-        return f(*args, **kwargs)
+            return jsonify({"error": "Unauthorized: Missing Authorization header"}), 401
+            
+        token_str = supplied_key.replace("Bearer ", "")
+        
+        # Check if it's the raw API Key (used by background python scripts usually)
+        if hmac.compare_digest(token_str, API_KEY):
+            return f(*args, **kwargs)
+            
+        # Try checking if it's a valid JWT from the frontend login UI
+        try:
+            decoded = jwt.decode(token_str, JWT_SECRET, algorithms=["HS256"])
+            if decoded.get("role") == "admin":
+                return f(*args, **kwargs)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Unauthorized: Token expired"}), 401
+        except jwt.InvalidTokenError:
+            pass
+            
+        return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
     return decorated_function
 
 # Serve front-end files
@@ -80,6 +107,21 @@ def require_api_key(f):
 @app.route('/index.html')
 def index():
     return send_from_directory('../frontend', 'index.html')
+
+@app.route('/adventure_log')
+@app.route('/Adventure_Time_log.html')
+def adventure_log():
+    return send_from_directory('../frontend', 'Adventure_Time_log.html')
+
+@app.route('/journal_review')
+@app.route('/journal_review.html')
+def journal_review():
+    return send_from_directory('../frontend', 'journal_review.html')
+
+@app.route('/oracle_predictions')
+@app.route('/Oracle_predictions.html')
+def oracle_predictions():
+    return send_from_directory('../frontend', 'Oracle_predictions.html')
 
 @app.route('/inventory')
 @app.route('/inventory.html')
@@ -91,10 +133,19 @@ def inventory():
 def artifacts():
     return send_from_directory('../frontend', 'artifacts.html')
 
+@app.route('/login')
+@app.route('/login.html')
+def login_page():
+    return send_from_directory('../frontend', 'login.html')
+
 # Serve static files (JS, CSS, etc.)
 @app.route('/js/<path:filename>')
 def serve_js(filename):
     return send_from_directory('../frontend/js', filename)
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory('../frontend/css', filename)
 
 # Initialize Google Calendar service (lazy initialization)
 _calendar_service = None
@@ -234,6 +285,60 @@ def process_journal():
         logger.error(f"Error reading request data: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/chat/porter', methods=['POST', 'OPTIONS'])
+@require_api_key
+def chat_porter():
+    """
+    Handles chat interaction with the First-Serving Porter agent.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        data = request.get_json()
+        if not data or 'message' not in data:
+            return jsonify({"error": "Message required"}), 400
+            
+        user_msg = data['message']
+        logger.info("Received Porter chat message.")
+        
+        result = run_first_serving_porter(user_msg)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error in First-Serving Porter chat: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
+def login():
+    """
+    Validates the provided password against the PORTER_API_KEY.
+    If valid, returns a JWT token valid for 24 hours.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    try:
+        data = request.get_json()
+        if not data or 'password' not in data:
+            return jsonify({"error": "Password required"}), 400
+            
+        if hmac.compare_digest(data['password'], API_KEY):
+            # Generate JWT Token valid for 24 hours
+            expiration = datetime.utcnow() + timedelta(hours=24)
+            token = jwt.encode(
+                {"role": "admin", "exp": expiration},
+                JWT_SECRET,
+                algorithm="HS256"
+            )
+            return jsonify({"token": token, "message": "Login successful"})
+        else:
+            return jsonify({"error": "Invalid password"}), 401
+            
+    except Exception as e:
+        logger.error(f"Error during login: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/inventory', methods=['GET'])
 @require_api_key
 def get_inventory():
@@ -270,14 +375,24 @@ def manage_artifact(artifact_name):
     if artifact_name not in allowed_artifacts:
         return jsonify({"error": "Invalid artifact name"}), 400
         
-    artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
+    if artifact_name == 'hero_detriments.json':
+        artifact_path = project_root / '.auth' / artifact_name
+    else:
+        artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
     
     if request.method == 'GET':
         try:
-            if not artifact_path.exists():
-                return jsonify({"error": "Artifact not found"}), 404
-            with open(artifact_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            mongo_storage = SovereignMongoStorage()
+            data = mongo_storage.get_hero_artifact(artifact_name)
+            
+            # If not in MongoDB yet, seed it from the filesystem
+            if not data:
+                if not artifact_path.exists():
+                    return jsonify({"error": "Artifact not found"}), 404
+                with open(artifact_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                mongo_storage.save_hero_artifact(artifact_name, data)
+                
             return jsonify(data)
         except Exception as e:
             logger.error(f"Error fetching artifact {artifact_name}: {e}", exc_info=True)
@@ -289,12 +404,16 @@ def manage_artifact(artifact_name):
             if not data:
                 return jsonify({"error": "No JSON data provided"}), 400
                 
+            # Keep flat-file synchronized as a fallback
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            
             with open(artifact_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=4)
                 
-            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully"})
+            # Update Mongo as Source of Truth
+            mongo_storage = SovereignMongoStorage()
+            mongo_storage.save_hero_artifact(artifact_name, data)
+                
+            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB"})
         except Exception as e:
             logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500

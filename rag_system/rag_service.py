@@ -19,10 +19,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-from rag_core.query_engine import RAGQueryEngine
-from rag_core.vector_store import VectorStore
-from rag_core.embeddings import SciBERTEmbedder
-from rag_top_level_service.build_rag_index import build_index, load_chunks
+from rag_system.rag_core.query_engine import RAGQueryEngine
+from rag_system.rag_core.vector_store import VectorStore
+from rag_system.rag_core.embeddings import SciBERTEmbedder
+from rag_system.build_rag_index import build_index, load_chunks
 
 load_dotenv()
 

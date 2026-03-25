@@ -3,7 +3,7 @@
 > This document tracks immediate, high-priority actions and directives directly impacting the repository workflow.
 
 ## User Action Required
-- [ ] **Establish Agentic Developer Rules:** Formalize and document the global rules for AI agents to follow across the repo. This should include maintaining the immutable `.bk` backup protocol, defining the precise boundary of each specialized agent's workflow, and detailing any core architectural constraints.
+- [x] **Establish Agentic Developer Rules:** Formalize and document the global rules for AI agents to follow across the repo. This should include maintaining the immutable `.bk` backup protocol, defining the precise boundary of each specialized agent's workflow, and detailing any core architectural constraints.
 ## User Action Required
 - [ ] **Establish Agentic Developer Rules:** Formalize and document the specific rules for specialize AI agents to follow in specific .mds. This will include special rules for a Documentation agent
 
