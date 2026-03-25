@@ -9,17 +9,19 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 - [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route.
 - [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
 - [ ] **Oracle Predictions (`Oracle_predictions.html`):** Create a placeholder UI for future predictive agent features. *(Pending backend and Agent development)*
+- [ ] **Weekly Goal Artifact Selector:** Build a simple UI module on the Hub allowing the user to explicitly define the "Priority Pillar" for the current week, setting the weights for backend agent logic.
 
 ## Highest Priority: Hero Artifacts Management UI
 *Status: Architecture conceptualized, UI completely missing.*
 
-- [ ] **Artifact Builder UI:** Debug and fix the currently non-functional Artifacts page (`artifacts.html`/`artifacts.js`) to seamlessly view, build out, and manually update the core hero artifacts.
+- [x] **Artifact Builder UI:** Standardized API paths to relative URLs, resolving CORS issues. Artifacts securely viewable and updatable via the new interface.
 - [ ] **Proactive Refinements (Future Work):** Implement a mechanism to proactively prompt the user during their daily recon to fill out missing artifact sections or provide minor refinements over time.
+- [ ] **Future Artifact Builder (`hero_future.json`):** Create UI input variants specifically designed to capture the user's ambitions over distinct periods of time (short, mid, and long term).
 
 ## Secondary Priority: The Hero's Inventory Overhaul
 *Status: UI overhaul developed but currently non-functional.*
 
-- [ ] **Dynamic Injection:** Fix the "Valuable Detours" `<div>` injection logic so it successfully parses the backend response.
+- [x] **Dynamic Injection:** Successfully connected and debugged the inventory injection logic using relative API paths and expanded CORS support.
 - [ ] **Quests & Goals:** Debug fetch logic bridging to Neo4j `Intention` pathways.
 - [ ] **Skill Log:** Debug the UI component mapping to `Achievement` nodes.
 - [ ] **Equipment & Knowledge Repository:** Debug UI component for artifacts/notes.
@@ -40,3 +42,4 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 - [x] **Authentication UI:** Design and build a secure, polished login and registration screen for the application. (Awaiting human verification)
 - [x] **Session Management:** Implement frontend token handling (e.g., JWT) securely stored in memory or HTTP-only cookies, replacing the current prompt-based local storage API key method. (Awaiting human verification)
 - [x] **Route Protection:** Ensure all frontend pages proactively check authentication state and redirect unauthenticated users to the new login screen. (Awaiting human verification)
+Building a proper user login
