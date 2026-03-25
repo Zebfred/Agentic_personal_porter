@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Fetching calendar events for ${day} (${dateStr})...`);
             
             // Using the endpoint from server.py with Auth module handling token
-            const response = await Auth.fetchWithAuth(`http://localhost:5090/get_calendar_events?date=${dateStr}`);
+            const response = await Auth.fetchWithAuth(`/get_calendar_events?date=${dateStr}`);
             
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                const response = await Auth.fetchWithAuth('http://localhost:5090/process_journal', {
+                const response = await Auth.fetchWithAuth('/process_journal', {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json'
