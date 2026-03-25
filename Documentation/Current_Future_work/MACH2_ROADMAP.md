@@ -22,3 +22,6 @@ Mach 2 is defined by the rigid, reliable ability to ingest user reality vs. huma
 ### 4. Establish a Robust Backup Strategy
 - [ ] **Auth Quarantine:** Fully secure the `.auth` directory holding keys, maps, and tokens.
 - [ ] **Database Snapshots:** Set up automated cron-jobs or scripts ensuring regular, secure Neo4j graph exports to prevent catastrophic data loss.
+
+## Upcoming Backend Automation Enhancements
+- **Future Feature [Rolling Historical Seeding]:** Currently, `helper_scripts/seed_calendar.py` triggers exactly one month of back-dated imports. We plan to build an iterative loop where, after a successful month is ingested and verified, the agent automatically executes the *previous* month (Months 1 -> 2, Months 2 -> 3) on a weekly basis. This prevents overloading the Neo4j graph with 14k+ events in a single massive pull, allowing for organic "Time-Series" growth that agents can reason upon properly without missing context constraints.

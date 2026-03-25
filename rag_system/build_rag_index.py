@@ -17,8 +17,8 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from rag_core.embeddings import SciBERTEmbedder
-from rag_core.vector_store import VectorStore
+from rag_system.rag_core.embeddings import SciBERTEmbedder
+from rag_system.rag_core.vector_store import VectorStore
 
 
 def load_chunks(chunk_file: Path) -> list:

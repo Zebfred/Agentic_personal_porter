@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Agentic Personal Porter</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+    </style>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen relative overflow-hidden font-sans">
+    <!-- Decorative background blobs -->
+    <div class="absolute w-full h-full inset-0 z-0">
+        <div class="absolute top-[20%] left-[20%] w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob"></div>
+        <div class="absolute top-[20%] right-[20%] w-72 h-72 bg-yellow-300 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-2000"></div>
+        <div class="absolute -bottom-8 left-[40%] w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-2xl opacity-70 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <div class="z-10 w-full max-w-md p-6">
+        <div class="glass-panel rounded-3xl p-8 shadow-2xl">
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white mb-4 shadow-lg">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <h1 class="text-3xl font-black text-gray-800 tracking-tight">Agentic Porter</h1>
+                <p class="text-gray-500 mt-2 font-medium">Enter your master key to access the graph.</p>
+            </div>
+
+            <form id="login-form" class="space-y-6">
+                <div id="error-message" class="hidden transform transition-all bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded text-sm font-medium">
+                    Invalid credentials or server offline.
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Master Key</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                        </div>
+                        <input type="password" id="password" name="password" required 
+                            class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all bg-white/50 shadow-inner font-mono text-gray-800"
+                            placeholder="••••••••••••••">
+                    </div>
+                </div>
+
+                <button type="submit" id="login-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500/30 transform transition-all hover:-translate-y-0.5 mt-4">
+                    Authenticate
+                </button>
+            </form>
+            
+            <p class="text-center text-xs text-gray-400 mt-8 font-medium">Session secured by Porter Auth Engine</p>
+        </div>
+    </div>
+
+    <script src="./js/auth.js"></script>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            const errorMsg = document.getElementById('error-message');
+            const password = document.getElementById('password').value;
+            
+            btn.innerHTML = '<div class="inline-block animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>';
+            btn.disabled = true;
+            errorMsg.classList.add('hidden');
+            
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.token) {
+                    Auth.setToken(data.token);
+                    window.location.href = 'index.html';
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message || 'Connection error';
+                errorMsg.classList.remove('hidden');
+                btn.innerHTML = 'Authenticate';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
