@@ -13,7 +13,11 @@ from src.database.inject_hero_calendar import SovereignGraphInjector
 from src.integrations.calendar_parser import parse_calendar_to_intentions
 # Assuming you saved our Neo4j injection function from earlier here:
 
-def run_sync_pipeline(hero_name="Zeb"):
+import os
+
+def run_sync_pipeline(hero_name=None):
+    if hero_name is None:
+        hero_name = os.environ.get("HERO_NAME", "Hero")
     """
     The Master Orchestrator:
     1. Formats Raw Mongo Data.
@@ -57,4 +61,4 @@ def run_sync_pipeline(hero_name="Zeb"):
 
 
 if __name__ == "__main__":
-    run_sync_pipeline("Zeb")
+    run_sync_pipeline()

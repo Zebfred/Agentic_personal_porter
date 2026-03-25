@@ -2,90 +2,66 @@
 
 ## Introduction & Vision
 
-Welcome, Hero. Your journey is uniquely yours, and every step, planned or unplanned, holds value. The Agentic Personal Porter is your non-judgmental companion on this adventure. It's not here to critique your detours but to help you find the treasures hidden within them.
+Welcome, Hero. Your journey is uniquely yours, and every step, planned or unplanned, holds value. The Agentic Personal Porter is your non-judgmental digital companion on this adventure. It isn't just another productivity tracker—it is a sovereign intelligence layer designed to compassionately bridge the gap between your stated intentions and your actual actions.
 
-Our primary goal is to compassionately bridge the gap between your stated intentions and your actual actions. This isn't just another productivity tracker; it's a tool for profound self-discovery. The Porter helps you understand the "why" behind your choices, find meaning in what you do, and align your life with your own definition of a fulfilling existence.
+By leveraging holistic frameworks like Maslow's Hierarchy of Needs and extracting deep context from your "Origin Story" and "Ambitions," we aim to capture a nuanced picture of your state. The Porter helps you understand the "why" behind your choices, find meaning in what you do, and align your daily grind with a fulfilling existence.
 
-By leveraging holistic frameworks like Maslow's Hierarchy of Needs and custom metrics such as "Brain Fog," we aim to capture a more complete, nuanced picture of your state, helping you navigate your path with greater clarity and self-awareness.
+## The Mach 2 Ecosystem (Current MVP)
 
-## Core Features (Current MVP)
+We are currently operating within the **Mach 2** lifecycle—a system defined by its rigid, reliable ability to ingest user reality vs. human intention.
 
-*   **Weekly Time Logging:** A user-friendly interface for logging your intentions and actual activities across a 7-day week. The week is broken down into six manageable time chunks per day, making logging quick and intuitive.
-*   **AI-Powered Reflection:** A sophisticated multi-agent AI system analyzes each log entry and provides an empathetic, insightful reflection. This feedback is designed to be supportive and illuminating, never critical.
-*   **Graph-Based Memory:** Every log entry and its corresponding reflection are saved as a network of interconnected nodes in a Neo4j graph database. Over time, this creates a rich, personal knowledge graph, allowing you to see patterns and growth in your journey.
+*   **Twin-Track Ingestion:** Seamlessly pulls your planned *Intentions* from Google Calendar into a local MongoDB landing zone, formats them, and merges them securely into the Neo4j Identity Graph.
+*   **The 20-Second Recon Loop:** A lightning-fast, glassmorphic frontend UI designed for rapid verification of daily events, driving cognitive load to near-zero.
+*   **Agentic Reflection:** Sophisticated CrewAI workflows spin up specialized autonomous agents (Socratic Coaches, GTKY Librarians) to analyze the numeric delta ($\Delta$) between your Intent vs. Actuals, generating deep, non-critical insights.
+*   **Sovereign Memory:** Every log, task, and reflection is saved as an interconnected node-pattern within a private, locally-hosted Neo4j graph database, establishing a localized "digital brain."
 
-## Tech Stack
+## Repository Architecture & Documentation
 
-*   **Front-End:** HTML5, Tailwind CSS, Vanilla JavaScript
-*   **Back-End API:** Python, Flask
-*   **AI Engine:** CrewAI framework with models accessed via the Groq API
-*   **Database:** Neo4j Graph Database
+This repository relies on a sprawling ecosystem of agents and meticulous documentation. **If you are contributing, you MUST read the respective documentation.**
 
-## Architecture Overview
-
-The system is designed with a clear separation of concerns, allowing for scalability and maintainability.
-
-*   **Client (Front-End):** The `index.html` and `app.js` files work together to create the dynamic weekly planner UI. This client-side application captures all user input and sends it to the Flask server as a single JSON payload.
-*   **Server (Back-End):** `server.py` acts as the central hub. It exposes an API endpoint that receives requests from the front-end, orchestrates the CrewAI workflow to process the data, and then passes the complete log data to the Neo4j connector for storage.
-*   **AI Core (`main.py`):** This is where the magic happens. The CrewAI workflow coordinates three specialized agents to process the user's log:
-    *   **Goal and Activity Analyst:** Parses the raw, often messy, user input into a structured and clean format.
-    *   **Empathetic Self-Reflection Coach:** Takes the structured data and generates the nuanced, user-facing reflection with a supportive tone.
-    *   **Personal Growth Librarian:** Summarizes key learnings and insights from the log, preparing them for future "inventory" features.
-*   **Database (`neo4j_db.py`):** This module serves as the Neo4j connector. It takes the final, processed log data and writes it to the graph database, creating and connecting nodes like `User`, `Day`, `TimeChunk`, `Actual`, and `Reflection`.
+*   **[`src/`](src/):** The core intelligence engine containing the Python Flask backend (`app.py`), the specialized Agent architectures (`src/agents/`), Neo4j/Mongo database clients (`src/database/`), and integrations (`src/integrations/`).
+*   **[`frontend/`](frontend/):** The client-side application featuring Vanilla JS (`app.js`, `script.js`) and Tailwind CSS to drive the interactive Hero's Inventory and Activity Dashboards.
+*   **[`Documentation/`](Documentation/):** The single source of truth for the project. 
+    *   **[`Documentation/Current_Future_work/`](Documentation/Current_Future_work/):** Contains the official `MACH2_ROADMAP.md`, `MACH3_beyond_ROADMAP.md`, and all `ACTIVE_*.md` tracker files mapping current development sprints.
+    *   **[`Documentation/architecture/`](Documentation/architecture/):** Contains the definitive `AGENT_REGISTRY.md`, Neo4j `DATABASE_SCHEMA.md`, and the `SCRIPT_REGISTRY.md`.
+    *   **[`.agent/rules/rules.md`](.agent/rules/rules.md):** The strict operational boundaries for any AI operating inside this repository.
 
 ## Setup & Installation
 
-Follow these steps to get the Agentic Personal Porter running on your local machine.
+### 1. Zero-Trust Security Configuration (`.auth/`)
+All environment variables, highly personal mappings, and Google OAuth tokens **must** be stored securely in an isolated `.auth/` directory at the project root. This directory is strictly `.gitignore`d. 
 
-1.  **Clone the Repository**
-    ```bash
-    git clone https://github.com/your-username/Agentic_personal_porter.git
-    cd Agentic_personal_porter
-    ```
+Create `.auth/.env` and supply:
+```env
+GROQ_API_KEY="your_groq_api_key"
+NEO4J_URI="bolt://localhost:7687"
+NEO4J_USERNAME="neo4j"
+NEO4J_PASSWORD="your_password"
+MONGO_URI="mongodb://localhost:27017/"
+```
+Ensure your `category_mapping.json` (as shown in `data/category_mapping.example.json`) is also placed in `.auth/`.
 
-2.  **Set Up the Conda Environment**
-    This project uses Python 3.11. Create and activate a dedicated Conda environment to manage dependencies.
-    ```bash
-    conda create --name agentic_porter python=3.11
-    conda activate agentic_porter
-    ```
+### 2. Environment & Dependencies
+This project uses Python 3.11+.
+```bash
+conda create --name agentic_porter python=3.11
+conda activate agentic_porter
+pip install -r requirements.txt
+```
 
-3.  **Install Python Dependencies**
-    Install all the required Python packages from the `requirements.txt` file.
-    ```bash
-    pip install -r requirements.txt
-    ```
+### 3. Running the Ecosystem
+The application currently requires running the API and Frontend concurrently.
 
-4.  **Configure Environment Variables**
-    Create a `.env` file by copying the example file. Then, fill in your credentials.
-    ```bash
-    cp .env.example .env
-    ```
-    Open the `.env` file and add your credentials for the following services:
-    ```
-    GROQ_API_KEY="your_groq_api_key"
-    NEO4J_URI="your_neo4j_bolt_uri"
-    NEO4J_USERNAME="your_neo4j_username"
-    NEO4J_PASSWORD="your_neo4j_password"
-    ```
+**Terminal 1 (Backend API):**
+```bash
+python src/app.py
+```
 
-5.  **Run the Application**
-    The application requires two separate processes to run: the back-end server and the front-end client.
+**Terminal 2 (Frontend UI):**
+Open `frontend/index.html` via Visual Studio Code's **Live Server** extension, or serve it on a secondary port.
 
-    *   **Terminal 1: Start the Back-End Server**
-        Run the Flask server. It will listen for requests from the front-end.
-        ```bash
-        python server.py
-        ```
+## The Future: Mach 3 & Beyond
 
-    *   **Terminal 2 (or VS Code): Serve the Front-End**
-        The simplest way to serve the front-end is by using the **Live Server** extension in Visual Studio Code. Right-click the `index.html` file and select "Open with Live Server".
+The upcoming **Mach 3** iteration will shift focus from raw data ingestion to advanced agent networking. Upcoming architectures include the **First-Serving Porter** (a front-man manager outputting weighted daily recommendations) and the **Analyzer Porter** (using regression to calculate hard numerical "Hero Numbers" indicating forward progress).
 
-## Future Roadmap
-
-We have an exciting vision for the future of the Agentic Personal Porter. Here are some of the features we're planning to build:
-
-*   **Hero's Inventory:** A comprehensive system to track your skills, knowledge, and other valuable "items" you collect on your journey.
-*   **Questing System:** A dedicated AI agent will help you break down large, ambitious goals ("quests") into smaller, actionable sub-tasks.
-*   **User Authentication & Onboarding:** A secure system for user accounts and a guided "Origin Story" setup to personalize the experience from the start.
-*   **Google Calendar Integration:** Automate the logging of your *intentions* by seamlessly integrating with your Google Calendar.
+Read the full future breakdown in [`Documentation/Current_Future_work/MACH3_beyond_ROADMAP.md`](Documentation/Current_Future_work/MACH3_beyond_ROADMAP.md).
