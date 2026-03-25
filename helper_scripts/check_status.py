@@ -131,7 +131,21 @@ def check_google_calendar_credentials():
     try:
         from src.integrations.google_calendar import get_calendar_service
         print("  ✅ src/integrations/google_calendar.py can be imported")
-        return True
+        
+        # Only test service if token exists (otherwise it will prompt)
+        if token_file.exists():
+            try:
+                service = get_calendar_service()
+                print("  ✅ Calendar service initialized successfully")
+                return True
+            except Exception as e:
+                print(f"  ⚠️  Calendar service initialization failed: {e}")
+                print("     This may require re-authentication")
+                return False
+        else:
+            print("  ⚠️  Cannot test service without token.pickle")
+            return True  # Not a failure, just needs auth
+            
     except ImportError as e:
         print(f"  ❌ Cannot import calendar helper: {e}")
         return False

@@ -69,6 +69,7 @@ tests/reports/
 *cred*
 credentials.json
 token.pickle
+token.json
 *.pem
 *.key
 

@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import sys
-import json
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -42,7 +41,11 @@ def get_calendar_credentials(scopes=None):
 
     # Load existing token if it exists
     if os.path.exists(paths["token"]):
-        creds = Credentials.from_authorized_user_file(paths["token"], target_scopes)
+        try:
+            creds = Credentials.from_authorized_user_file(paths["token"], target_scopes)
+        except Exception:
+            # If the token file is invalid or corrupted, we'll re-authenticate
+            creds = None
 
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
