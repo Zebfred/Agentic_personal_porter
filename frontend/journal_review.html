@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journal Review - Agentic Personal Porter</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 text-white shadow-md z-10 sticky top-0">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-tight">Agentic Personal Porter</h1>
+            <div class="space-x-4 text-sm font-medium">
+                <a href="/index.html" class="hover:text-blue-300 transition">Hub</a>
+                <a href="/adventure_log" class="hover:text-blue-300 transition">Adventure Log</a>
+                <a href="/inventory.html" class="hover:text-blue-300 transition">Inventory</a>
+                <a href="/artifacts.html" class="hover:text-blue-300 transition">Artifacts</a>
+                <a href="/journal_review" class="text-blue-400 font-bold border-b-2 border-blue-400 pb-1">Journal Review</a>
+                <a href="/oracle_predictions" class="hover:text-blue-300 transition">Oracle</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <div class="glass-panel p-8 rounded-2xl max-w-4xl mx-auto">
+            <h2 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-4 border-gray-200">Historical Journal Review</h2>
+            <p class="text-gray-600 italic mb-8">Review past reflections, classify detours, and provide direct feedback to the classification agent.</p>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-blue-700 font-medium">
+                <p>This module is currently a placeholder undergoing active development. Agent classification feedback UI will render here.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="./js/auth.js"></script>
+</body>
+</html>

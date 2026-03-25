@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 import sys
-import pickle
+import json
+from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -30,7 +31,7 @@ def get_auth_paths():
         
     return {
         "credentials": os.path.join(auth_dir, 'credentials.json'),
-        "token": os.path.join(auth_dir, 'token.pickle')
+        "token": os.path.join(auth_dir, 'token.json')
     }
 
 def get_calendar_credentials(scopes=None):
@@ -41,8 +42,7 @@ def get_calendar_credentials(scopes=None):
 
     # Load existing token if it exists
     if os.path.exists(paths["token"]):
-        with open(paths["token"], 'rb') as token:
-            creds = pickle.load(token)
+        creds = Credentials.from_authorized_user_file(paths["token"], target_scopes)
 
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -66,7 +66,7 @@ def get_calendar_credentials(scopes=None):
             creds = flow.run_local_server(port=0)
 
         # Save the credentials for the next run
-        with open(paths["token"], 'wb') as token:
-            pickle.dump(creds, token)
+        with open(paths["token"], 'w') as token:
+            token.write(creds.to_json())
 
     return creds

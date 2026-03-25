@@ -30,7 +30,10 @@ class SovereignGraphInjector:
     def close(self):
         self.driver.close()
 
-    def inject_calendar_to_graph(self, formatted_events, hero_name="Zeb"):
+    def inject_calendar_to_graph(self, formatted_events, hero_name=None):
+        import os
+        if hero_name is None:
+            hero_name = os.environ.get("HERO_NAME", "Hero")
         """
         Takes the 'Golden Objects' into wires them into the existing Hero/Intent graph.
         """
