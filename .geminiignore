@@ -20,6 +20,7 @@ __pycache__/
 dist/
 build/
 *.egg
+.ipynb_checkpoints/
 
 # Virtual environments
 venv/
@@ -30,7 +31,7 @@ conda_envs/
 /mnt/ed2f06aa-f821-4c28-aac8-17bc63bddee3/
 
 # Node modules (if any)
-node_modules/
+#node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -51,7 +52,7 @@ tmp/
 temp/
 *.bak
 *.backup
-
+*.bk*
 # Test outputs and reports
 .pytest_cache/
 .coverage

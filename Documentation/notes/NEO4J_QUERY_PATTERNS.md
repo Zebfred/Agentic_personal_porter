@@ -1,104 +1,76 @@
 # Neo4j Query Patterns
 
-This document serves as a robust reference for querying the Identity Graph. These queries are essential for backend development, debugging, and fueling the analytical capabilities of advanced Mach 3 agents.
+This document provides a robust reference for querying the Mach 2 Identity Graph. These queries use dynamic matching (omitting hardcoded Hero names) so they work seamlessly regardless of the `HERO_NAME` environment variable.
 
-## 1. Core Graph Pathing
+## 1. Top-Level Ecosystem Verification
 
-**The Complete Hero Trajectory:**
-Visualizes the linear timeline extending from the root Hero node through their Origins, Epochs, and individual Experiences.
+**Are all Major Feature Nodes Connected?**
+This query verifies that the central `Hero` node is successfully bridging out to the three critical pillars: `Artifacts`, `Journal`, and `Calendar`.
 
 ```cypher
-MATCH path = (h:Hero {name: "Zeb"})-[:HAS_ORIGIN]->(o:Origin)-[:HAS_EPOCH]->(e:Epoch)-[:HAS_EXPERIENCE]->(x:Experience)
+MATCH (h:Hero)
+OPTIONAL MATCH (h)-[r1:HAS_ARTIFACTS]->(art:Artifacts)
+OPTIONAL MATCH (h)-[r2:HAS_JOURNAL]->(j:Journal)
+OPTIONAL MATCH (h)-[r3:HAS_CALENDAR]->(c:Calendar)
+RETURN h, r1, art, r2, j, r3, c
+```
+
+---
+
+## 2. The Artifacts Feature Node (Long-Term Memory)
+
+**Artifacts Graph (Visual):**
+Expand the complete tree of Principles, Intents, Origins, and Epochs stemming from the Artifacts node.
+```cypher
+MATCH path = (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)-[*1..2]->(leaf)
 RETURN path
 ```
 
-**Deep Exploratory Pathing:**
-A powerful diagnostic query that explores relationships radially outward from the Hero node up to 3 hops deep. Perfect for discovering orphaned nodes or unexpected graph structures.
-
+**Artifacts Breakdown (Table):**
+Tabulate the dense data held within the artifacts tree for easy reading.
 ```cypher
-MATCH path = (h:Hero {name: "Zeb"})-[*1..3]->(n)
+MATCH (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)-[r]->(leaf)
+RETURN type(r) AS Relationship, labels(leaf)[0] AS NodeType, coalesce(leaf.name, leaf.category, "N/A") AS Primary_Label, leaf.description AS Description, leaf.text AS Text
+ORDER BY NodeType
+```
+
+---
+
+## 3. The Journal Feature Node (Daily Ground Truth)
+
+**Journal Lineage (Visual):**
+Visualizes the linear timeline extending from the Journal through Days, TimeChunks, Actuals, and Deltas.
+```cypher
+MATCH path = (h:Hero)-[:HAS_JOURNAL]->(j:Journal)-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)-[:RECORDED]->(a:Actual)
+// Optionally extend to: -[:PRODUCED]->(delta:Delta)
 RETURN path
 ```
 
-## 2. Agent-Specific Targeting Pipelines
-
-**The Mach 3 Agent Target List:**
-Used by the GTKY or Socratic Coach to dynamically identify `Experience` nodes that have been ingested but still require human elaboration or AI classification.
-
+**Journal Extract (Table):**
+Generates a clean dashboard-ready table of all logged activities and corresponding feelings.
 ```cypher
-MATCH (e:Epoch)-[:HAS_EXPERIENCE]->(x:Experience)
-WHERE x.status IN ['Candidate', 'Needs_Detail']
-RETURN e.name AS Epoch, x.title AS Topic, x.status AS Status
-ORDER BY e.timeframe
+MATCH (h:Hero)-[:HAS_JOURNAL]->(j:Journal)-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)-[:RECORDED]->(a:Actual)
+RETURN d.date AS Date, tc.id AS TimeChunk, a.activity AS Activity, a.feeling AS Feeling, a.brainFog as BrainFog
+ORDER BY Date DESC
 ```
 
-## 3. Behavioral Analysis (Intent vs. Actual)
+---
 
-The system calculates Delta ($\Delta = Actual - Intention$). When querying the unified calendar graph, you can isolate events based on these predefined classifications:
+## 4. The Calendar Feature Node (Planned Scheduling)
 
-**Isolating Core Intentions:**
+**Event Pathway (Visual):**
+Visualize the Calendar schema bridging downloaded Events to the Hero's broader Life Intents.
 ```cypher
-MATCH (h:Hero {name: "Zeb"})-[:HAS_INTENTION]->(i:Intention)
-// Optionally filter by timeframe or category
-RETURN i.title as Title, i.expected_duration as Expected
+MATCH path = (h:Hero)-[:HAS_CALENDAR]->(c:Calendar)-[:HAS_EVENT]->(e:Event)-[:FULFILLS]->(i:Intent)
+RETURN path
+LIMIT 50
 ```
 
-**Isolating Reality (The Actuals):**
+**Calendar Diagnostics (Table):**
+Table showing orphaned events or raw Google Calendar pulls that haven't been successfully tied to an Intent yet.
 ```cypher
-MATCH (h:Hero {name: "Zeb"})-[:HAS_ACTUAL]->(a:Actual)
-RETURN a.title as Title, a.logged_duration as Logged
-```
-
-*(Note: The integration layer maps Calendar color IDs to these labels: Colors `['1', '9', 'default']` map to Intentions, while colors `['2', '8', '10']` map to Actuals.)*
-
-## 4. Calendar and Event Graphs
-
-**Visualizing the Integration Pathway:**
-Visualize the connection between your Hero, the Calendar ingestion node, and a sample of recorded Events.
-```cypher
-MATCH (h:Hero {name: 'Zeb'})-[:HAS_CALENDAR]->(c)-[r:HAS_EVENT]->(e:Event)
-RETURN h, c, r, e
-LIMIT 50;
-```
-
-**Visualizing Micro-to-Macro Fulfillment:**
-Visualize how specific micro-Events formally fulfill your high-level Goals (`Intent` nodes).
-```cypher
-MATCH (e:Event)-[r:FULFILLS]->(i:Intent)
-RETURN e, r, i
-LIMIT 100;
-```
-
-## 5. Event Table Diagnostics
-
-These queries generate tabular data excellent for dashboarding and analyzing event health or missing categorizations.
-
-**Event Count by Record Type:**
-```cypher
-MATCH (e:Event)
-RETURN e.record_type AS Type, count(e) AS Count
-ORDER BY Count DESC;
-```
-
-**Intent vs. Pillar Mapping Analytics:**
-```cypher
-MATCH (h:Hero {name: 'Zeb'})-[:HAS_CALENDAR]->(c)-[:HAS_EVENT]->(e:Event)-[:FULFILLS]->(i:Intent)
-RETURN i.category AS Intent_Node, e.pillar AS Event_Pillar, count(e) AS Total_Linked
-ORDER BY Total_Linked DESC;
-```
-
-**Find Uncategorized Events (Triaging needs):**
-```cypher
-MATCH (e:Event {pillar: 'Uncategorized'})
-RETURN e.title, e.start_iso, e.duration_min
-ORDER BY e.start_iso DESC
-LIMIT 20;
-```
-
-**Find Orphaned Events (Lacking Intent Fulfillment):**
-```cypher
-MATCH (e:Event)
-WHERE NOT (e)-[:FULFILLS]->(:Intent)
-RETURN e.pillar, count(e) AS Orphan_Count
-ORDER BY Orphan_Count DESC;
+MATCH (h:Hero)-[:HAS_CALENDAR]->(c:Calendar)-[:HAS_EVENT]->(e:Event)
+OPTIONAL MATCH (e)-[:FULFILLS]->(i:Intent)
+RETURN e.title AS Event, e.start_iso AS Date, e.pillar AS Extracted_Pillar, coalesce(i.category, "ORPHANED") AS fulfillment_target
+ORDER BY Date DESC
 ```

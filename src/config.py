@@ -17,3 +17,12 @@ class MongoConfig:
     DB_NAME = "porter_mach2"
     RAW_COLLECTION = "raw_calendar_events"
     FORMATTED_COLLECTION = "formatted_calendar_events"
+    
+    # New Event Schema Collections
+    RAW_TIMESERIES_COLLECTION = "raw_gcal_timeseries"
+    INTENT_COLLECTION = "event_intentions"
+    ACTUAL_COLLECTION = "event_actuals"
+    UNIFIED_EVENTS_COLLECTION = "unified_events"
+    
+    # Vector DB Collection for Agents
+    VECTOR_DB_COLLECTION = "semantic_vectors"
