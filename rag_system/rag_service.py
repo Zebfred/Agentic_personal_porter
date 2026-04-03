@@ -74,10 +74,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Restrict CORS to trusted origins, allowing for environment-specific configuration
+allowed_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5090,http://127.0.0.1:5090")
+cors_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
