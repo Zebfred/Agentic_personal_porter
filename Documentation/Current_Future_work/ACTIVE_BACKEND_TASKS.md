@@ -71,6 +71,11 @@ This document tracks backend development tasks, architectural shifts, and long-t
 - **Objective:** Expand the agent capabilities in the backend and ensure they share the same LLM primitives.
 - **Frameworks:** We are operating a dual-framework setup where CrewAI is utilized for intensive, batch, multi-agent synchronized executions (e.g. daily Socratic Mirror reflections) and LangChain generic agents handle low-latency direct user-chat interactions (e.g., First-Serving Porter).
 
-
-Step 4: Optimization & "Budget" Engineering
-Working with a learning agent, there a large chunk of text in Mar23_brainstorming.txt that needs to be processed and encoded into the system. Which recommendations on checks to  
+## Neo4j Optimizations & Pulse Architecture
+- **Objective:** Transition to a "Scheduled Heartbeat" batching strategy to reduce continuous high-friction writing to the Graph database.
+- **Sovereign Self-Hosting:** Explore moving Neo4j to a Sovereign GCP Compute Engine Docker container to keep data internal and eliminate node limits (est. $7-$15/month).
+- **The Pulse (Orchestrator):** Configure the system to only "Wake Up" the graph database during a scheduled pulse (e.g., 8:00 AM and 10:00 PM).
+- **Batch Logic Requirements:**
+  - [ ] **Phase 1 (Accumulate):** Ensure GCal events accumulate efficiently in the MongoDB Landing Zone throughout the day.
+  - [ ] **Phase 2 (Classify):** Automate the "GTKY Librarian" agent to pull the daily batch, classify events against Hero Artifacts, and mint "Golden Objects."
+  - [ ] **Phase 3 (Merge):** Implement a single UNWIND Cypher transaction in Python to inject the entire day's batch in under 5 seconds.
