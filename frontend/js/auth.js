@@ -44,8 +44,16 @@ const Auth = {
         }
     },
     
+    // Resolves backend path in case user is viewing via file:/// or live-server instead of app.py
+    getApiBaseUrl: () => {
+        if (window.location.protocol === 'file:' || window.location.port === '5500') {
+            return 'http://127.0.0.1:5090'; // Use localhost explicitly if not served by flask
+        }
+        return ''; // Let relative paths work if served by Flask
+    },
+    
     // Wrap fetch to automatically include the Bearer token and handle 401s
-    fetchWithAuth: async (url, options = {}) => {
+    fetchWithAuth: async (endpoint, options = {}) => {
         const token = Auth.getToken();
         
         // Merge headers safely
@@ -55,6 +63,7 @@ const Auth = {
         }
         
         const config = { ...options, headers };
+        const url = endpoint.startsWith('http') ? endpoint : `${Auth.getApiBaseUrl()}${endpoint}`;
         
         try {
             const response = await fetch(url, config);
