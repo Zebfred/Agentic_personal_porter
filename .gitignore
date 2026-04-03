@@ -11,6 +11,7 @@ tmp/
 temp/
 __pycache__/
 *.bk*
+*.backup
 .ipynb_checkpoints/
 .legacy_hr/*
 
