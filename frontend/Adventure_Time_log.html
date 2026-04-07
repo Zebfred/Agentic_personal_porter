@@ -34,6 +34,27 @@
         </div>
 
         <h2 id="current-day-header" class="text-3xl font-bold text-center mb-4">Loading...</h2>
+        
+        <div class="flex justify-center gap-4 mb-6">
+            <button id="sync-cal-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full shadow-md transition transform hover:-translate-y-0.5 active:scale-95 text-sm">
+                📅 Sync Calendar
+            </button>
+            <button id="daily-reflection-btn" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-full shadow-lg transition transform hover:-translate-y-0.5 active:scale-95 text-sm flex items-center gap-2">
+                <span>✨</span> Generate Daily Reflection
+            </button>
+        </div>
+
+        <!-- Sovereign Daily Insight Widget -->
+        <div id="daily-reflection-container" class="hidden max-w-4xl mx-auto mb-8 animate-in fade-in duration-700">
+            <div class="glass-panel p-6 rounded-2xl border-l-8 border-l-purple-500 shadow-xl bg-gradient-to-br from-white to-purple-50/30">
+                <h3 class="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span class="text-2xl">🔮</span> Sovereign Daily Insight
+                </h3>
+                <div id="daily-reflection-content" class="text-gray-700 leading-relaxed italic text-lg">
+                    <!-- Reflection will be injected here -->
+                </div>
+            </div>
+        </div>
 
         <!-- Container for the selected day's log -->
         <div id="day-view-container" class="space-y-6">

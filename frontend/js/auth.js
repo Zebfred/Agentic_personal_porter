@@ -27,17 +27,6 @@ const Auth = {
     
     // Check auth state on page load. Call this at the top of protected pages.
     enforceAuth: () => {
-        // Auto-inject development key for local testing to bypass UI login
-        const isLocalhost = window.location.hostname === 'localhost' || 
-                           window.location.hostname === '127.0.0.1' || 
-                           window.location.hostname.startsWith('192.168.') ||
-                           window.location.protocol === 'file:';
-        if (isLocalhost && !Auth.getToken()) {
-            console.warn('Local development detected. Auto-injecting default_dev_key...');
-            Auth.setToken('default_dev_key');
-            return;
-        }
-
         // If we're not on the login page and not authenticated, redirect
         if (!window.location.pathname.includes('login.html') && !Auth.isAuthenticated()) {
             window.location.href = 'login.html';
@@ -86,3 +75,6 @@ const Auth = {
 
 // Auto-run on load for any script importing this
 Auth.enforceAuth();
+
+// Expose to window so type="module" scripts can access it
+window.Auth = Auth;

@@ -139,6 +139,11 @@ def artifacts():
 def login_page():
     return send_from_directory('../frontend', 'login.html')
 
+@app.route('/graph_explorer')
+@app.route('/graph_explorer.html')
+def graph_explorer():
+    return send_from_directory('../frontend', 'graph_explorer.html')
+
 # Serve static files (JS, CSS, etc.)
 @app.route('/js/<path:filename>')
 def serve_js(filename):
@@ -191,31 +196,72 @@ def fetch_calendar_events_for_date(target_date_str: str):
         logger.error(f"Error fetching calendar events internally: {e}")
         return []
 
+@app.route('/api/save_log', methods=['POST', 'OPTIONS'])
+@require_api_key
+def save_log():
+    """
+    Saves a log entry to MongoDB and Neo4j without triggering AI reflection.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+            
+        try:
+            # We use JournalLogBase which matches log_data
+            from src.schemas.api_models import JournalLogBase
+            validated_data = JournalLogBase(**data)
+            log_data_dict = validated_data.model_dump() if hasattr(validated_data, 'model_dump') else validated_data.dict()
+        except ValidationError as e:
+            logger.error(f"Validation Error in save_log: {e}")
+            return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+
+        # 1. Save pristine Frontend log to MongoDB Landing Zone
+        mongo_storage = SovereignMongoStorage()
+        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
+        
+        # 2. Save the complete log as a distinct node to Neo4j Identity Graph
+        db_confirmation = log_to_neo4j(log_data_dict)
+        
+        return jsonify({
+            "status": "success",
+            "mongo_id": mongo_doc_id,
+            "db_status": db_confirmation
+        })
+    except Exception as e:
+        logger.error(f"Error saving log: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key
 def process_journal():
     """
-    Receives a journal entry and full log data, gets an AI reflection,
-    saves the complete log to Neo4j, and returns the reflection.
+    Generates a daily reflection based on the day's logs.
+    Saves the reflection to a dedicated collection.
     """
+    if request.method == 'OPTIONS':
+        return '', 204
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
         
         try:
-            validated_data = JournalRequestSchema(**data)
+            from src.schemas.api_models import DailyReflectionRequestSchema
+            validated_data = DailyReflectionRequestSchema(**data)
             journal_entry = validated_data.journal_entry
             log_data = validated_data.log_data.model_dump() if hasattr(validated_data.log_data, 'model_dump') else validated_data.log_data.dict()
+            day = log_data.get('day', 'Unknown')
         except ValidationError as e:
             logger.error(f"Validation Error: {e}")
             return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
-            
-        logger.info("Received journal entry request (content redacted for PII)...")
-        logger.info(f"Received log data for day: {log_data.get('day')}")
+        
+        logger.info(f"Generating daily reflection for {day}...")
         
         try:
-            # Enhance journal entry with calendar context if available
+            # Enhance journal entry with calendar context
             enhanced_journal_entry = journal_entry
             
             # Try to fetch calendar events for the day
@@ -239,41 +285,29 @@ def process_journal():
                     if events:
                         event_titles = [e.get('summary', 'Untitled') for e in events]
                         calendar_context = f"\n\nCalendar Events for {day}: {', '.join(event_titles)}"
-                        enhanced_journal_entry = journal_entry + calendar_context
+                        #enhanced_journal_entry = journal_entry + calendar_context
                         logger.info(f"Added {len(events)} calendar events to journal context")
-            except Exception as cal_error:
-                # Calendar fetch failed, but continue without it
-                logger.warning(f"Could not fetch calendar events (non-critical): {cal_error}")
-            
-            # Run the CrewAI workflow with enhanced context
-            crew_result = run_crew(enhanced_journal_entry, log_data)
+            except Exception as cal_err:
+                logger.warning(f"Calendar context failed: {cal_err}")
 
-            # Extract the reflection text (simplified from iteration file)
-            if crew_result and hasattr(crew_result, 'tasks_output') and crew_result.tasks_output:
-                last_task = crew_result.tasks_output[-1]
-                result_text = last_task.raw if hasattr(last_task, 'raw') and last_task.raw else str(last_task)
-            elif crew_result and hasattr(crew_result, 'raw'):
-                result_text = crew_result.raw
-            else:
-                result_text = str(crew_result) if crew_result else "Could not retrieve a reflection."
+            # Run CrewAI reflection
+            result_text = run_crew(enhanced_journal_entry, log_data)
 
-            # Add reflection to the log data for the database
-            log_data['reflection'] = result_text
-
-            # 1. Save pristine Frontend log to MongoDB Landing Zone
+            # Save Reflection to dedicated collection
             mongo_storage = SovereignMongoStorage()
-            mongo_doc_id = mongo_storage.save_journal_entry(log_data)
-            logger.info(f"MongoDB Journal Saved: {mongo_doc_id}")
+            reflection_id = mongo_storage.save_agent_reflection({
+                "day": day,
+                "user_id": os.environ.get("HERO_NAME", "Hero"),
+                "reflection_text": result_text,
+                "metadata": {
+                    "source": "daily_recon",
+                    "timestamp": datetime.now().isoformat()
+                }
+            })
 
-            # 2. Save the complete log as a distinct node to Neo4j Identity Graph
-            db_confirmation = log_to_neo4j(log_data)
-            logger.info(f"Neo4j Confirmation: {db_confirmation}")
-
-            # Return the successful result to the front-end
-            # Note: app.js expects "result" key, not "reflection"
             return jsonify({
                 "result": result_text,
-                "db_status": db_confirmation
+                "reflection_id": reflection_id
             })
         
         except Exception as e:
@@ -338,6 +372,21 @@ def login():
             
     except Exception as e:
         logger.error(f"Error during login: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/graph_data', methods=['GET'])
+@require_api_key
+def get_graph_data():
+    """
+    Fetches the simplified graph topology for visualization.
+    """
+    try:
+        from src.database.neo4j_client.read_operations import get_full_graph_topology
+        limit = request.args.get('limit', default=500, type=int)
+        graph_data = get_full_graph_topology(limit=limit)
+        return jsonify(graph_data)
+    except Exception as e:
+        logger.error(f"Error fetching graph data: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/inventory', methods=['GET'])
