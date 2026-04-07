@@ -33,6 +33,7 @@ class SovereignMongoStorage:
         self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
         self.journal_col = self.db['journal_entries']
         self.artifacts_col = self.db['hero_artifacts']
+        self.reflections_col = self.db['agent_reflections']
 
     def save_journal_entry(self, log_data: dict):
         """
@@ -41,6 +42,15 @@ class SovereignMongoStorage:
         """
         log_data["processed_at"] = datetime.now(timezone.utc)
         result = self.journal_col.insert_one(log_data)
+        return str(result.inserted_id)
+
+    def save_agent_reflection(self, reflection_data: dict):
+        """
+        Saves an AI-generated reflection into the agent_reflections collection.
+        Expects keys: day, user_id, reflection_text, metadata.
+        """
+        reflection_data["created_at"] = datetime.now(timezone.utc)
+        result = self.reflections_col.insert_one(reflection_data)
         return str(result.inserted_id)
 
     def get_hero_artifact(self, artifact_name: str) -> dict:
