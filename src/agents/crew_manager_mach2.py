@@ -90,7 +90,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
             f"3. Compare the combined data against his Active Intentions:\n   {hero_context.get('intentions', 'Unknown')}\n\n"
             "4. Identify any 'High-Friction Deviations' or 'Valuable Detours'."
         ),
-        expected_output="A compassionate, Vim-ready Markdown report that identifies one 'Valuable Detour' and poses one insightful question to clear 'The Fog of War'. Use this exact phrasing format: 'Delta = Actual - Intent'.",
+        expected_output="A concise 'Sovereign Reflection' (max 3 paragraphs) analyzing the Day's Delta, followed by one single 'Socratic Question'. Avoid repetitive headers like 'Introduction' or 'Conclusion'. Focus on the 'Valuable Detour' if present.",
         agent=reflection_agent
     )
 

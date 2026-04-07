@@ -160,17 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
 
                 <!-- Action Button & AI Output -->
-                <div class="mt-6 pt-4 border-t border-gray-100">
-                    <button class="save-reflect-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition shadow-sm active:scale-95 flex justify-center items-center gap-2">
-                        <span>✨</span> Save & Reflect
+                <div class="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center gap-4">
+                    <button class="save-log-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition shadow-sm active:scale-95 flex justify-center items-center gap-2">
+                        <span>💾</span> Save Log
                     </button>
                     
-                    <div id="loader-${chunkId}" class="hidden mt-4 text-center text-blue-600 font-medium animate-pulse">
-                        Thinking...
-                    </div>
-                    
-                    <div id="ai-output-${chunkId}" class="ai-output-container mt-4 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400 ${chunkData.aiReflection ? '' : 'hidden'}">
-                        <p class="text-gray-700 italic text-sm">${chunkData.aiReflection ? escapeHTML(chunkData.aiReflection).replace(/\\n/g, '<br>') : ''}</p>
+                    <div id="save-status-${chunkId}" class="hidden text-green-600 font-bold text-sm animate-pulse">
+                        Sovereign Sync Complete ✅
                     </div>
                 </div>
             `;
@@ -310,9 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 4. MAIN ACTION: Save & Reflect
+    // 4. MAIN ACTION: Save Log (No Reflection)
     dayViewContainer.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('save-reflect-btn')) {
+        if (e.target.classList.contains('save-log-btn')) {
             const btn = e.target;
             const card = btn.closest('.time-chunk-card');
             const day = card.dataset.day;
@@ -334,22 +330,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 intention, activityTitle, feeling, brainFog, 
                 valuableDetour, inventoryNote, 
                 detrimentalDetour, detrimentNote,
-                aiReflection: weeklyLog[day][chunkId].aiReflection
+                aiReflection: weeklyLog[day][chunkId].aiReflection || ""
             };
             weeklyLog[day][chunkId] = chunkData;
             saveWeeklyLog();
 
             // UI Feedback
-            const loader = card.querySelector(`#loader-${chunkId}`);
-            const aiOutputContainer = card.querySelector(`#ai-output-${chunkId}`);
-            
+            const statusMsg = card.querySelector(`#save-status-${chunkId}`);
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
-            loader.classList.remove('hidden');
-            aiOutputContainer.classList.add('hidden');
+            statusMsg.classList.remove('hidden');
 
             // Construct Payloads - CORRECT KEYS FOR NEO4J & SERVER
-            const journalEntry = `Intention: ${intention}. Actual: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
+            // const journalEntry = `Intention: ${intention}. Actual: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
             const logDataForDb = {
                 day, timeChunk: chunkId, intention, actual: activityTitle,
                 feeling, brainFog: parseInt(brainFog), 
@@ -358,44 +351,88 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             try {
-                const response = await Auth.fetchWithAuth('/process_journal', {
+                const response = await Auth.fetchWithAuth('/api/save_log', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        journal_entry: journalEntry, // FIXED: Matches server expectation
-                        log_data: logDataForDb 
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(logDataForDb),
                 });
 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                const data = await response.json();
                 
-                // Handle different potential response structures securely
-                const rawReflection = data.result || data.reflection || "Insight recorded.";
-                
-                // Save raw text
-                weeklyLog[day][chunkId].aiReflection = rawReflection;
-                saveWeeklyLog();
-
-                // Display securely with escaping
-                const safeHTML = escapeHTML(rawReflection).replace(/\\n/g, '<br>');
-                aiOutputContainer.innerHTML = `<p class="text-gray-700 italic leading-relaxed">${safeHTML}</p>`;
-                aiOutputContainer.classList.remove('hidden');
+                // If this is the 8pm block, trigger reflection automatically
+                if (chunkId === 'early-night') {
+                    console.log("Final block logged. Triggering Socratic Reflection...");
+                    triggerDailyReflection(day);
+                }
 
             } catch (error) {
-                console.error('Error processing journal entry:', error);
-                aiOutputContainer.innerHTML = `<p class="text-red-500 font-bold">⚠️ Connection Error. Ensure server is running.</p>`;
-                aiOutputContainer.classList.remove('hidden');
+                console.error('Error saving journal entry:', error);
+                statusMsg.textContent = "❌ Sync Failed";
+                statusMsg.classList.add('text-red-600');
             } finally {
-                loader.classList.add('hidden');
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                setTimeout(() => {
+                    statusMsg.classList.add('hidden');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, 3000);
             }
         }
     });
+
+    // 5. DAILY REFLECTION LOGIC
+    const triggerDailyReflection = async (day) => {
+        const reflectBtn = document.getElementById('daily-reflection-btn');
+        const container = document.getElementById('daily-reflection-container');
+        const content = document.getElementById('daily-reflection-content');
+        
+        // UI Loading State
+        reflectBtn.disabled = true;
+        reflectBtn.innerHTML = `<span>⏳</span> Analyzing...`;
+        container.classList.remove('hidden');
+        content.innerHTML = `<div class="animate-pulse flex items-center gap-2">Connecting to Sovereign Core<span class="dot-flashing">...</span></div>`;
+
+        // Gather all day data for context
+        const dayData = weeklyLog[day];
+        let journalSummary = `Summary for ${day}:\n`;
+        Object.entries(dayData).forEach(([chunk, data]) => {
+            if (data.activityTitle) {
+                journalSummary += `- ${chunk}: Intended ${data.intention}, Actual ${data.activityTitle}. Feeling: ${data.feeling}.\n`;
+            }
+        });
+
+        try {
+            const response = await Auth.fetchWithAuth('/process_journal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    journal_entry: journalSummary,
+                    log_data: { day: day }
+                }),
+            });
+
+            if (!response.ok) throw new Error(`Status: ${response.status}`);
+            const data = await response.json();
+            const reflection = data.result || "Reflection recorded.";
+            
+            // Display securely
+            content.innerHTML = escapeHTML(reflection).replace(/\\n/g, '<br>');
+            
+        } catch (error) {
+            console.error('Reflection Error:', error);
+            content.innerHTML = `<p class="text-red-500 font-bold">⚠️ Core Mirror Offline. Try again later.</p>`;
+        } finally {
+            reflectBtn.disabled = false;
+            reflectBtn.innerHTML = `<span>✨</span> Generate Daily Reflection`;
+        }
+    };
+
+    if (document.getElementById('daily-reflection-btn')) {
+        document.getElementById('daily-reflection-btn').addEventListener('click', () => {
+            const activeDayBtn = document.querySelector('.day-btn.bg-blue-600');
+            const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
+            triggerDailyReflection(day);
+        });
+    }
 
     // Init
     const init = async () => {

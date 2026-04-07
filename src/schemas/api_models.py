@@ -18,3 +18,10 @@ class JournalRequestSchema(BaseModel):
 
 class CalendarRequestSchema(BaseModel):
     date: Optional[str] = None
+
+class DailyReflectionLogData(BaseModel):
+    day: str
+
+class DailyReflectionRequestSchema(BaseModel):
+    journal_entry: str = Field(..., max_length=15000)
+    log_data: DailyReflectionLogData

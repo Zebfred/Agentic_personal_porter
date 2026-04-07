@@ -141,3 +141,70 @@ def _get_state_correlations_tx(tx, user_id: str):
     )
     result = tx.run(query, userId=user_id)
     return [dict(record) for record in result]
+
+def get_full_graph_topology(limit: int = 500) -> dict:
+    """
+    Retrieves a simplified version of the graph topology suitable for
+    visualization libraries like vis-network.
+    
+    Args:
+        limit: Maximum number of nodes to return to prevent browser crash
+        
+    Returns:
+        Dictionary with 'nodes' and 'edges' lists.
+    """
+    driver = get_driver()
+    nodes = []
+    edges = []
+    
+    # Run a unified query that finds nodes and their relationships
+    # We use elementId() because Neo4j 5 integer IDs exceed JavaScript's MAX_SAFE_INTEGER
+    # causing catastrophic ID collision when parsed by the frontend.
+    query = """
+    MATCH (n)
+    OPTIONAL MATCH (n)-[r]->(m)
+    WITH n, r, m
+    LIMIT $limit
+    RETURN elementId(n) AS src_id, labels(n)[0] AS src_label, properties(n) AS src_props,
+           elementId(r) AS rel_id, type(r) AS rel_type,
+           elementId(m) AS tgt_id, labels(m)[0] AS tgt_label, properties(m) AS tgt_props
+    """
+    
+    with driver.session() as session:
+        result = session.run(query, limit=limit)
+        
+        # Track inserted to avoid duplicates
+        node_tracker = set()
+        
+        for record in result:
+            src_id = record["src_id"]
+            if src_id not in node_tracker:
+                nodes.append({
+                    "id": src_id,
+                    "label": record["src_label"] or "Node",
+                    "title": record["src_props"].get("name") or record["src_props"].get("activity") or record["src_props"].get("description") or record["src_label"],
+                    "group": record["src_label"]
+                })
+                node_tracker.add(src_id)
+                
+            tgt_id = record["tgt_id"]
+            if tgt_id is not None and tgt_id not in node_tracker:
+                nodes.append({
+                    "id": tgt_id,
+                    "label": record["tgt_label"] or "Node",
+                    "title": record["tgt_props"].get("name") or record["tgt_props"].get("activity") or record["tgt_props"].get("description") or record["tgt_label"],
+                    "group": record["tgt_label"]
+                })
+                node_tracker.add(tgt_id)
+                
+            if record["rel_id"] is not None:
+                edges.append({
+                    "id": record["rel_id"],
+                    "from": src_id,
+                    "to": tgt_id,
+                    "label": record["rel_type"]
+                })
+                
+    driver.close()
+    return {"nodes": nodes, "edges": edges}
+
