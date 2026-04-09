@@ -122,16 +122,34 @@ def run_crew(journal_entry: str, log_data: dict = None):
     # Extract the string content
     result_text = getattr(result, 'raw', str(result))
     
+    from datetime import datetime
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    
     # Save the ViM Friendly Output
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reflections")
     os.makedirs(out_dir, exist_ok=True)
-    out_file = os.path.join(out_dir, "daily_recon.md")
+    out_file = os.path.join(out_dir, f"daily_recon_{current_date}.md")
     
     with open(out_file, "w") as f:
-        f.write("# Sovereign Agent: Daily Reconnaissance\n\n")
+        f.write(f"# Sovereign Agent: Daily Reconnaissance ({current_date})\n\n")
         f.write(result_text)
         
-    print(f"\n--- Recon Complete. Report saved to {out_file} ---")
+    # Save to MongoDB
+    try:
+        reflection_data = {
+            "day": current_date,
+            "user_id": os.environ.get("HERO_NAME", "Hero"),
+            "reflection_text": result_text,
+            "metadata": {
+                "journal_entry": journal_entry,
+                "log_data": log_data
+            }
+        }
+        storage.save_agent_reflection(reflection_data)
+        print(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
+    except Exception as e:
+        print(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
+
     return result_text
 
 
