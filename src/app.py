@@ -59,13 +59,11 @@ logger.addHandler(console_handler)
 
 app = Flask(__name__)
 # Restrict CORS to common local origins and private IP ranges
-cors_origins = [
-    "http://localhost:5000",
-    "http://127.0.0.1:5000", 
-    "http://localhost:5090",
-    "http://127.0.0.1:5090",
-    "http://192.168.0.104:5090" # User's specific local IP
-]
+allowed_origins_str = os.environ.get(
+    "CORS_ORIGINS",
+    "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5090,http://127.0.0.1:5090"
+)
+cors_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
 CORS(app, resources={r"/*": {"origins": cors_origins}})
 
 from flask import make_response
