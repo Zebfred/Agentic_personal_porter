@@ -232,6 +232,33 @@ def save_log():
         logger.error(f"Error saving log: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/logs', methods=['GET', 'OPTIONS'])
+@require_api_key
+def get_historical_logs():
+    """
+    Fetches the nested monthly journal entries for the UI calendar.
+    Query params:
+        month: str format 'YYYY-MM'
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        month = request.args.get('month')
+        if not month:
+            return jsonify({"error": "Missing month parameter (format: YYYY-MM)"}), 400
+            
+        mongo_storage = SovereignMongoStorage()
+        user_id = os.environ.get("HERO_NAME", "Hero")
+        month_data = mongo_storage.get_monthly_log(month, user_id=user_id)
+        
+        return jsonify({
+            "status": "success",
+            "data": month_data
+        })
+    except Exception as e:
+        logger.error(f"Error fetching monthly logs: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key
 def process_journal():
@@ -551,6 +578,20 @@ def admin_sync_calendar():
         return jsonify({"message": "Calendar sync completed successfully."})
     except Exception as e:
         logger.error(f"Error syncing calendar: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/vector_sync', methods=['POST'])
+@require_api_key
+def admin_vector_sync():
+    """
+    Triggers the isolated batch synchronization into ChromaDB and Weaviate.
+    """
+    try:
+        from src.orchestrators.vector_batch_sync_all import execute_sync
+        execute_sync(sync_trigger_time="CRON")
+        return jsonify({"message": "Vector DB batch synchronization completed."})
+    except Exception as e:
+        logger.error(f"Error during vector batch sync: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/admin/inject_foundation', methods=['POST'])

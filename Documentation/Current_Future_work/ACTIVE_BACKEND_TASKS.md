@@ -46,7 +46,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 ## Priority: Database Architecture & Ecosystem Verification
 *Status: Planning phase for long-term storage and connection integrity.*
 
-- [ ] **Vector Database Integration:** Set up a proper production vector database (MongoDB Atlas Vector Search setup in `vector_storage.py`) that the Corrector and GTKY agents will interact with for long-term semantic search and massive document storage.
+- [ ] **Vector Database Integration:** Set up a proper production vector database (Weviate Search setup in `vector_storage.py`) that the Corrector and GTKY agents will interact with for long-term semantic search and massive document storage.
 - [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar via `calendar_timeseries.py`, progressing further back in time, and establishing a robust time-series connection for historical data. The backend logic is now shifted to cleanly divide events into `raw_gcal_timeseries`, `event_intentions`, `event_actuals`, and `unified_events` using a consistent event UUID.
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.

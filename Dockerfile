@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5090/ || exit 1
 
 # Start the application using Gunicorn (WSGI)
-CMD ["gunicorn", "--bind", "0.0.0.0:5090", "--workers", "1", "--threads", "4", "src.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5090", "--workers", "1", "--threads", "4", "--timeout", "300", "src.app:app"]

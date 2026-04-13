@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Utility functions for security and API
     const escapeHTML = (str) => {
         if (!str) return '';
-        return str.replace(/[&<>'"]/g, 
+        return str.replace(/[&<>'"]/g,
             tag => ({
                 '&': '&amp;',
                 '<': '&lt;',
@@ -39,6 +39,20 @@ document.addEventListener('DOMContentLoaded', () => {
         'early-night': { start: 20, end: 24 }
     };
 
+
+    // --- Calendar Overlay State ---
+    let activeWeekContext = 'current'; 
+    let activeDateMap = {}; 
+    let monthlyLogData = {};
+    let calendarDate = new Date();
+
+    const calendarGrid = document.getElementById('calendar-grid');
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+    const currentMonthHeader = document.getElementById('current-month-header');
+    const resetWeekBtn = document.getElementById('reset-current-week-btn');
+    const activeWeekLabel = document.getElementById('active-week-label');
+
     let weeklyLog = {};
 
     const getWeeklyLog = () => {
@@ -68,7 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const saveWeeklyLog = () => {
-        localStorage.setItem('weeklyLog', JSON.stringify(weeklyLog));
+        if (activeWeekContext === 'current') {
+            localStorage.setItem('weeklyLog', JSON.stringify(weeklyLog));
+        }
     };
 
     const renderDay = (day) => {
@@ -83,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentDayHeader) {
             currentDayHeader.textContent = day.charAt(0).toUpperCase() + day.slice(1);
         }
-        
+
         dayViewContainer.innerHTML = '';
 
         const dayData = weeklyLog[day];
@@ -179,34 +195,26 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     const fetchCalendarEvents = async (day) => {
         try {
-            // Calculate the date for the selected day
-            const today = new Date();
-            const dayIndex = DAYS.indexOf(day);
-            const currentDayIndex = (today.getDay() + 6) % 7; // Adjust to make Monday index 0
-            const daysDiff = dayIndex - currentDayIndex;
-            const targetDate = new Date(today);
-            targetDate.setDate(today.getDate() + daysDiff);
-            
-            const dateStr = targetDate.toISOString().split('T')[0];
-            
+            const dateStr = activeDateMap[day];
+
             console.log(`Fetching calendar events for ${day} (${dateStr})...`);
-            
+
             // Using the endpoint from server.py with Auth module handling token
             const response = await Auth.fetchWithAuth(`/get_calendar_events?date=${dateStr}`);
-            
+
             if (!response.ok) throw new Error(`Status: ${response.status}`);
-            
+
             const data = await response.json();
             const events = data.events || [];
-            
+
             // Map events to chunks based on hour
             const eventsByChunk = {};
             TIME_CHUNKS.forEach(chunk => eventsByChunk[chunk.id] = []);
-            
+
             events.forEach(event => {
                 const startTime = new Date(event.start);
                 const hour = startTime.getHours();
-                
+
                 for (const [chunkId, range] of Object.entries(TIME_CHUNK_RANGES)) {
                     if (hour >= range.start && hour < range.end) {
                         eventsByChunk[chunkId].push(event);
@@ -215,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             return eventsByChunk;
-            
+
         } catch (error) {
             console.error('Calendar Fetch Error:', error);
             return {};
@@ -228,12 +236,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const chunkId = chunk.id;
             const events = eventsByChunk[chunkId] || [];
             const intentionInput = document.getElementById(`intention-${chunkId}`);
-            
+
             if (intentionInput && events.length > 0) {
                 foundEvents += events.length;
                 // Format event titles
                 const eventTitles = events.map(e => `• ${e.title}`).join('\n');
-                
+
                 // Only populate if empty to avoid overwriting user notes
                 if (!intentionInput.value.trim()) {
                     intentionInput.value = eventTitles;
@@ -241,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (weeklyLog[day] && weeklyLog[day][chunkId]) {
                         weeklyLog[day][chunkId].intention = eventTitles;
                     }
-                    
+
                     // Visual feedback flash
                     intentionInput.parentElement.classList.add('ring-2', 'ring-green-400');
                     setTimeout(() => intentionInput.parentElement.classList.remove('ring-2', 'ring-green-400'), 1500);
@@ -268,11 +276,11 @@ document.addEventListener('DOMContentLoaded', () => {
         syncBtn.addEventListener('click', async () => {
             const activeDayBtn = document.querySelector('.day-btn.bg-blue-600');
             const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
-            
+
             const originalText = syncBtn.innerText;
             syncBtn.innerHTML = `<span>⏳</span> Syncing...`;
             syncBtn.disabled = true;
-            
+
             try {
                 const events = await fetchCalendarEvents(day);
                 const count = populateIntentionsFromCalendar(day, events);
@@ -280,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 syncBtn.innerHTML = `<span>❌</span> Error`;
             }
-            
+
             setTimeout(() => {
                 syncBtn.innerHTML = originalText;
                 syncBtn.disabled = false;
@@ -327,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Update Local State
             const chunkData = {
-                intention, activityTitle, feeling, brainFog, 
-                valuableDetour, inventoryNote, 
+                intention, activityTitle, feeling, brainFog,
+                valuableDetour, inventoryNote,
                 detrimentalDetour, detrimentNote,
                 aiReflection: weeklyLog[day][chunkId].aiReflection || ""
             };
@@ -344,8 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Construct Payloads - CORRECT KEYS FOR NEO4J & SERVER
             // const journalEntry = `Intention: ${intention}. Actual: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
             const logDataForDb = {
-                day, timeChunk: chunkId, intention, actual: activityTitle,
-                feeling, brainFog: parseInt(brainFog), 
+                day: activeDateMap[day], timeChunk: chunkId, intention, actual: activityTitle,
+                feeling, brainFog: parseInt(brainFog),
                 isValuableDetour: valuableDetour, inventoryNote,
                 isDetrimentalDetour: detrimentalDetour, detrimentNote
             };
@@ -358,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
+
                 // If this is the 8pm block, trigger reflection automatically
                 if (chunkId === 'early-night') {
                     console.log("Final block logged. Triggering Socratic Reflection...");
@@ -384,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reflectBtn = document.getElementById('daily-reflection-btn');
         const container = document.getElementById('daily-reflection-container');
         const content = document.getElementById('daily-reflection-content');
-        
+
         // UI Loading State
         reflectBtn.disabled = true;
         reflectBtn.innerHTML = `<span>⏳</span> Analyzing...`;
@@ -404,19 +412,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await Auth.fetchWithAuth('/process_journal', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     journal_entry: journalSummary,
-                    log_data: { day: day }
+                    log_data: { day: activeDateMap[day] }
                 }),
             });
 
             if (!response.ok) throw new Error(`Status: ${response.status}`);
             const data = await response.json();
             const reflection = data.result || "Reflection recorded.";
-            
+
             // Display securely
             content.innerHTML = escapeHTML(reflection).replace(/\\n/g, '<br>');
-            
+
         } catch (error) {
             console.error('Reflection Error:', error);
             content.innerHTML = `<p class="text-red-500 font-bold">⚠️ Core Mirror Offline. Try again later.</p>`;
@@ -435,7 +443,156 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Init
+
+    const calculateCurrentWeekMap = () => {
+        const today = new Date();
+        const currentDayIndex = (today.getDay() + 6) % 7;
+        activeDateMap = {};
+        DAYS.forEach((d, idx) => {
+            const tDate = new Date(today);
+            tDate.setDate(today.getDate() + (idx - currentDayIndex));
+            activeDateMap[d] = tDate.toISOString().split('T')[0];
+        });
+    };
+
+    // Calendar Overlay Logic
+    const fetchMonthLogs = async (year, month) => {
+        const monthId = `${year}-${String(month + 1).padStart(2, '0')}`;
+        try {
+            const response = await Auth.fetchWithAuth(`/api/logs?month=${monthId}`);
+            if (response.ok) {
+                const data = await response.json();
+                return data.data || {};
+            }
+        } catch (e) {
+            console.error("Failed", e);
+        }
+        return {};
+    };
+
+    const hasLogsForDate = (dateStr) => {
+        if (!monthlyLogData || !monthlyLogData.weeks) return false;
+        for (const week of Object.values(monthlyLogData.weeks)) {
+            if (week[dateStr] && week[dateStr].chunks && Object.keys(week[dateStr].chunks).length > 0) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    const loadHistoricalWeek = (mondayDateObj) => {
+        activeWeekContext = 'historical';
+        activeDateMap = {};
+        const newLog = {};
+        
+        let startStr = "";
+        let endStr = "";
+        DAYS.forEach((day, idx) => {
+            const d = new Date(mondayDateObj);
+            d.setDate(mondayDateObj.getDate() + idx);
+            const dateStr = d.toISOString().split('T')[0];
+            activeDateMap[day] = dateStr;
+            
+            if (idx === 0) startStr = dateStr;
+            if (idx === 6) endStr = dateStr;
+            
+            newLog[day] = {};
+            TIME_CHUNKS.forEach(chunk => {
+                let chunkData = null;
+                if (monthlyLogData.weeks) {
+                    for (const week of Object.values(monthlyLogData.weeks)) {
+                        if (week[dateStr] && week[dateStr].chunks && week[dateStr].chunks[chunk.id]) {
+                            chunkData = week[dateStr].chunks[chunk.id];
+                        }
+                    }
+                }
+                if (chunkData) {
+                    newLog[day][chunk.id] = {
+                        intention: chunkData.intention || '',
+                        activityTitle: chunkData.activityTitle || chunkData.actual || '',
+                        feeling: chunkData.feeling || '',
+                        brainFog: chunkData.brainFog || 0,
+                        valuableDetour: chunkData.isValuableDetour || false,
+                        inventoryNote: chunkData.inventoryNote || '',
+                        detrimentalDetour: chunkData.isDetrimentalDetour || false,
+                        detrimentNote: chunkData.detrimentNote || '',
+                        aiReflection: ''
+                    };
+                } else {
+                    newLog[day][chunk.id] = {
+                        intention: '', activityTitle: '', feeling: '', brainFog: 0,
+                        valuableDetour: false, inventoryNote: '',
+                        detrimentalDetour: false, detrimentNote: '', aiReflection: ''
+                    };
+                }
+            });
+        });
+        
+        weeklyLog = newLog;
+        if (activeWeekLabel) activeWeekLabel.textContent = `Historical Week: ${startStr} to ${endStr}`;
+        if (resetWeekBtn) resetWeekBtn.classList.remove('hidden');
+        renderDay('monday');
+    };
+
+    const renderCalendar = async () => {
+        if (!calendarGrid) return;
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
+        
+        monthlyLogData = await fetchMonthLogs(year, month);
+        
+        currentMonthHeader.textContent = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+        
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        calendarGrid.innerHTML = '';
+        
+        for (let i = 0; i < firstDay; i++) {
+            calendarGrid.appendChild(document.createElement('div'));
+        }
+        
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+            const btn = document.createElement('button');
+            const hasLogs = hasLogsForDate(dateStr);
+            
+            btn.className = `p-2 aspect-square rounded-lg font-medium transition ${
+                hasLogs ? 'bg-purple-100 text-purple-900 border border-purple-200 hover:bg-purple-200 shadow-sm'
+                : 'bg-gray-50 text-gray-700 hover:bg-gray-200 border border-transparent'
+            }`;
+            
+            btn.textContent = i;
+            if (hasLogs) {
+                btn.innerHTML += `<div class="w-1.5 h-1.5 bg-purple-500 rounded-full mx-auto mt-1"></div>`;
+            }
+            
+            btn.addEventListener('click', () => {
+                const clickedD = new Date(year, month, i);
+                const dDay = clickedD.getDay(); // 0 is Sun, 1 is Mon
+                const diff = clickedD.getDate() - dDay + (dDay === 0 ? -6:1);
+                const monday = new Date(clickedD.setDate(diff));
+                loadHistoricalWeek(monday);
+            });
+            calendarGrid.appendChild(btn);
+        }
+    };
+
+    if (prevMonthBtn) prevMonthBtn.addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+    if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+    
+    if (resetWeekBtn) resetWeekBtn.addEventListener('click', () => {
+        activeWeekContext = 'current';
+        calculateCurrentWeekMap();
+        weeklyLog = getWeeklyLog();
+        if (activeWeekLabel) activeWeekLabel.textContent = "Current Local Week";
+        resetWeekBtn.classList.add('hidden');
+        renderDay('monday');
+    });
+
     const init = async () => {
+        calculateCurrentWeekMap();
+        renderCalendar();
         weeklyLog = getWeeklyLog();
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
