@@ -5,17 +5,16 @@ This document preserves the architectural reasoning, budget constraints, and str
 ## Goal
 Establish a high-performance, low-cost long-term memory for agents. The system must capture the semantic "vibe" of daily journal entries and calendar events, while explicitly measuring alignment with the 9 quality pillars of life sourced from the `Intent` object in `hero_ambition.json` (e.g. Social, Career, Health, Loved Ones, Leisure, Interest, Spiritual, Mundane).
 
-## Vector Database Strategy: The Experimental Approach
-Because cost limits and exact performance needs are still solidifying, we are doing foundational experimental testing on three vector databases simultaneously within `src/database/vector_database/`:
+## Vector Database Strategy: The Hybrid Experimental Approach
+Because cost limits and exact performance needs are still solidifying, we are doing foundational experimental testing running Vector DBs concurrently on simulated data. The active implementation runs via `scripts/vector_batch_sync_all.py` which executes the following segregation rule:
 
-1.  **Pinecone (Serverless Starter)**: The anticipated front-runner. Excellent out-of-the-box Hybrid Search. Cost: $0/month on the starter plan with up to 2 million writes.
-2.  **ChromaDB**: The open-source, "All-In-House" alternative. Hosted alongside the application, keeping costs strictly at $0.
-3.  **Weaviate**: A vector-native object database that mimics relationships natively. Useful to test if "cross-references" between Journal Entries and Goal objects yield vastly superior hybrid retrievals compared to Pinecone.
-
-Our goal is to run all three concurrently with mocked data to get hard numbers on performance/cost ratios before finalizing the production client.
+1.  **ChromaDB (Local, Open-Source)**: Used to store embeddings of **Agent Reflections**. This is to retain the semantic "Vibe check" of past AI feedback.
+2.  **Weaviate (Local)**: Used to store embeddings of **Journal Entries**. Weaviate's object-native architecture mimics relationships, making it ideal for testing "cross-references" between Intent and Actual tracking.
+3.  **Pinecone (Serverless Starter)**: Retained as a scalable backup option if local instances degrade under load.
 
 ## Batch Processing Architecture
-To avoid constant database waking and token thrashing, vector embeddings will be compiled and injected strictly twice a day:
+To avoid constant database waking and token thrashing, the `vector_batch_sync_all.py` script pulls recent document batches from the MongoDB landing zone (the `journal_entries` and `agent_reflections` collections). 
+Vector embeddings are compiled and injected strictly twice a day:
 - **Noon (12:00 PM)**
 - **Midnight (12:00 AM)**
 Each batch processes the preceding 12-hours of 4-hour journal chunks and events.
@@ -24,7 +23,8 @@ Each batch processes the preceding 12-hours of 4-hour journal chunks and events.
 
 ### Current Target: BGE-M3 (0.6B Parameters)
 Highly performant for hybrid search. Low VRAM overhead. Fast enough to process our 4-hour journal chunks and 6-field calendar events in milliseconds. 
-*   **Infrastructure:** Run on a GCP `e2-standard-2` Spot VM (2 vCPUs, 8 GB RAM).
+*   **Infrastructure:** Run on a GCP `e2-standard-2` Spot VM (2 vCPUs, 8 GB RAM) wrapping an Ollama/HuggingFace HTTP API.
+*   **Integration:** Served locally via the `/api/embeddings` REST endpoint using `src/integrations/embeddings_client.py`.
 *   **Pricing Strategy:** Spot Instance yields a 60-91% discount on compute, bringing the monthly embedding infrastructure to ~$5.00 – $9.00.
 
 ### Future Target: Qwen3-0.6B ("Deep Understanding" Agents)

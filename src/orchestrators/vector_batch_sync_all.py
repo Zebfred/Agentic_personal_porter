@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
-root = Path(__file__).resolve().parent.parent
+root = Path(__file__).resolve().parent.parent.parent
 if str(root) not in sys.path:
     sys.path.append(str(root))
 

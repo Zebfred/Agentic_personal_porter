@@ -35,14 +35,51 @@ class SovereignMongoStorage:
         self.artifacts_col = self.db['hero_artifacts']
         self.reflections_col = self.db['agent_reflections']
 
-    def save_journal_entry(self, log_data: dict):
+    def save_journal_entry(self, log_data: dict, user_id: str = "Hero"):
         """
-        Saves a direct Journal Entry from the Frontend (Mach 2 App) into MongoDB.
-        Returns the inserted object's string ID.
+        Saves a direct Journal Entry into MongoDB using a nested monthly structure.
         """
-        log_data["processed_at"] = datetime.now(timezone.utc)
-        result = self.journal_col.insert_one(log_data)
-        return str(result.inserted_id)
+        day_str = log_data.get("day") # Expected format: "YYYY-MM-DD"
+        time_chunk = log_data.get("timeChunk")
+        
+        if not day_str or not time_chunk:
+            result = self.journal_col.insert_one(log_data)
+            return str(result.inserted_id)
+            
+        try:
+            # Parse ISO Date
+            dt = datetime.strptime(day_str, "%Y-%m-%d")
+            month_id = dt.strftime("%Y-%m")
+            
+            # Get ISO week number formatted as Wxx
+            iso_year, iso_week, iso_weekday = dt.isocalendar()
+            week_id = f"W{iso_week:02d}"
+            
+            # Prepare chunk data
+            chunk_data = {k: v for k, v in log_data.items() if k not in ["day", "timeChunk"]}
+            chunk_data["processed_at"] = datetime.now(timezone.utc)
+            
+            query = {"month_id": month_id, "user_id": user_id}
+            update_path = f"weeks.{week_id}.{day_str}.chunks.{time_chunk}"
+            
+            update = {"$set": {update_path: chunk_data}}
+            
+            self.journal_col.update_one(query, update, upsert=True)
+            return f"Updated {month_id}"
+            
+        except ValueError:
+            # Legacy string fallback (e.g. 'monday')
+            log_data["processed_at"] = datetime.now(timezone.utc)
+            result = self.journal_col.insert_one(log_data)
+            return str(result.inserted_id)
+
+    def get_monthly_log(self, year_month: str, user_id: str = "Hero") -> dict:
+        """
+        Retrieves the nested month object containing weekly journal chunks.
+        year_month format: 'YYYY-MM'
+        """
+        doc = self.journal_col.find_one({"month_id": year_month, "user_id": user_id}, {"_id": 0})
+        return doc if doc else {}
 
     def save_agent_reflection(self, reflection_data: dict):
         """
