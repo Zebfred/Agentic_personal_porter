@@ -135,6 +135,7 @@ pdfminer.six==20250506
 pdfplumber==0.11.7
 pexpect==4.9.0
 pillow==11.3.0
+pinecone==6.0.1
 playwright==1.55.0
 portalocker==2.7.0
 posthog==3.25.0

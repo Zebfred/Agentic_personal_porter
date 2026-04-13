@@ -33,7 +33,8 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 ## Cloud Operations (Mach 2)
 *Status: Architecture defined.*
 
-- [ ] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler or AWS EventBridge) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
+- [ ] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
+- [x] **Dynamic Cloud Deployment:** Simplified `deploy_gcp.sh` to dynamically load all environment variables from `.auth/.env` instead of manual instantiation. *(Verified: Dynamic parsing logic implemented and tested.)*
 
 ## Priority: Artifacts & Inventory API Support
 *Status: Severe file-naming collisions identified, API endpoints failing.*
