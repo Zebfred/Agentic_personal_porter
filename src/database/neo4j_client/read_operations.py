@@ -19,7 +19,6 @@ def get_valuable_detours(user_name=None):
     with driver.session() as session:
         result = session.run(query, userName=user_name)
         detours = [{"inventoryNote": record["inventoryNote"], "title": record["title"], "timestamp": str(record["timestamp"])} for record in result]
-    driver.close()
     return detours
 
 def get_user_patterns(user_id: str) -> list:
@@ -35,7 +34,6 @@ def get_user_patterns(user_id: str) -> list:
     driver = get_driver()
     with driver.session() as session:
         result = session.read_transaction(_get_patterns_tx, user_id)
-    driver.close()
     return result
 
 def _get_patterns_tx(tx, user_id: str):
@@ -74,7 +72,6 @@ def get_goal_progress(user_id: str, goal_id: str = None) -> dict:
             result = session.read_transaction(_get_specific_goal_progress_tx, user_id, goal_id)
         else:
             result = session.read_transaction(_get_all_goals_progress_tx, user_id)
-    driver.close()
     return result
 
 def _get_specific_goal_progress_tx(tx, user_id: str, goal_id: str):
@@ -123,7 +120,6 @@ def get_state_correlations(user_id: str) -> list:
     driver = get_driver()
     with driver.session() as session:
         result = session.read_transaction(_get_state_correlations_tx, user_id)
-    driver.close()
     return result
 
 def _get_state_correlations_tx(tx, user_id: str):
@@ -205,6 +201,5 @@ def get_full_graph_topology(limit: int = 500) -> dict:
                     "label": record["rel_type"]
                 })
                 
-    driver.close()
     return {"nodes": nodes, "edges": edges}
 

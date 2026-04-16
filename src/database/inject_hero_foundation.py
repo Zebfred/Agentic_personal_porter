@@ -1,7 +1,6 @@
 import json
 import sys
 import os
-from neo4j import GraphDatabase
 from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent.parent
@@ -9,9 +8,10 @@ sys.path.append(str(root))
 
 from src.config import NeoConfig
 from src.database.mongo_storage import SovereignMongoStorage
+from src.database.neo4j_client.connection import get_driver
 
 # --- Configuration ---
-driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
+driver = get_driver()
 mongo_storage = SovereignMongoStorage()
 
 
@@ -199,4 +199,3 @@ if __name__ == "__main__":
     try:
         inject_hero_data()
     finally:
-        driver.close()
