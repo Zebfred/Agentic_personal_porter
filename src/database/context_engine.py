@@ -3,7 +3,6 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone, UTC
-from neo4j import GraphDatabase
 
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
@@ -11,9 +10,7 @@ sys.path.append(str(root))
 load_dotenv()
 
 from src.config import NeoConfig
-
-driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
-
+from src.database.neo4j_client.connection import get_driver
 
 class SovereignContextEngine:
     """
@@ -21,10 +18,9 @@ class SovereignContextEngine:
     Extracts high-fidelity context snapshots to ground the LLM.
     """
     def __init__(self, NEO4J_URI, NEO4J_USER, NEO4J_PASS):
-        self.driver = GraphDatabase.driver(NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS))
+        self.driver = get_driver()
 
     def close(self):
-        self.driver.close()
 
     def get_hero_snapshot(self, user_name="Jimmy"):
         """
