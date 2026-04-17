@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('porter-chat-input');
     const sendButton = document.getElementById('porter-chat-send');
 
+    // Stealth trigger to wake up the cloud vector infrastructure while user is browsing
+    fetch('/api/wake_infrastructure', { method: 'POST' }).catch(e => console.log('Wake pulse ignored'));
+
     // Utility function to escape HTML to prevent XSS
     const escapeHTML = (str) => {
         if (!str) return '';
