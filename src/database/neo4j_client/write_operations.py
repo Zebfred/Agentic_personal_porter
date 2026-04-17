@@ -17,7 +17,6 @@ def log_to_neo4j(log_data: dict) -> str:
         else:
             print("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
-    driver.close()
 
 def _create_log_entry(tx, log_data: dict):
     """
@@ -181,10 +180,9 @@ def create_identity_graph(user_id, origin_story, ambitions):
     MERGE (a)-[:SUPPORTS_PILLAR]->(p)
     """
 
-    # Execute query with parameters
+    # Execute query with parameters using execute_write for robust transaction handling
     with driver.session() as session:
-        session.run(query, user_id=user_id, origin_story=origin_story, ambitions=ambitions)
-    driver.close()
+        session.execute_write(lambda tx: tx.run(query, user_id=user_id, origin_story=origin_story, ambitions=ambitions))
     user_id_graph = f"Identity graph created/updated successfully for user {user_id}"
     print(user_id_graph)
     return user_id_graph
@@ -196,9 +194,8 @@ def create_goal(user_id: str, description: str, category: str = "general",
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.write_transaction(_create_goal_tx, user_id, description, 
-                                          category, priority, timeframe)
-    driver.close()
+        result = session.execute_write(_create_goal_tx, user_id, description, 
+                                      category, priority, timeframe)
     return result
 
 def _create_goal_tx(tx, user_id: str, description: str, category: str, 

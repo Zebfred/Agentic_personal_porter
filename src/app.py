@@ -14,6 +14,8 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 
+from src.database.neo4j_client import close_driver
+
 # Add project root to Python path so imports work when run directly
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
@@ -69,6 +71,11 @@ def create_app():
     logger = _configure_logging()
 
     app = Flask(__name__)
+
+    @app.teardown_appcontext
+    def teardown_neo4j(exception):
+        """Ensure Neo4j driver is closed when application context ends."""
+        close_driver()
 
     # --- CORS ---
     allowed_origins_str = os.environ.get(

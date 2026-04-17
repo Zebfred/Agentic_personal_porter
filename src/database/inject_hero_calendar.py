@@ -1,4 +1,3 @@
-from neo4j import GraphDatabase
 import sys
 import os
 from pathlib import Path
@@ -10,6 +9,7 @@ sys.path.append(str(root))
 
 from src.config import NeoConfig
 from src.constants import ACTUAL_CATEGORY_MAPPING
+from src.database.neo4j_client.connection import get_driver
 
 class SovereignGraphInjector:
     """
@@ -22,13 +22,9 @@ class SovereignGraphInjector:
     }
 
     def __init__(self):
-        self.driver = GraphDatabase.driver(
-            NeoConfig.NEO4J_URI, 
-            auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
-        )
+        self.driver = get_driver()
 
     def close(self):
-        self.driver.close()
 
     def inject_calendar_to_graph(self, formatted_events, hero_name=None):
         import os

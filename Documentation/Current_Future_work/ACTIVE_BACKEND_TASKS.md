@@ -14,7 +14,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 *Status: Investigating structural connection issues for production.*
 
 - [ ] **Local Production Simulation:** Establish a rigorous local testing environment (using the Dockerized Gunicorn setup) to replicate and isolate the exact server connection failures occurring on the cloud production instance.
-- [ ] **Resolve Neo4j/Cloud Networking:** Fix the `Cannot resolve address 402abe07.databases.neo4j.io:7687` connection failure or dynamic environment variable mounting issues causing the server to detach from the graph database in production.
+- [x] **Resolve Neo4j/Cloud Networking:** Fix the `Cannot resolve address 402abe07.databases.neo4j.io:7687` connection failure or dynamic environment variable mounting issues causing the server to detach from the graph database in production. *(Optimized via singleton connection pooling and teardown context.)*
 - [ ] **API Endpoint Stress Testing:** Validate all heavily utilized endpoints (`/process_journal`, `/get_calendar_events`) for resilience against dropped connections or timeouts during large LLM inference runs.
 
 ## Secondary Priority: Twin-Track Data Ingestion (Mach 2)
