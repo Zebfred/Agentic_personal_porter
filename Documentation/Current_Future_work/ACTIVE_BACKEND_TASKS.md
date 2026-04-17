@@ -33,7 +33,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 ## Cloud Operations (Mach 2)
 *Status: Architecture defined.*
 
-- [ ] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
+- [x] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_API_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
 - [x] **Dynamic Cloud Deployment:** Simplified `deploy_gcp.sh` to dynamically load all environment variables from `.auth/.env` instead of manual instantiation. *(Verified: Dynamic parsing logic implemented and tested.)*
 
 ## Priority: Artifacts & Inventory API Support
@@ -51,32 +51,3 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.
-
-# Active Backend Tasks
-
-This document tracks backend development tasks, architectural shifts, and long-term storage requirements for the Agentic Personal Porter application.
-
-## Long-Term Memory Storage (Vector DB)
-- **Objective:** Integrate a Vector Database to serve as long-term memory for the Agentic Porter Ecosystem.
-- **Optimization (IVF/PQ Clustering):** Implement Inverted File Index (IVF) and Product Quantization (PQ) to aggressively compress vectors and restrict the memory footprint to the 1GB budget.
-- **Context:** Currently, we rely on Neo4j for semantic Identity Graph relationships and MongoDB for raw time-series data. However, as the user interacts via chat (the First-Serving Porter), retaining unstructured semantic memory over extended periods requires vector similarity embeddings.
-- **Status:** Planning Phase. This will be tackled in a future session after the initial Agent drafts are finalized.
-
-## MongoDB Time Series & Migration
-- **Objective:** Migrate JSON configuration architectures like `hero_ambition.json` and `hero_origin.json` to MongoDB while implementing formal Time Series Collections for calendar data.
-- **Intent-Actual Schema:** Refactor calendar ingestion to produce a unified `Intent-Actual` JSON document. This allows a single query to calculate the "Delta" (alignment score) natively.
-- **Summarization Echelons:** Do not store full text recursively. Store Echelon 1 (Daily details), Echelon 2 (Weekly Agent Recaps), and Echelon 3 (Monthly 'Hero Numbers').
-- **Status:** Pending implementation.
-
-## Integration of New Agents
-- **Objective:** Expand the agent capabilities in the backend and ensure they share the same LLM primitives.
-- **Frameworks:** We are operating a dual-framework setup where CrewAI is utilized for intensive, batch, multi-agent synchronized executions (e.g. daily Socratic Mirror reflections) and LangChain generic agents handle low-latency direct user-chat interactions (e.g., First-Serving Porter).
-
-## Neo4j Optimizations & Pulse Architecture
-- **Objective:** Transition to a "Scheduled Heartbeat" batching strategy to reduce continuous high-friction writing to the Graph database.
-- **Sovereign Self-Hosting:** Explore moving Neo4j to a Sovereign GCP Compute Engine Docker container to keep data internal and eliminate node limits (est. $7-$15/month).
-- **The Pulse (Orchestrator):** Configure the system to only "Wake Up" the graph database during a scheduled pulse (e.g., 8:00 AM and 10:00 PM).
-- **Batch Logic Requirements:**
-  - [ ] **Phase 1 (Accumulate):** Ensure GCal events accumulate efficiently in the MongoDB Landing Zone throughout the day.
-  - [ ] **Phase 2 (Classify):** Automate the "GTKY Librarian" agent to pull the daily batch, classify events against Hero Artifacts, and mint "Golden Objects."
-  - [ ] **Phase 3 (Merge):** Implement a single UNWIND Cypher transaction in Python to inject the entire day's batch in under 5 seconds.
