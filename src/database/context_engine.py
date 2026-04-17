@@ -17,10 +17,12 @@ class SovereignContextEngine:
     The 'Bridge' between the Neo4j Identity Graph and the CrewAI Agents.
     Extracts high-fidelity context snapshots to ground the LLM.
     """
-    def __init__(self, NEO4J_URI, NEO4J_USER, NEO4J_PASS):
+    def __init__(self, NEO4J_URI=None, NEO4J_USER=None, NEO4J_PASS=None):
         self.driver = get_driver()
 
     def close(self):
+        """No-op as connection is managed by singleton."""
+        pass
 
     def get_hero_snapshot(self, user_name="Jimmy"):
         """
@@ -134,7 +136,7 @@ def run_15min_sanity_test():
         {"title": "Scrolling Doom", "category": "Unknown", "start": "2026-03-06T21:00", "duration_minutes": 45}
     ]
     
-    engine = SovereignContextEngine("bolt://localhost:7687", AUTH_USER, AUTH_PASS)
+    engine = SovereignContextEngine(NeoConfig.NEO4J_URI, NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
     
     print("Testing Delta Logic...")
     report = engine.analyze_day_delta([], mock_actual, mock_context)

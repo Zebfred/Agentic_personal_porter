@@ -24,3 +24,10 @@ def get_driver():
             auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
         )
     return _driver_instance
+
+def close_driver():
+    """Gracefully shuts down the Neo4j driver and closes all connections in the pool."""
+    global _driver_instance
+    if _driver_instance:
+        _driver_instance.close()
+        _driver_instance = None

@@ -17,7 +17,7 @@ def get_valuable_detours(user_name=None):
     ORDER BY ach.timestamp DESC
     """
     with driver.session() as session:
-        result = session.run(query, userName=user_name)
+        result = session.execute_read(lambda tx: list(tx.run(query, userName=user_name)))
         detours = [{"inventoryNote": record["inventoryNote"], "title": record["title"], "timestamp": str(record["timestamp"])} for record in result]
     return detours
 
@@ -33,7 +33,7 @@ def get_user_patterns(user_id: str) -> list:
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.read_transaction(_get_patterns_tx, user_id)
+        result = session.execute_read(_get_patterns_tx, user_id)
     return result
 
 def _get_patterns_tx(tx, user_id: str):
@@ -69,9 +69,9 @@ def get_goal_progress(user_id: str, goal_id: str = None) -> dict:
     driver = get_driver()
     with driver.session() as session:
         if goal_id:
-            result = session.read_transaction(_get_specific_goal_progress_tx, user_id, goal_id)
+            result = session.execute_read(_get_specific_goal_progress_tx, user_id, goal_id)
         else:
-            result = session.read_transaction(_get_all_goals_progress_tx, user_id)
+            result = session.execute_read(_get_all_goals_progress_tx, user_id)
     return result
 
 def _get_specific_goal_progress_tx(tx, user_id: str, goal_id: str):
@@ -119,7 +119,7 @@ def get_state_correlations(user_id: str) -> list:
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.read_transaction(_get_state_correlations_tx, user_id)
+        result = session.execute_read(_get_state_correlations_tx, user_id)
     return result
 
 def _get_state_correlations_tx(tx, user_id: str):
@@ -167,7 +167,7 @@ def get_full_graph_topology(limit: int = 500) -> dict:
     """
     
     with driver.session() as session:
-        result = session.run(query, limit=limit)
+        result = session.execute_read(lambda tx: list(tx.run(query, limit=limit)))
         
         # Track inserted to avoid duplicates
         node_tracker = set()
