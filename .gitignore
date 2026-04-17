@@ -31,3 +31,8 @@ data/reflections/*
 tailwindcss
 venv/
 node_modules/
+
+# Sensitive helper scripts removed from git history (2026-04-17).
+# These files read from .auth/.env and must never be re-committed.
+helper_scripts/check_status.py
+helper_scripts/sync_secrets_gcp.sh
