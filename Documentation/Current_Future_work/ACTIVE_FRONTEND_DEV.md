@@ -6,8 +6,10 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 *Status: UI Scaffolding complete - Merged to main*
 
 - [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying Identity Graph metrics, a "Sync Calendar" action, and an interactive Agent chat interface that queries missing hero artifacts. *(Pending backend and Agent development)*
-- [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route.
+- [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*.
+- [ ] **Adventure Calendar (NEW):** Build a flexible `Adventure-calendar` endpoint and UI component. This will serve as the base for monthly, "last week", and "next week" rolling views chronologically while keeping frontend payload sizes low.
 - [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
+- [ ] **Verification Dashboard (NEW):** Simple "Dashboard of Inferences" interfacing with the Audit Agent. Updates of First Porter present corrections; user explicitly clicks "Approve" or "Reject". Enables <20-second human friction rule.
 - [ ] **Oracle Predictions (`Oracle_predictions.html`):** Create a placeholder UI for future predictive agent features. *(Pending backend and Agent development)*
 - [ ] **Weekly Goal Artifact Selector:** Build a simple UI module on the Hub allowing the user to explicitly define the "Priority Pillar" for the current week, setting the weights for backend agent logic.
 

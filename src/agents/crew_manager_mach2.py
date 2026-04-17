@@ -23,13 +23,13 @@ load_dotenv(dotenv_path=env_path)
 # LLM Configurations
 llm_scribe = ChatGroq(
     api_key=SecretStr(raw_api_key),
-    model="groq/llama-3.1-8b-instant",
+    model="llama-3.1-8b-instant",
     verbose=True
 )
 
 llm_coach = ChatGroq(
     api_key=SecretStr(raw_api_key),
-    model="groq/llama-3.3-70b-versatile",
+    model="llama-3.3-70b-versatile",
     verbose=True
 )
 

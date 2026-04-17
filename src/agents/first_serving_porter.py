@@ -114,7 +114,7 @@ def chroma_vibe_check(query: str) -> str:
 def get_porter_agent_executor():
     llm = ChatGroq(
         api_key=SecretStr(raw_api_key),
-        model="groq/llama-3.3-70b-versatile",
+        model="llama-3.3-70b-versatile",
         verbose=True
     )
     
