@@ -27,7 +27,7 @@ credentials.json
 
 # Ignore sensitive data
 data/google_calendar/*
-
+data/reflections/*
 tailwindcss
 venv/
 node_modules/

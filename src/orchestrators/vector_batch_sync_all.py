@@ -10,6 +10,7 @@ from src.integrations.embeddings_client import BGEM3EmbeddingsClient
 from src.database.vector_database.chromadb_client import ChromaExperimentalClient
 from src.database.vector_database.weaviate_client import WeaviateExperimentalClient
 from src.database.mongo_client.connection import MongoConnectionManager
+from src.integrations.gcp_compute_client import GCPComputeClient
 
 def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     """
@@ -21,6 +22,11 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     """
     print(f"[{datetime.now(timezone.utc).isoformat()}] Starting Isolated Vector Database Batch Sync: {sync_trigger_time}")
     
+    # 0. Wake up the massive BGE-M3 instance for vector generation
+    cloud_client = GCPComputeClient()
+    print("Sending wake pulse to Ollama Vector Host...")
+    cloud_client.wake_instance("ollama-vector-host", block_until_running=True)
+
     db = MongoConnectionManager.get_db()
     journal_col = db["journal_entries"]
     reflections_col = db["agent_reflections"]
@@ -88,6 +94,10 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
         weaviate.insert_batch(weaviate_vectors)
         print(f"Pushed {len(weaviate_items)} items to Weaviate.")
     
+    # 5. Shut down the heavy ML infrastructure to conserve budget
+    print("Vector batch inserted! Stopping Ollama Vector Host to save costs.")
+    cloud_client.sleep_instance("ollama-vector-host")
+
     print("Isolated batch synchronization completed successfully.")
 
 if __name__ == "__main__":
