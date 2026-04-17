@@ -18,7 +18,7 @@ trigger: always_on
 7. **Strict Domain Scoping:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `Documentation/Current_Future_work/ACTIVE_[Domain].md` document. At the start of every session, the assigned agent MUST independently read their specific ACTIVE document before proposing any code edits. As the agent performs tasks in this document, it must be updated to note human verification of completion. 
 8. **Verification Requirement:** Upon an agent's task completion, a verification script, test, or Checklist MUST be used if applicable to their task or domain.
 9. **Mandatory Cleanup:** Upon an agent's task completion, the agent MUST independently move any lingering `.bk` files into the `.legacy_hr` directory rather than leaving them scattered in active directories.
-10. **Conda run:** Using conda activate agentic_porter to use the conda env set up for this project 
+10. **Conda run:** Using conda activate pp_env to use the conda env set up for this project 
  
 
 ### Examples:

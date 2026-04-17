@@ -317,8 +317,8 @@ graph LR
 - Frontend served directly by Flask's `send_from_directory`
 
 ### Production (GCP Cloud Run)
-- **Dockerfile:** Multi-stage build → Python 3.11-slim → Gunicorn (1 worker, 4 threads)
-- **[deploy_gcp.sh](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/deploy_gcp.sh):** Dynamically loads `.auth/.env` as Cloud Run env vars via `grep`/`paste`
+- **Dockerfile:** Multi-stage build → Python 3.11-slim → Gunicorn (1 worker, 4 threads, 300s timeout)
+- **[deploy_gcp.sh](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/deploy_gcp.sh):** Utilizes `sync_secrets_gcp.sh` to upload `.env` natively to **GCP Secret Manager**, binding them securely via `--set-secrets`.
 - **Health Check:** `curl -f http://localhost:5090/` every 30s
 - **Memory Budget:** 1024Mi
 - **Port:** 5090
@@ -386,8 +386,8 @@ Data stored in `data/chunks_*.json` and `data/papers/`.
 |---|---|---|
 | **Vector DB Production** | Planning | ChromaDB/Weaviate experimental clients exist; needs production MongoDB Atlas Vector Search |
 | **Mongo Time-Series** | Planned | Intent-Actual schema with UUID linking across 4 new collections |
-| **Neo4j Cloud Networking** | Blocked | `Cannot resolve address` failures on GCP production |
-| **Cloud Cron (GCP Scheduler)** | Not configured | Endpoint `/api/admin/sync_calendar` is ready; scheduler config needed |
+| **Neo4j Cloud Networking** | Resolved | Neo4j successfully migrated to an in-house GCP Compute Engine instance |
+| **Cloud Cron (GCP Scheduler)** | In-Progress/Failing | Endpoint and Cron scripts built, but Cloud execution is currently failing (WIP) |
 | **Agent Chat WebSocket** | Not started | Currently REST-only; WebSocket upgrade planned for real-time Porter chat |
 | **Pulse Architecture** | Planned | Scheduled heartbeat batching for Neo4j writes (8 AM / 10 PM) |
-| **Sovereign Neo4j Hosting** | Under evaluation | GCP Compute Engine Docker container ($7-$15/month) to replace Aura free tier |
+| **Sovereign Neo4j Hosting** | Completed | Hosted on GCP Compute Engine Docker container with host-path volume mounts (/var/lib/neo4j/data) |
