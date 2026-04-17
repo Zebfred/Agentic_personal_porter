@@ -17,6 +17,7 @@ sys.path.append(str(root))
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.database.context_engine import SovereignContextEngine
 from src.config import NeoConfig
+from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler, TokenLimitExceededError
 
 # DB and Embedding Imports
 from src.integrations.embeddings_client import BGEM3EmbeddingsClient
@@ -39,6 +40,13 @@ def get_mach2_context():
     hero_name = os.environ.get("HERO_NAME", "Hero")
     hero_context = engine.get_hero_snapshot(user_name=hero_name)
     engine.close()
+    
+    # Also load the JSON Artifacts
+    from src.agents.gtky_identity_architect import GTKYIdentityArchitect
+    architect = GTKYIdentityArchitect()
+    hero_context['ambition'] = architect.get_ambition()
+    hero_context['detriments'] = architect.get_detriments()
+    
     return hero_context
 
 # 2. Defines Tools
@@ -53,8 +61,23 @@ def route_to_subagent(agent_name: str, task_description: str) -> str:
 @tool
 def update_artifact(artifact_name: str, new_content_summary: str) -> str:
     """declares intent to update a json artifact (like hero_origin.json or hero_ambition.json) with new content.
+    The GTKY Identity Architect will receive this ping to queue a permanent file modification.
     """
-    return f"[TRANSPARENCY HANDOFF] Marked {artifact_name} for update regarding: {new_content_summary}"
+    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect to update {artifact_name}.")
+    from src.agents.gtky_identity_architect import GTKYIdentityArchitect
+    architect = GTKYIdentityArchitect()
+    result = architect.append_new_learnings(artifact_name, new_content_summary)
+    return f"[TRANSPARENCY HANDOFF] Delegated to GTKYIdentityArchitect. Result: {result}"
+
+@tool
+def scan_origin_story() -> str:
+    """Use this to comprehensively scan the user's origin story for missing gaps (especially from their teenage and secondary education years).
+    This tool returns 3 targeted interview questions you should ask the user to help fill in their timeline via the frontend UI.
+    """
+    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
+    from src.agents.gtky_identity_architect import GTKYIdentityArchitect
+    architect = GTKYIdentityArchitect()
+    return architect.scan_for_missing_origin()
 
 @tool
 def weaviate_hybrid_search(query: str, pillar: str = "Daily Reflection") -> str:
@@ -110,6 +133,30 @@ def chroma_vibe_check(query: str) -> str:
     compiled = "\n".join(hits)
     return f"[DATABASE RETURN] Conceptual Vibe matches:\n{compiled}"
 
+@tool
+def fetch_unverified_audits() -> str:
+    """Use this to pull any categorized events that the human has not verified yet.
+    You will use this to generate the presentation bundle for the Verification Dashboard.
+    """
+    from src.agents.audit_inspector import AuditInspector
+    inspector = AuditInspector()
+    records = inspector.batch_unverified_records()
+    if not records:
+         return "[AUDIT RETURN] No unverified events found. The Verification Dashboard is clean."
+    
+    out = [f"- {r.get('summary', 'Unknown')} (Staged Class: {r.get('sync_status', 'Pending')})" for r in records]
+    return f"[AUDIT RETURN] Found {len(records)} unverified events that require human verification:\n" + "\n".join(out)
+
+@tool
+def consult_time_keeper(date_iso: str) -> str:
+    """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
+    Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
+    """
+    print(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
+    from src.agents.time_keeper_agent import TimeKeeperAgent
+    keeper = TimeKeeperAgent()
+    return keeper.summarize_day(date_iso)
+
 # 3. Agent Setup
 def get_porter_agent_executor():
     llm = ChatGroq(
@@ -118,13 +165,14 @@ def get_porter_agent_executor():
         verbose=True
     )
     
-    tools = [route_to_subagent, update_artifact, weaviate_hybrid_search, chroma_vibe_check]
+    tools = [route_to_subagent, update_artifact, scan_origin_story, weaviate_hybrid_search, chroma_vibe_check, fetch_unverified_audits, consult_time_keeper]
     
     system_prompt = """I. Role Identity
 You are the First_Serving Porter, the Chief of Staff and primary orchestrator of the Agentic Porter Ecosystem. Your sole mission is to serve as the bridge between the User's Hero Intent (stored in the Neo4j Identity Graph) and the Ground Truth (actual time and action data).
 
 II. Operational Context
 You operate under the Sovereign Data Protocol. This means:
+- You enforce a Strict Managerial protocol. You do not do heavy data scraping yourself, you delegate to the Audit Inspector and Time Keeper tools.
 - The User's Origin Story and Core Principles are the ultimate source of truth.
 - You must never make a recommendation that contradicts these nodes without explicit User sign-off.
 - You have real-time access to Two Vector Databases:
@@ -135,6 +183,10 @@ III. Current Protocol Context
 Hero Name: {hero_name}
 Active Intentions: {intentions}
 Active Principles: {principles}
+
+IV. Artifact References
+Ambition Snapshot: {ambition_context}
+Core Detriments: {detriments_context}
 """
 
     prompt = ChatPromptTemplate.from_messages([
@@ -144,7 +196,10 @@ Active Principles: {principles}
     ])
     
     agent = create_tool_calling_agent(llm, tools, prompt)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True)
+    
+    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
+    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker])
     return agent_executor
 
 def run_first_serving_porter(user_input: str) -> dict:
@@ -152,12 +207,27 @@ def run_first_serving_porter(user_input: str) -> dict:
     executor = get_porter_agent_executor()
     
     print("\n--- Invoking First-Serving Porter ---\n")
-    result = executor.invoke({
-        "input": user_input,
-        "hero_name": os.environ.get("HERO_NAME", "Hero"),
-        "intentions": context.get("intentions", "Unknown"),
-        "principles": context.get("principles", "Unknown")
-    })
+    try:
+        result = executor.invoke({
+            "input": user_input,
+            "hero_name": os.environ.get("HERO_NAME", "Hero"),
+            "intentions": context.get("intentions", "Unknown"),
+            "principles": context.get("principles", "Unknown"),
+            "ambition_context": str(context.get("ambition", "Unknown")),
+            "detriments_context": str(context.get("detriments", "Unknown"))
+        })
+    except TokenLimitExceededError as e:
+        print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        return {
+            "response": "My apologies, Sir. I suffered a systemic logic loop and had to sever my own processing connection to protect our API limit. Please ask me again with different parameters.",
+            "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Token Circuit Breaker Tripped."]
+        }
+    except Exception as e:
+        print(f"\n[RUNTIME ERROR] {e}")
+        return {
+            "response": f"An unexpected error occurred during execution: {e}",
+            "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Unexpected Backend Error."]
+        }
     
     intermediate_steps = result.get("intermediate_steps", [])
     transparency_logs = []

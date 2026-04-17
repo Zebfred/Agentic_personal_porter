@@ -20,17 +20,24 @@ raw_api_key = os.getenv("GROQ_API_KEY")
 env_path = get_auth_file('.env')
 load_dotenv(dotenv_path=env_path)
 
+from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler
+
+breaker = TokenCircuitBreakerHandler(max_tokens=25000)
+
 # LLM Configurations
 llm_scribe = ChatGroq(
     api_key=SecretStr(raw_api_key),
     model="llama-3.1-8b-instant",
-    verbose=True
+    verbose=True,
+    callbacks=[breaker]
 )
 
-llm_coach = ChatGroq(
+# 0. The Categorizer is now demoted to low-latency fast model for strict categorization
+llm_mirror = ChatGroq(
     api_key=SecretStr(raw_api_key),
-    model="llama-3.3-70b-versatile",
-    verbose=True
+    model="llama-3.1-8b-instant",
+    verbose=True,
+    callbacks=[breaker]
 )
 
 # 1. THE IDENTITY ANCHOR (Context Injection)
@@ -62,16 +69,16 @@ def run_crew(journal_entry: str, log_data: dict = None):
     goal_ingester = Agent(
         role='GTKY Librarian (The Curator of Truth)',
         goal='Identify "The Fog of War" in daily logs and log "Valuable Detours" to the User Inventory.',
-        backstory="Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide the Socratic Mirror with the most accurate 'Actuals' possible.",
+        backstory="Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide The Categorizer with the most accurate 'Actuals' possible.",
         llm=llm_scribe,
         allow_delegation=False
     )
 
     reflection_agent = Agent(
-        role='The Socratic Mirror (The Growth Catalyst)',
-        goal=f"Calculate the Delta based on these principles: {hero_context.get('principles', 'Unknown')}",
-        backstory="You see 'Misses' as 'Valuable Detours.' Your logic is: Delta = Intent - Actual. If Delta != 0, identify if the detour served a hidden 'Social Goal' or 'Mundane Necessity' that the User hasn't voiced yet.",
-        llm=llm_coach,
+        role='The Categorizer',
+        goal="Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.",
+        backstory="You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.",
+        llm=llm_mirror,
         allow_delegation=False
     )
 
@@ -84,13 +91,12 @@ def run_crew(journal_entry: str, log_data: dict = None):
 
     task_recon = Task(
         description=(
-            f"1. Analyze the following FRONTEND PAYLOAD recently submitted by {os.environ.get('HERO_NAME', 'Hero')}:\n"
+            f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {os.environ.get('HERO_NAME', 'Hero')}:\n"
             f"   '{journal_entry}'\n\n"
             f"2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n"
-            f"3. Compare the combined data against his Active Intentions:\n   {hero_context.get('intentions', 'Unknown')}\n\n"
-            "4. Identify any 'High-Friction Deviations' or 'Valuable Detours'."
+            "3. Identify EXACTLY which of the 9 Hero pillars this combination represents: (1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, 6. Community, 7. Leisure, 8. Spirit, 9. Duty).\n"
         ),
-        expected_output="A concise 'Sovereign Reflection' (max 3 paragraphs) analyzing the Day's Delta, followed by one single 'Socratic Question'. Avoid repetitive headers like 'Introduction' or 'Conclusion'. Focus on the 'Valuable Detour' if present.",
+        expected_output="A single structured JSON-like block containing exactly these keys: 'Pillar' (Name of the Pillar), 'Reason' (1-sentence strict analytical reason), and 'Confidence_Score' (an integer from 0 to 100 representing how certain you are of this pillar mapping).",
         agent=reflection_agent
     )
 
@@ -116,9 +122,17 @@ def run_crew(journal_entry: str, log_data: dict = None):
         verbose=True
     )
     
+    from src.utils.token_circuit_breaker import TokenLimitExceededError
     print("--- Starting Mach 2 Daily Recon ---")
-    result = crew.kickoff()
-    
+    try:
+        result = crew.kickoff()
+    except TokenLimitExceededError as e:
+        print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        return "ERROR: Socratic Categorizer experienced a logic loop and was forcefully halted by the Token Circuit Breaker to preserve API limits."
+    except Exception as e:
+        print(f"\n[RUNTIME ERROR] {e}")
+        return f"ERROR: Unexpected Backend Error during Categorization: {e}"
+        
     # Extract the string content
     result_text = getattr(result, 'raw', str(result))
     

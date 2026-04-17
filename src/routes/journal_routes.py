@@ -14,7 +14,7 @@ from src.routes.auth_middleware import require_api_key
 from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.schemas.api_models import JournalLogBase, DailyReflectionRequestSchema
-from src.agents.crew_manager_mach2 import run_crew
+from src.agents.crew_manager_mach3 import run_crew
 from src.routes.calendar_routes import fetch_calendar_events_for_date
 
 journal_bp = Blueprint('journal', __name__)
@@ -167,4 +167,69 @@ def process_journal():
 
     except Exception as e:
         logger.error(f"Error reading request data: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/journal/edit_event', methods=['POST', 'OPTIONS'])
+@require_api_key
+def edit_journal_event():
+    """
+    Allows the human-in-the-loop to aggressively edit the raw timeline logs.
+    Includes deleting nonsense events, or rigorously mapping misclassified events.
+    If mapped, natively upgrades category_mapping.json to learn from the human.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json()
+        if not data or 'gcal_id' not in data or 'action' not in data:
+            return jsonify({"error": "Missing required fields (gcal_id, action)"}), 400
+
+        action = data['action']
+        gcal_id = data['gcal_id']
+        mongo = SovereignMongoStorage()
+
+        if action == 'delete':
+            mongo.raw_col.delete_one({"gcal_id": gcal_id})
+            mongo.formatted_col.delete_one({"gcal_id": gcal_id})
+            return jsonify({"status": "success", "message": "Event permanently deleted from Mongo."})
+
+        elif action == 'reclassify':
+            new_pillar = data.get('new_pillar')
+            event_title = data.get('summary')
+            
+            if not new_pillar or not event_title:
+                return jsonify({"error": "reclassify requires 'new_pillar' and 'summary'."}), 400
+
+            # 1. Update the actual event
+            mongo.formatted_col.update_one(
+                {"gcal_id": gcal_id}, 
+                {"$set": {"pillar": new_pillar, "classification_verified": True}}
+            )
+
+            # 2. Append to Knowledge Base (category_mapping.json -> MongoDB)
+            cat_map = mongo.get_hero_artifact('category_mapping.json')
+            if cat_map:
+                intent_map = cat_map.get('intent_to_actual_mapping', {})
+                actual_target = intent_map.get(new_pillar)
+                
+                # If they used the raw name directly e.g. "Leisures_related"
+                if not actual_target and new_pillar in cat_map.get('actual_categorization_with_keywords', {}):
+                    actual_target = new_pillar
+                
+                if actual_target:
+                    target_bucket = cat_map['actual_categorization_with_keywords'].get(actual_target, {})
+                    if 'General' in target_bucket:
+                        # Append the raw event title dynamically to train the system
+                        if event_title not in target_bucket['General']:
+                            target_bucket['General'].append(event_title.lower())
+                            mongo.save_hero_artifact('category_mapping.json', cat_map)
+                            logger.info(f"Appended '{event_title}' to {actual_target} General Bucket.")
+
+            return jsonify({"status": "success", "message": f"Successfully mapped '{event_title}' to {new_pillar}."})
+            
+        else:
+            return jsonify({"error": f"Unknown action: {action}"}), 400
+
+    except Exception as e:
+        logger.error(f"Error editing journal event: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500

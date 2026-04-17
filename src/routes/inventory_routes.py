@@ -60,6 +60,22 @@ def get_inventory():
         return jsonify({"error": str(e)}), 500
 
 
+@inventory_bp.route('/artifacts/scan', methods=['GET'])
+@require_api_key
+def scan_artifacts():
+    """
+    Triggers the Identity Architect to scan hero_origin.json for chronological gaps.
+    """
+    try:
+        from src.agents.gtky_identity_architect import GTKYIdentityArchitect
+        architect = GTKYIdentityArchitect()
+        scan_results = architect.scan_for_missing_origin()
+        return jsonify({"status": "success", "results": scan_results})
+    except Exception as e:
+        logger.error(f"Error scanning artifacts: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @inventory_bp.route('/artifacts/<artifact_name>', methods=['GET', 'POST', 'OPTIONS'])
 @require_api_key
 def manage_artifact(artifact_name):
@@ -69,11 +85,11 @@ def manage_artifact(artifact_name):
     if request.method == 'OPTIONS':
         return '', 204
 
-    allowed_artifacts = ['hero_origin.json', 'hero_ambition.json', 'hero_detriments.json']
+    allowed_artifacts = ['hero_origin.json', 'hero_ambition.json', 'hero_detriments.json', 'category_mapping.json']
     if artifact_name not in allowed_artifacts:
         return jsonify({"error": "Invalid artifact name"}), 400
 
-    if artifact_name == 'hero_detriments.json':
+    if artifact_name in ['hero_detriments.json', 'category_mapping.json']:
         artifact_path = project_root / '.auth' / artifact_name
     else:
         artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name

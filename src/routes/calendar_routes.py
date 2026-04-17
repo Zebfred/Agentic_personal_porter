@@ -131,3 +131,88 @@ def get_calendar_events():
     except Exception as e:
         logger.error(f"Error fetching calendar events: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected error occurred while fetching calendar events: {str(e)}"}), 500
+
+@calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
+@require_api_key
+def get_adventure_log():
+    """
+    Returns a rolling 30-day summary of Intentions vs Actual Activities.
+    """
+    try:
+        from src.agents.socratic_mirror_logic import SocraticMirrorEngine
+        mirror = SocraticMirrorEngine()
+        # You could pass specific date ranges via args, but default to 1 for today for delta
+        date_str = request.args.get('date')
+        if date_str:
+            target = datetime.strptime(date_str, '%Y-%m-%d')
+            days_back = (datetime.now() - target).days
+        else:
+            days_back = 1
+            
+        analysis = mirror.calculate_daily_delta(days_back=days_back)
+        return jsonify({"status": "success", "data": analysis})
+    except Exception as e:
+        logger.error(f"Error getting adventure log delta: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@calendar_bp.route('/api/calendar/push_to_gcal', methods=['POST', 'OPTIONS'])
+@require_api_key
+def push_to_gcal():
+    """
+    Bi-Directional Sync: Executes explicit overwrites (Update/Delete) natively on Google Cloud.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json()
+        if not data or 'action' not in data or 'gcal_id' not in data:
+            return jsonify({"error": "Missing required fields (action, gcal_id)"}), 400
+
+        action = data['action']
+        gcal_id = data['gcal_id']
+
+        service = get_calendar_service_instance()
+
+        if action == 'delete':
+            try:
+                service.events().delete(calendarId='primary', eventId=gcal_id).execute()
+                logger.info(f"Successfully deleted GCal event: {gcal_id}")
+            except Exception as e:
+                # If it's already deleted on google or not found, just pass
+                logger.warning(f"GCal deletion skipped/failed for {gcal_id}: {e}")
+
+            # Delete from Mongo Native Collection
+            from src.database.mongo_storage import SovereignMongoStorage
+            mongo = SovereignMongoStorage()
+            mongo.raw_col.delete_one({"gcal_id": gcal_id})
+            mongo.formatted_col.delete_one({"gcal_id": gcal_id})
+            
+            return jsonify({"status": "success", "message": "Event annihilated from Google Cloud and Mongo."})
+
+        elif action == 'update':
+            # e.g., Title change or Time shift
+            new_title = data.get('summary')
+            try:
+                event = service.events().get(calendarId='primary', eventId=gcal_id).execute()
+                if new_title:
+                    event['summary'] = new_title
+                updated_event = service.events().update(calendarId='primary', eventId=gcal_id, body=event).execute()
+                
+                # Update Mongo Native Collection
+                from src.database.mongo_storage import SovereignMongoStorage
+                mongo = SovereignMongoStorage()
+                if new_title:
+                    mongo.raw_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
+                    mongo.formatted_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
+                    
+                return jsonify({"status": "success", "message": "Event updated successfully on Google Cloud."})
+            except Exception as e:
+                return jsonify({"error": f"Failed to update GCal Event: {e}"}), 500
+
+        else:
+            return jsonify({"error": f"Unsupported action: {action}"}), 400
+
+    except Exception as e:
+        logger.error(f"Error in push_to_gcal: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

@@ -17,7 +17,24 @@ class CalendarTimeseriesClient:
     """
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
-        self.timeseries_col = self.db[MongoConfig.RAW_TIMESERIES_COLLECTION]
+        collection_name = MongoConfig.RAW_TIMESERIES_COLLECTION
+        
+        # Initialize native MongoDB Time-Series collection if missing
+        if collection_name not in self.db.list_collection_names():
+            try:
+                self.db.create_collection(
+                    collection_name,
+                    timeseries={
+                        'timeField': 'start_time',
+                        'metaField': 'metadata',
+                        'granularity': 'minutes'
+                    }
+                )
+                print(f"Created native Time-Series collection: {collection_name}")
+            except Exception as e:
+                print(f"Ensuring Time-Series collection exist failed/skipped: {e}")
+                
+        self.timeseries_col = self.db[collection_name]
         self.processor = EventProcessorClient()
 
     def stage_raw_event(self, gcal_event: dict) -> bool:
@@ -29,28 +46,39 @@ class CalendarTimeseriesClient:
         if not gcal_id:
             return False
             
+        # Parse Google Calendar start time to python datetime for timeField
+        start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
+        if not start_raw:
+            return False
+            
+        try:
+            if start_raw.endswith('Z'):
+                start_raw = start_raw.replace('Z', '+00:00')
+            start_dt = datetime.fromisoformat(start_raw)
+        except Exception:
+            start_dt = datetime.now(timezone.utc)
+            
         payload = {
-            "gcal_id": gcal_id,
+            "start_time": start_dt,
+            "metadata": {
+                "gcal_id": gcal_id,
+                "sync_status": "staged",
+                "event_type": gcal_event.get("eventType", "default")
+            },
             "raw_data": gcal_event,
-            "porter_ingested_at": datetime.now(timezone.utc).isoformat(),
-            "sync_status": "staged"
+            "porter_ingested_at": datetime.now(timezone.utc)
         }
         
-        # Save as a timeseries event
-        self.timeseries_col.update_one(
-            {"gcal_id": gcal_id},
-            {"$set": payload},
-            upsert=True
-        )
+        # Insert as a true timeseries historical event audit log
+        try:
+            self.timeseries_col.insert_one(payload)
+        except Exception as e:
+            print(f"Failed to insert timeseries event: {e}")
+            return False
         
         # Trigger downstream processor to split into schemas
         try:
            self.processor.process_and_route_event(gcal_event)
-           # Mark as completely mapped
-           self.timeseries_col.update_one(
-               {"gcal_id": gcal_id},
-               {"$set": {"sync_status": "formatted_and_routed"}}
-           )
            return True
         except Exception as e:
            print(f"Error processing event {gcal_id}: {e}")

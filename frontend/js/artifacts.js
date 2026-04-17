@@ -28,6 +28,19 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => successMsg.classList.add('hidden'), 5000);
     };
 
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, 
+            tag => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;'
+            }[tag])
+        );
+    };
+
     const loadArtifact = async (artifactName) => {
         formContainer.innerHTML = '';
         saveBtn.classList.add('hidden');
@@ -84,17 +97,43 @@ document.addEventListener('DOMContentLoaded', () => {
                     itemWrapper.className = 'p-5 border border-gray-100 rounded-xl bg-gray-50/80 shadow-sm relative group hover:border-indigo-100 transition-colors';
                     
                     const header = document.createElement('div');
-                    header.className = 'font-bold text-indigo-700/70 mb-4 border-b border-indigo-100 pb-2 text-xs uppercase tracking-widest flex justify-between items-center';
-                    header.textContent = `Entry ${index + 1}`;
-                    itemWrapper.appendChild(header);
+                    header.className = 'cursor-pointer font-bold text-indigo-700/70 mb-4 border-b border-indigo-100 pb-2 text-xs uppercase tracking-widest flex justify-between items-center';
+                    
+                    let headerText = `<span>Entry ${index + 1}</span>`;
+                    if (item && typeof item === 'object') {
+                        if (item.name && item.timeframe) {
+                            headerText = `<span><strong class="text-indigo-900">${escapeHTML(item.name)}</strong> <span class="text-gray-500 font-normal ml-2">(${escapeHTML(item.timeframe)})</span></span>`;
+                        } else if (item.title !== undefined) {
+                            headerText = item.title.trim() === "" 
+                                ? `<span><strong class="text-amber-600">Empty Experience</strong></span>`
+                                : `<span><strong class="text-indigo-900">${escapeHTML(item.title)}</strong></span>`;
+                        }
+                    }
+                    
+                    header.innerHTML = `${headerText} <span class="text-xl toggle-icon transition-transform duration-200 text-indigo-400">▼</span>`;
+                    
+                    const bodyContainer = document.createElement('div');
+                    bodyContainer.className = 'transition-all duration-300 overflow-hidden';
+                    
+                    header.addEventListener('click', () => {
+                        bodyContainer.classList.toggle('hidden');
+                        const icon = header.querySelector('.toggle-icon');
+                        icon.style.transform = bodyContainer.classList.contains('hidden') ? 'rotate(-90deg)' : 'rotate(0deg)';
+                    });
 
-                    buildForm(item, itemWrapper, rootRef);
+                    itemWrapper.appendChild(header);
+                    buildForm(item, bodyContainer, rootRef);
+                    itemWrapper.appendChild(bodyContainer);
                     listContainer.appendChild(itemWrapper);
                 });
                 parentContent.appendChild(listContainer);
             } else {
                 for (const key in obj) {
                     const val = obj[key];
+                    if (key === 'experience candidate' && Array.isArray(val) && val.length === 0) {
+                        continue; // Skip empty experience candidates
+                    }
+
                     const fieldWrapper = document.createElement('div');
                     fieldWrapper.className = 'mb-6 w-full';
                     
@@ -133,23 +172,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const activateTab = (activeTab, inactiveTab) => {
-        activeTab.className = "px-8 py-3 rounded-full font-bold text-lg bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform hover:-translate-y-1 transition-all focus:outline-none focus:ring-4 focus:ring-indigo-300";
-        inactiveTab.className = "px-8 py-3 rounded-full font-bold text-lg bg-white text-gray-700 border-2 border-transparent shadow-md hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 transform transition-all focus:outline-none focus:ring-4 focus:ring-gray-300";
+    const loadDailyRecommendation = async () => {
+        const recBox = document.getElementById('recommendation-content');
+        if(!recBox) return;
+        try {
+            const response = await Auth.fetchWithAuth('/api/artifacts/scan');
+            if(response.ok) {
+                const data = await response.json();
+                if(data.results && data.results.includes("I noticed some gaps")) {
+                    const gaps = data.results.split('\\n').filter(l => l.trim().startsWith('-'));
+                    const dailyTarget = gaps[0] || "Review your core foundations.";
+                    recBox.innerHTML = `
+                        <p class="text-sm font-medium text-gray-800 leading-relaxed">${dailyTarget.replace('-', '<strong class="text-indigo-600 font-black">🎯 Target:</strong> <br>')}</p>
+                        <p class="text-xs text-gray-400 mt-4 italic">Update the relevant entry in the main panel and hit Commit Changes to resolve this gap.</p>
+                    `;
+                } else {
+                    recBox.innerHTML = `<p class="text-sm font-bold text-emerald-600">✅ ${data.results}</p>`;
+                }
+            }
+        } catch(e) {
+            recBox.innerHTML = `<p class="text-sm text-red-500">Failed to load recommendations.</p>`;
+        }
     };
 
-    tabOrigin.addEventListener('click', () => {
-        activateTab(tabOrigin, tabAmbition);
+    const activateTab = (activeTab, inactiveTabs) => {
+        activeTab.className = "px-8 py-3 rounded-full font-bold text-lg bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transform hover:-translate-y-1 transition-all focus:outline-none focus:ring-4 focus:ring-indigo-300";
+        inactiveTabs.forEach(t => {
+            if(t) t.className = "px-8 py-3 rounded-full font-bold text-lg bg-white text-gray-700 border-2 border-transparent shadow-md hover:bg-gray-50 hover:shadow-lg hover:-translate-y-1 transform transition-all focus:outline-none focus:ring-4 focus:ring-gray-300";
+        });
+    };
+
+    const tabDetriments = document.getElementById('tab-detriments');
+    const tabPillars = document.getElementById('tab-pillars');
+
+    const allTabs = [tabOrigin, tabAmbition, tabDetriments, tabPillars];
+
+    if (tabOrigin) tabOrigin.addEventListener('click', () => {
+        activateTab(tabOrigin, allTabs.filter(t => t !== tabOrigin));
         loadArtifact('hero_origin.json');
     });
 
-    tabAmbition.addEventListener('click', () => {
-        activateTab(tabAmbition, tabOrigin);
+    if (tabAmbition) tabAmbition.addEventListener('click', () => {
+        activateTab(tabAmbition, allTabs.filter(t => t !== tabAmbition));
         loadArtifact('hero_ambition.json');
     });
 
-    saveBtn.addEventListener('click', saveArtifact);
+    if (tabDetriments) tabDetriments.addEventListener('click', () => {
+        activateTab(tabDetriments, allTabs.filter(t => t !== tabDetriments));
+        loadArtifact('hero_detriments.json');
+    });
+
+    if (tabPillars) tabPillars.addEventListener('click', () => {
+        activateTab(tabPillars, allTabs.filter(t => t !== tabPillars));
+        loadArtifact('category_mapping.json');
+    });
+
+    if (saveBtn) saveBtn.addEventListener('click', saveArtifact);
 
     // Initial load
-    loadArtifact('hero_origin.json');
+    if (tabOrigin) loadArtifact('hero_origin.json');
+    loadDailyRecommendation();
 });

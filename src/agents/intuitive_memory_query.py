@@ -1,3 +1,4 @@
+#OUTDATED, but might prove useful for something else
 from pymongo import MongoClient
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings # Or your preferred embedding model

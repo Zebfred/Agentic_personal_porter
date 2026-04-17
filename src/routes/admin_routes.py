@@ -78,3 +78,53 @@ def admin_inject_foundation():
     except Exception as e:
         logger.error(f"Error injecting foundation: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/unverified_audits', methods=['GET'])
+@require_api_key
+def get_unverified_audits():
+    """
+    Fetches the unverified records queue for the Verification Dashboard.
+    """
+    try:
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.batch_unverified_records()
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/verified_history', methods=['GET'])
+@require_api_key
+def get_verified_history():
+    """
+    Fetches the deeply confirmed historical audits for the Verification Dashboard.
+    """
+    try:
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.get_recently_verified_records(limit=10)
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching verified history: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@admin_bp.route('/admin/approve_audits', methods=['POST'])
+@require_api_key
+def approve_audits():
+    """
+    Batch approves a list of record gcal_ids.
+    """
+    try:
+        data = request.json
+        gcal_ids = data.get('gcal_ids', [])
+        if not gcal_ids:
+            return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        modified = inspector.approve_batch(gcal_ids)
+        return jsonify({"status": "success", "modified_count": modified})
+    except Exception as e:
+        logger.error(f"Error approving audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

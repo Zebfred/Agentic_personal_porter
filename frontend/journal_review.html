@@ -33,16 +33,56 @@
 
     <!-- Main Content -->
     <main class="flex-grow container mx-auto px-4 py-8">
-        <div class="glass-panel p-8 rounded-2xl max-w-4xl mx-auto">
-            <h2 class="text-3xl font-extrabold text-gray-800 mb-6 border-b pb-4 border-gray-200">Historical Journal Review</h2>
-            <p class="text-gray-600 italic mb-8">Review past reflections, classify detours, and provide direct feedback to the classification agent.</p>
+        <div class="glass-panel p-8 rounded-2xl max-w-5xl mx-auto">
+            <div class="flex justify-between items-end mb-6 border-b pb-4 border-gray-200">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-800">Historical Journal Review</h2>
+                    <p class="text-gray-600 italic mt-1">Review past reflections, classify detours, and push truthful records directly to Google Calendar.</p>
+                </div>
+                <!-- Date Picker -->
+                <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3">
+                    <label class="font-bold text-gray-700 text-sm">Target Date:</label>
+                    <input type="date" id="date-picker" class="border p-2 rounded focus:ring-2 focus:ring-indigo-400 outline-none text-sm font-medium">
+                    <button id="load-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition-colors text-sm shadow">Analyze</button>
+                </div>
+            </div>
+
+            <div id="focus-container" class="mb-6">
+                <!-- Fog of War Alerts will inject here -->
+            </div>
             
-            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded text-blue-700 font-medium">
-                <p>This module is currently a placeholder undergoing active development. Agent classification feedback UI will render here.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <!-- Intentions Left Column -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 opacity-80">
+                    <h3 class="font-bold text-gray-800 text-lg border-b pb-2 mb-4 flex items-center gap-2"><span>🎯</span> Intentions (Hero Ambition)</h3>
+                    <div id="intent-list" class="space-y-2">
+                        <div class="animate-pulse flex space-x-4"><div class="h-4 bg-gray-200 rounded w-3/4"></div></div>
+                    </div>
+                </div>
+
+                <!-- Actuals Right Column -->
+                <div class="bg-gray-50 rounded-xl shadow-inner border border-gray-300 p-6 relative">
+                    <div class="absolute top-0 right-0 -tr-xl -mr-4 -mt-4">
+                        <span class="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg border-2 border-white">Source of Truth</span>
+                    </div>
+                    <h3 class="font-bold text-gray-800 text-lg border-b border-gray-300 pb-2 mb-4 flex items-center gap-2"><span>⏱️</span> Actual Events (Mongo Timeseries)</h3>
+                    <div id="actual-list" class="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div class="animate-pulse flex space-x-4"><div class="h-10 bg-gray-300 rounded w-full"></div></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Push actions -->
+            <div class="flex justify-end pt-4 border-t border-gray-200 mt-4">
+               <button id="sync-gcal-btn" class="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-black py-4 px-8 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all">
+                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                   Push Truth to Google Calendar
+               </button>
             </div>
         </div>
     </main>
 
     <script src="./js/auth.js"></script>
+    <script src="./js/journal_review.js"></script>
 </body>
 </html>

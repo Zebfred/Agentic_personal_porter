@@ -32,6 +32,10 @@ class SovereignCalendarSync:
         self.client = MongoClient(self.mongo_uri)
         self.db = self.client[MongoConfig.DB_NAME]
         self.raw_collection = self.db[MongoConfig.RAW_COLLECTION]
+        
+        # Use the timeseries client for writing to the new architecture
+        from src.database.mongo_client.calendar_timeseries import CalendarTimeseriesClient
+        self.ts_client = CalendarTimeseriesClient()
 
     def get_gcal_service(self):
         """Authenticates and returns the GCal service."""
@@ -89,7 +93,8 @@ class SovereignCalendarSync:
 
             for event in events:
                 event_id = event.get('id')
-                # Extract basic fields for the NoSQL Index
+                
+                # 1. Standard Landing Zone (For Downstream CrewAI sync pipeline)
                 payload = {
                     "gcal_id": event_id,
                     "summary": event.get('summary', 'No Title'),
@@ -107,6 +112,11 @@ class SovereignCalendarSync:
                     {"$set": payload},
                     upsert=True
                 )
+                
+                # 2. Native Time-Series Dual-Write
+                success = self.ts_client.stage_raw_event(event)
+                
+                # Increment operation count
                 ops_count += 1
 
             page_token = events_result.get('nextPageToken')
@@ -122,9 +132,13 @@ class SovereignCalendarSync:
         """
         total = self.raw_collection.count_documents({})
         staged = self.raw_collection.count_documents({"sync_status": "staged"})
-        print("\n--- Landing Zone Status ---")
-        print(f"Total Events Stored: {total}")
+        
+        ts_total = self.ts_client.timeseries_col.count_documents({})
+        
+        print("\n--- Dual-Track Landing Zone Status ---")
+        print(f"Total Standard Events Stored: {total}")
         print(f"Events Pending Neo4j Sync: {staged}")
+        print(f"Total Native TS Events Stored: {ts_total}")
         
         if total > 0:
             latest = self.raw_collection.find_one(sort=[("start", -1)])

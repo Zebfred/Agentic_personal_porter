@@ -14,11 +14,12 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-
 # Add project root to Python path so imports work when run directly
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
+
+from src.database.neo4j_client import close_driver
 
 # Load auth env vars BEFORE anything else reads them
 root = Path(__file__).resolve().parent.parent
