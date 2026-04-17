@@ -22,8 +22,8 @@ This document provides a comprehensive checklist for releasing the Agentic Perso
 
 ## 3. Infrastructure Targets
 
-- [ ] **Memory Allocation:** Ensure Cloud Run deployments specify adequate memory limits (e.g., `--memory 1024Mi`) to avoid out-of-memory errors caused by heavy graph payloads and AI processing.
-- [ ] **Deployment Script:** Verify `deploy_gcp.sh` reflects the current environment structure and injects variables directly into the Cloud Run service footprint.
+- [ ] **Docker Timeouts & Memory Restrictions:** Ensure `Dockerfile` defines an extended `gunicorn` `--timeout 300` threshold to permit large batch operations, and that Cloud Run deployments specify adequate memory minimums (e.g., `--memory 1024Mi`).
+- [ ] **Deployment Script & Secrets:** Verify `sync_secrets_gcp.sh` has successfully populated GCP Secret Manager, allowing `deploy_gcp.sh` to securely deploy with the native `--set-secrets` argument.
 - [ ] **Container Build:** If using automated Git triggers (Cloud Build), confirm that the CI/CD pipeline correctly builds the updated `Dockerfile` container upon merge to `main`.
 
 ## 4. Post-Deployment Validation
