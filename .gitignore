@@ -16,6 +16,7 @@ __pycache__/
 .legacy_hr/*
 
 # Ignore sensitive information (e.g., configuration files with credentials)
+.auth/
 config.local.js
 .*env*
 *cred*
@@ -29,3 +30,4 @@ data/google_calendar/*
 
 tailwindcss
 venv/
+node_modules/
