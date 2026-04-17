@@ -7,7 +7,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 
 - [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub.
 - [ ] **Graph Metric Endpoints:** Build endpoints that explicitly query Neo4j for high-level progress metrics to populate the Hub dashboard.
-- [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.
+- [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.(started)
 - [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI.
 
 ## Highest Priority: Server Networking & Cloud Deployment Fixes
@@ -23,6 +23,15 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [x] **Mongo Landing Zone:** Finalize the script/pipeline for pulling daily bulk logs from Google Calendar directly into a MongoDB cluster. *(Verified: Landing zone fully functional with 13.5k events.)*
 - [x] **Format & Clean Pipeline:** Pre-process the raw GCal strings into structured, AI-ready JSON strictly inside the Mongo landing zone before it ever touches the primary identity graph. *(Verified: Formatting pipeline processes correctly via `mongo_storage`.)*
 - [x] **Neo4j Merge Validation:** Ensure the `MERGE` logic pushing from Mongo to Neo4j is rigorously idempotent. Test it against massive historical JSON samples to guarantee repeated syncs never degrade the graph or create duplicate "ghost" relationships. *(Verified: Idempotent using `gcal_id` constraints.)*
+- [ ] **Native Mongo Time-Series Collection (NEW):** Create schema mapping for a native MongoDB time-series collection to handle sliding-window calendar ingestion. Must support batch pulls of current events and rolling fetches of historical events.
+- [ ] **First-Serving Ingestion Queuing:** Implement rate-limiting or Redis/Celery queueing to safely buffer high-frequency event ingestion from the `first_serving_porter`.
+
+## Observability & State Tracing (NEW)
+*Status: Required following first_serving_porter infinite loop crash.*
+
+- [ ] **first_serving_traces Collection:** Create a MongoDB collection. Every time the lead porter delegates a task, log the `trace_id`, `target_agent`, `prompt`, and `token_count`.
+- [ ] **first_serving_porter_happenings Collection:** Define this new logging collection and integrate it with the existing `agent_reflections` heuristic collection.
+- [ ] **Token Request Density Monitoring:** Provide local or distributed strategy to halt agents and prevent request explosions by monitoring token usage density per minute.
 
 ## Tertiary Priority: Agent Socratic Upgrades & Backups (Mach 2)
 *Status: Completed upgrades & backup scripts scripts.*
@@ -47,7 +56,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 *Status: Planning phase for long-term storage and connection integrity.*
 
 - [ ] **Vector Database Integration:** Set up a proper production vector database (Weviate Search setup in `vector_storage.py`) that the Corrector and GTKY agents will interact with for long-term semantic search and massive document storage.
-- [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar via `calendar_timeseries.py`, progressing further back in time, and establishing a robust time-series connection for historical data. The backend logic is now shifted to cleanly divide events into `raw_gcal_timeseries`, `event_intentions`, `event_actuals`, and `unified_events` using a consistent event UUID.
+- [ ] **Mongo Time-Series Logging:** Update our MongoDB-related scripts to automatically pull from the calendar via `calendar_timeseries.py`, progressing further back in time, and establishing a robust time-series connection for historical data. The backend logic is now shifted to cleanly divide events into `raw_gcal_timeseries`, `event_intentions`, `event_actuals`, and `unified_events` using a consistent event UUID. **Implementation:** Evolve calendar storage script to utilize native Time-Series structures (`calendar_events_timeseries`). Must natively support both historical chronological fetches and current sliding-window current pulls.
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.

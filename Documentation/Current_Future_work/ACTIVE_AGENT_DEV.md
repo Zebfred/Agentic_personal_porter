@@ -24,6 +24,24 @@ This document specifically scopes the requirements, prompts, and networking logi
 - [ ] **Audit Mandate:** Acts as the final quality assurance chokepoint. Checks the Socratic/First-Serving drafted response against the Vector DB (Intuitive Memory) to definitively ensure the agent hasn't hallucinated a goal the user never set or made a repeated historical mistake.
 - [ ] **Preliminary Testing:** Run initial chunking and similarity search testing (Atlas Vector Search) on `Semantic_vectors` to give the Corrector and GTKY agents access to historical "vibes".
 
+## Audit Agent (NEW - The Inspector)
+*Status: Architecture defined.*
+- [ ] **Verification Logic:** Audits the categorizations proposed by the Socratic Mirror.
+- [ ] **Verification Dashboard Interface:** Interfaces with `first_serving_porter` to drive a low-friction verification dashboard. Batch reviews once a day where human user simply clicks "Approve" or "Reject".
+
+## Time_Keeper (NEW - Temporal Specialist)
+*Status: Architecture defined.*
+- [ ] **Chronological Querying:** Dedicated to temporal queries, overcoming Neo4j's sequential blindness by interfacing with the Mongo Time-Series collection directly.
+
+## Socratic Mirror (Demoted)
+*Status: Scope refinement pending implementation.*
+- [ ] **Scope Reduction:** Stop usage as a deep contextual "Delta" thinker. Strictly reduce to categorization of Intention vs. Actual events across the 9 defined pillars.
+
+## Observability & Error Prevention
+*Status: High Priority post-crash mandate.*
+- [ ] **Multi-Agent Tracing:** Mandate the integration of LangSmith (or equivalent framework) to trace crew execution and identify infinite reasoning loops.
+- [ ] **Backoff Decorators:** Implement and enforce strict exponential API rate-limit backoff decorators on all LLM inference calls to manage quotas and prevent "request explosions."
+
 ## Architectural Workflows
 - [ ] **Implement SLM Triage Logic:** Integrate a localized/cheap SLM (like Llama 3 or Mistral) to rapidly classify 90% of routine tasks (Meals, Sleep), only waking up the heavy CrewAI Agentic cluster for "Uncertain" gaps or complex "Delta" logic.
 - [ ] **The "Hero Cycle" Orchestration Pipeline:** Explicitly code the 5-step lifecycle pipeline: Ingestion (Sense) -> Contextual Retrieval (Think) -> Collaborative Reasoning (Plan) -> Verification (Audit) -> Execution (Act).

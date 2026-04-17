@@ -25,3 +25,15 @@ To ensure the 10-year plan does not rot via hallucinations, the architecture mus
 1. **Daily:** Triage agents (or SLMs) map 'Actuals' strictly to defined 'Pillars'.
 2. **Weekly:** CrewAI reflection agents calculate the "Delta" and generate the narrative recap.
 3. **Monthly (The Grand Visionary):** A macro-agent analyzes the *Rate of Change* (derivative trajectory) and iteratively shifts the entire 10-year UI roadmap, keeping the human grounded in realistic probability.
+
+## 4. Expanded Ingestion Integrations (Moved from Mach 3)
+- [ ] **Trello Board Sync:** Ingesting project management artifacts.
+- [ ] **Google Tasks:** Reading explicit to-do checklist completions.
+- [ ] **Figma Tracking:** Integrating creative effort logging to broaden the scope of the Hero's footprint.
+
+## 5. The Autonomous Crew Expansion (Moved from Mach 3)
+As defined in the `AGENT_REGISTRY.md`, build out the specialized agent network:
+- [ ] **GTKY Expansion:** Providing the "Getting To Know You" agent direct write-access to project long-term milestone nodes directly onto the graph.
+- [ ] **The Analyzer Porter:** Training a tiny regression/LLM model strictly to output hard "Hero Numbers" (calculating the mathematical delta between intent and reality).
+- [ ] **Sergeant & Campaign Porters:** Implementing agents purely capable of breaking massive 5-year aims into tiny weekly quota tickets.
+- [ ] **The Grand Visionary:** Exploring Reinforcement Learning (PPO) to predict burnout or success pathways based off complex graph node multi-hops.
