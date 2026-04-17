@@ -1,622 +1,130 @@
+"""
+Agentic Personal Porter — Application Factory
+
+This module creates and configures the Flask application.
+All route handlers live in src/routes/ as Flask Blueprints.
+"""
 import os
 import sys
+import logging
 from pathlib import Path
+from logging.handlers import RotatingFileHandler
+
+from flask import Flask
+from flask_cors import CORS
+from dotenv import load_dotenv
 
 # Add project root to Python path so imports work when run directly
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from datetime import datetime, time, timedelta
-from src.agents.crew_manager_mach2 import run_crew
-from src.database.neo4j_client import log_to_neo4j
-from src.database.mongo_storage import SovereignMongoStorage
-from src.integrations.google_calendar import get_calendar_service
-from src.agents.first_serving_porter import run_first_serving_porter
-from functools import wraps
-import os
-import json
-import jwt
-import hmac
-from dotenv import load_dotenv
-from pydantic import ValidationError
-from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
-
-import logging
-from logging.handlers import RotatingFileHandler
-
-# Load auth env vars
+# Load auth env vars BEFORE anything else reads them
 root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
+
+# --- Critical security checks ---
 API_KEY = os.environ.get("PORTER_API_KEY")
 if not API_KEY:
-    raise ValueError("CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. It must be set in .auth/.env for secure authentication.")
+    raise ValueError(
+        "CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. "
+        "It must be set in .auth/.env for secure authentication."
+    )
 
 JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:
-    raise ValueError("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. It must be set in .auth/.env for secure token generation.")
-
-# Set up logging
-log_dir = root / "logs"
-log_dir.mkdir(exist_ok=True)
-log_file = log_dir / "app.log"
-
-logger = logging.getLogger("APP_ROUTER")
-logger.setLevel(logging.INFO)
-# Remove default handlers
-if logger.hasHandlers():
-    logger.handlers.clear()
-file_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=2)
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-logger.addHandler(file_handler)
-# Also log to console
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
-logger.addHandler(console_handler)
+    raise ValueError(
+        "CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. "
+        "It must be set in .auth/.env for secure token generation."
+    )
 
 
-app = Flask(__name__)
-# Restrict CORS to common local origins and private IP ranges
-allowed_origins_str = os.environ.get(
-    "CORS_ORIGINS",
-    "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5090,http://127.0.0.1:5090"
-)
-cors_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
-CORS(app, resources={r"/*": {"origins": cors_origins}})
+def _configure_logging():
+    """Set up the APP_ROUTER logger with file and console handlers."""
+    log_dir = root / "logs"
+    log_dir.mkdir(exist_ok=True)
+    log_file = log_dir / "app.log"
 
-from flask import make_response
+    logger = logging.getLogger("APP_ROUTER")
+    logger.setLevel(logging.INFO)
 
-def require_api_key(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method == 'OPTIONS':
-            response = make_response()
-            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
-            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-            return response, 204
-            
-        supplied_key = request.headers.get("Authorization")
-        if not supplied_key:
-            return jsonify({"error": "Unauthorized: Missing Authorization header"}), 401
-            
-        token_str = supplied_key.replace("Bearer ", "")
-        
-        # Check if it's the raw API Key (used by background python scripts usually)
-        if hmac.compare_digest(token_str, API_KEY):
-            return f(*args, **kwargs)
-            
-        # Try checking if it's a valid JWT from the frontend login UI
-        try:
-            decoded = jwt.decode(token_str, JWT_SECRET, algorithms=["HS256"])
-            if decoded.get("role") == "admin":
-                return f(*args, **kwargs)
-        except jwt.ExpiredSignatureError:
-            return jsonify({"error": "Unauthorized: Token expired"}), 401
-        except jwt.InvalidTokenError:
-            pass
-            
-        return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
-    return decorated_function
+    if logger.hasHandlers():
+        logger.handlers.clear()
 
-# Serve front-end files
-@app.route('/')
-@app.route('/index.html')
-def index():
-    return send_from_directory('../frontend', 'index.html')
+    fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
-@app.route('/adventure_log')
-@app.route('/Adventure_Time_log.html')
-def adventure_log():
-    return send_from_directory('../frontend', 'Adventure_Time_log.html')
+    file_handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=2)
+    file_handler.setFormatter(fmt)
+    logger.addHandler(file_handler)
 
-@app.route('/journal_review')
-@app.route('/journal_review.html')
-def journal_review():
-    return send_from_directory('../frontend', 'journal_review.html')
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(fmt)
+    logger.addHandler(console_handler)
 
-@app.route('/oracle_predictions')
-@app.route('/Oracle_predictions.html')
-def oracle_predictions():
-    return send_from_directory('../frontend', 'Oracle_predictions.html')
-
-@app.route('/inventory')
-@app.route('/inventory.html')
-def inventory():
-    return send_from_directory('../frontend', 'inventory.html')
-
-@app.route('/artifacts')
-@app.route('/artifacts.html')
-def artifacts():
-    return send_from_directory('../frontend', 'artifacts.html')
-
-@app.route('/login')
-@app.route('/login.html')
-def login_page():
-    return send_from_directory('../frontend', 'login.html')
-
-@app.route('/graph_explorer')
-@app.route('/graph_explorer.html')
-def graph_explorer():
-    return send_from_directory('../frontend', 'graph_explorer.html')
-
-# Serve static files (JS, CSS, etc.)
-@app.route('/js/<path:filename>')
-def serve_js(filename):
-    return send_from_directory('../frontend/js', filename)
-
-@app.route('/css/<path:filename>')
-def serve_css(filename):
-    return send_from_directory('../frontend/css', filename)
-
-# Initialize Google Calendar service (lazy initialization)
-_calendar_service = None
-
-def get_calendar_service_instance():
-    """Get or create calendar service instance."""
-    global _calendar_service
-    if _calendar_service is None:
-        _calendar_service = get_calendar_service()
-    return _calendar_service
+    return logger
 
 
-def fetch_calendar_events_for_date(target_date_str: str):
-    """
-    Helper function to fetch calendar events for a date.
-    Can be used both by the route and internally.
-    
-    Args:
-        target_date_str: Date in YYYY-MM-DD format
-        
-    Returns:
-        List of event dictionaries or empty list if error
-    """
-    try:
-        service = get_calendar_service_instance()
-        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
-        
-        time_min = datetime.combine(target_date, time.min).isoformat() + 'Z'
-        time_max = datetime.combine(target_date, time.max).isoformat() + 'Z'
-        
-        events_result = service.events().list(
-            calendarId='primary',
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy='startTime'
-        ).execute()
-        
-        events = events_result.get('items', [])
-        return events
-    except Exception as e:
-        logger.error(f"Error fetching calendar events internally: {e}")
-        return []
+def create_app():
+    """Application factory — creates, configures, and returns the Flask app."""
+    logger = _configure_logging()
 
-@app.route('/api/save_log', methods=['POST', 'OPTIONS'])
-@require_api_key
-def save_log():
-    """
-    Saves a log entry to MongoDB and Neo4j without triggering AI reflection.
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
-            
-        try:
-            # We use JournalLogBase which matches log_data
-            from src.schemas.api_models import JournalLogBase
-            validated_data = JournalLogBase(**data)
-            log_data_dict = validated_data.model_dump() if hasattr(validated_data, 'model_dump') else validated_data.dict()
-        except ValidationError as e:
-            logger.error(f"Validation Error in save_log: {e}")
-            return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
+    app = Flask(__name__)
 
-        # 1. Save pristine Frontend log to MongoDB Landing Zone
-        mongo_storage = SovereignMongoStorage()
-        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
-        
-        # 2. Save the complete log as a distinct node to Neo4j Identity Graph
-        db_confirmation = log_to_neo4j(log_data_dict)
-        
-        return jsonify({
-            "status": "success",
-            "mongo_id": mongo_doc_id,
-            "db_status": db_confirmation
-        })
-    except Exception as e:
-        logger.error(f"Error saving log: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    # --- CORS ---
+    allowed_origins_str = os.environ.get(
+        "CORS_ORIGINS",
+        "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5090,http://127.0.0.1:5090"
+    )
+    cors_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
+    CORS(app, resources={r"/*": {"origins": cors_origins}})
 
-@app.route('/api/logs', methods=['GET', 'OPTIONS'])
-@require_api_key
-def get_historical_logs():
-    """
-    Fetches the nested monthly journal entries for the UI calendar.
-    Query params:
-        month: str format 'YYYY-MM'
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-    try:
-        month = request.args.get('month')
-        if not month:
-            return jsonify({"error": "Missing month parameter (format: YYYY-MM)"}), 400
-            
-        mongo_storage = SovereignMongoStorage()
-        user_id = os.environ.get("HERO_NAME", "Hero")
-        month_data = mongo_storage.get_monthly_log(month, user_id=user_id)
-        
-        return jsonify({
-            "status": "success",
-            "data": month_data
-        })
-    except Exception as e:
-        logger.error(f"Error fetching monthly logs: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    # --- Register Blueprints ---
+    from src.routes.static_routes import static_bp
+    from src.routes.auth_routes import auth_bp
+    from src.routes.journal_routes import journal_bp
+    from src.routes.chat_routes import chat_bp
+    from src.routes.calendar_routes import calendar_bp
+    from src.routes.inventory_routes import inventory_bp
+    from src.routes.admin_routes import admin_bp
 
-@app.route('/process_journal', methods=['POST', 'OPTIONS'])
-@require_api_key
-def process_journal():
-    """
-    Generates a daily reflection based on the day's logs.
-    Saves the reflection to a dedicated collection.
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
-        
-        try:
-            from src.schemas.api_models import DailyReflectionRequestSchema
-            validated_data = DailyReflectionRequestSchema(**data)
-            journal_entry = validated_data.journal_entry
-            log_data = validated_data.log_data.model_dump() if hasattr(validated_data.log_data, 'model_dump') else validated_data.log_data.dict()
-            day = log_data.get('day', 'Unknown')
-        except ValidationError as e:
-            logger.error(f"Validation Error: {e}")
-            return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
-        
-        logger.info(f"Generating daily reflection for {day}...")
-        
-        try:
-            # Enhance journal entry with calendar context
-            enhanced_journal_entry = journal_entry
-            
-            # Try to fetch calendar events for the day
-            try:
-                day = log_data.get('day')
-                if day:
-                    # Convert day name to date (approximate - use current week)
-                    today = datetime.now()
-                    day_map = {
-                        'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
-                        'friday': 4, 'saturday': 5, 'sunday': 6
-                    }
-                    day_index = day_map.get(day.lower(), 0)
-                    current_day_index = today.weekday()
-                    days_diff = day_index - current_day_index
-                    target_date = (today + timedelta(days=days_diff)).strftime('%Y-%m-%d')
-                    
-                    # Fetch calendar events using helper function
-                    events = fetch_calendar_events_for_date(target_date)
-                    
-                    if events:
-                        event_titles = [e.get('summary', 'Untitled') for e in events]
-                        calendar_context = f"\n\nCalendar Events for {day}: {', '.join(event_titles)}"
-                        #enhanced_journal_entry = journal_entry + calendar_context
-                        logger.info(f"Added {len(events)} calendar events to journal context")
-            except Exception as cal_err:
-                logger.warning(f"Calendar context failed: {cal_err}")
+    # Static routes have no prefix — they serve /, /index.html, /js/*, etc.
+    app.register_blueprint(static_bp)
 
-            # Run CrewAI reflection
-            result_text = run_crew(enhanced_journal_entry, log_data)
+    # Auth routes: /api/login
+    app.register_blueprint(auth_bp, url_prefix='/api')
 
-            # Save Reflection to dedicated collection
-            mongo_storage = SovereignMongoStorage()
-            reflection_id = mongo_storage.save_agent_reflection({
-                "day": day,
-                "user_id": os.environ.get("HERO_NAME", "Hero"),
-                "reflection_text": result_text,
-                "metadata": {
-                    "source": "daily_recon",
-                    "timestamp": datetime.now().isoformat()
-                }
-            })
+    # Journal routes carry their own /api/ prefix for save_log and logs,
+    # but /process_journal stays at root for frontend backward compatibility
+    app.register_blueprint(journal_bp)
 
-            return jsonify({
-                "result": result_text,
-                "reflection_id": reflection_id
-            })
-        
-        except Exception as e:
-            # Log error with traceback for debugging
-            logger.error(f"Backend Error during CrewAI execution: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+    # Chat routes: /api/chat/porter
+    app.register_blueprint(chat_bp, url_prefix='/api')
 
-    except Exception as e:
-        # This outer block catches errors in getting the initial JSON data
-        logger.error(f"Error reading request data: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    # Calendar routes: /get_calendar_events at root (legacy frontend URL)
+    app.register_blueprint(calendar_bp)
 
-@app.route('/api/chat/porter', methods=['POST', 'OPTIONS'])
-@require_api_key
-def chat_porter():
-    """
-    Handles chat interaction with the First-Serving Porter agent.
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-        
-    try:
-        data = request.get_json()
-        if not data or 'message' not in data:
-            return jsonify({"error": "Message required"}), 400
-            
-        user_msg = data['message']
-        logger.info("Received Porter chat message.")
-        
-        result = run_first_serving_porter(user_msg)
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"Error in First-Serving Porter chat: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    # Inventory routes: /api/inventory, /api/artifacts/*, /api/graph_data
+    app.register_blueprint(inventory_bp, url_prefix='/api')
 
-@app.route('/api/login', methods=['POST', 'OPTIONS'])
-def login():
-    """
-    Validates the provided password against the PORTER_API_KEY.
-    If valid, returns a JWT token valid for 24 hours.
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-        
-    try:
-        data = request.get_json()
-        if not data or 'password' not in data:
-            return jsonify({"error": "Password required"}), 400
-            
-        if hmac.compare_digest(data['password'], API_KEY):
-            # Generate JWT Token valid for 24 hours
-            expiration = datetime.utcnow() + timedelta(hours=24)
-            token = jwt.encode(
-                {"role": "admin", "exp": expiration},
-                JWT_SECRET,
-                algorithm="HS256"
-            )
-            return jsonify({"token": token, "message": "Login successful"})
-        else:
-            return jsonify({"error": "Invalid password"}), 401
-            
-    except Exception as e:
-        logger.error(f"Error during login: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    # Admin routes: /api/admin/*, /api/wake_infrastructure
+    app.register_blueprint(admin_bp, url_prefix='/api')
 
-@app.route('/api/graph_data', methods=['GET'])
-@require_api_key
-def get_graph_data():
-    """
-    Fetches the simplified graph topology for visualization.
-    """
-    try:
-        from src.database.neo4j_client.read_operations import get_full_graph_topology
-        limit = request.args.get('limit', default=500, type=int)
-        graph_data = get_full_graph_topology(limit=limit)
-        return jsonify(graph_data)
-    except Exception as e:
-        logger.error(f"Error fetching graph data: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/inventory', methods=['GET'])
-@require_api_key
-def get_inventory():
-    """
-    Fetches the 'Valuable Detours' and skills acquired by the user from Neo4j.
-    """
-    try:
-        from src.database.neo4j_client import get_valuable_detours
-        detours = get_valuable_detours(user_name=os.environ.get("HERO_NAME", "Hero"))
-        
-        response_data = {
-            "valuable_detours": detours,
-            "quests": [],
-            "skills": [],
-            "equipment": [],
-            "stats": {"level": 5, "strength": 10, "intelligence": 15, "charisma": 12},
-            "finances": {"gold": 1500, "investment_growth": "+5%"}
-        }
-        return jsonify(response_data)
-    except Exception as e:
-        logger.error(f"Error fetching inventory: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/artifacts/<artifact_name>', methods=['GET', 'POST', 'OPTIONS'])
-@require_api_key
-def manage_artifact(artifact_name):
-    """
-    Fetch or update a JSON artifact.
-    """
-    if request.method == 'OPTIONS':
-        return '', 204
-        
-    allowed_artifacts = ['hero_origin.json', 'hero_ambition.json', 'hero_detriments.json']
-    if artifact_name not in allowed_artifacts:
-        return jsonify({"error": "Invalid artifact name"}), 400
-        
-    if artifact_name == 'hero_detriments.json':
-        artifact_path = project_root / '.auth' / artifact_name
-    else:
-        artifact_path = project_root / 'data' / 'hero_artifacts' / artifact_name
-    
-    if request.method == 'GET':
-        try:
-            mongo_storage = SovereignMongoStorage()
-            data = mongo_storage.get_hero_artifact(artifact_name)
-            
-            # If not in MongoDB yet, seed it from the filesystem
-            if not data:
-                if not artifact_path.exists():
-                    return jsonify({"error": "Artifact not found"}), 404
-                with open(artifact_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                mongo_storage.save_hero_artifact(artifact_name, data)
-                
-            return jsonify(data)
-        except Exception as e:
-            logger.error(f"Error fetching artifact {artifact_name}: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
-            
-    elif request.method == 'POST':
-        try:
-            data = request.get_json()
-            if not data:
-                return jsonify({"error": "No JSON data provided"}), 400
-                
-            # Keep flat-file synchronized as a fallback
-            artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(artifact_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-                
-            # Update Mongo as Source of Truth
-            mongo_storage = SovereignMongoStorage()
-            mongo_storage.save_hero_artifact(artifact_name, data)
-                
-            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB"})
-        except Exception as e:
-            logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+    logger.info(f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 7 blueprints.")
+    return app
 
 
-@app.route('/get_calendar_events', methods=['GET'])
-@require_api_key
-def get_calendar_events():
-    """
-    Fetches calendar events for a specific date.
-    
-    Query parameters:
-        date: Date in YYYY-MM-DD format (defaults to today if not provided)
-    
-    Returns:
-        JSON with events array, each event containing:
-        - title: Event title/summary
-        - start: Start time (ISO format)
-        - end: End time (ISO format)
-        - description: Event description (if available)
-    """
-    try:
-        try:
-            req = CalendarRequestSchema(date=request.args.get('date'))
-        except ValidationError as e:
-            return jsonify({"error": f"Invalid query parameters: {str(e)}"}), 400
-
-        date_str = req.date
-        if not date_str:
-            date_str = datetime.now().strftime('%Y-%m-%d')
-        
-        # Validate date format strictly
-        try:
-            if len(date_str) != 10:
-                raise ValueError("Strict length check failed")
-            datetime.strptime(date_str, '%Y-%m-%d')
-        except ValueError:
-            return jsonify({"error": "Invalid date format. Use strict YYYY-MM-DD."}), 400
-        
-        logger.info(f"Fetching calendar events for date: {date_str}")
-        
-        # Fetch events using helper function
-        try:
-            events = fetch_calendar_events_for_date(date_str)
-        except FileNotFoundError as e:
-            return jsonify({"error": f"Google Calendar credentials not found: {e}"}), 500
-        except Exception as e:
-            return jsonify({"error": f"Failed to fetch calendar events: {e}"}), 500
-        
-        # Format events for front-end
-        formatted_events = []
-        for event in events:
-            # Get start and end times
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            end = event['end'].get('dateTime', event['end'].get('date'))
-            
-            formatted_events.append({
-                'title': event.get('summary', 'No Title'),
-                'start': start,
-                'end': end,
-                'description': event.get('description', ''),
-                'location': event.get('location', ''),
-                'id': event.get('id', '')
-            })
-        
-        logger.info(f"Found {len(formatted_events)} events for {date_str}")
-        
-        return jsonify({
-            "date": date_str,
-            "events": formatted_events,
-            "count": len(formatted_events)
-        })
-        
-    except Exception as e:
-        logger.error(f"Error fetching calendar events: {e}", exc_info=True)
-        return jsonify({"error": f"An unexpected error occurred while fetching calendar events: {str(e)}"}), 500
-
-@app.route('/api/admin/sync_calendar', methods=['POST'])
-@require_api_key
-def admin_sync_calendar():
-    """
-    Triggers the Google Calendar sync pipeline to Neo4j.
-    """
-    try:
-        from src.orchestrators.sync_calendar_to_graph import run_sync_pipeline
-        run_sync_pipeline()
-        return jsonify({"message": "Calendar sync completed successfully."})
-    except Exception as e:
-        logger.error(f"Error syncing calendar: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/admin/vector_sync', methods=['POST'])
-@require_api_key
-def admin_vector_sync():
-    """
-    Triggers the isolated batch synchronization into ChromaDB and Weaviate.
-    """
-    try:
-        from src.orchestrators.vector_batch_sync_all import execute_sync
-        execute_sync(sync_trigger_time="CRON")
-        return jsonify({"message": "Vector DB batch synchronization completed."})
-    except Exception as e:
-        logger.error(f"Error during vector batch sync: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/admin/inject_foundation', methods=['POST'])
-@require_api_key
-def admin_inject_foundation():
-    """
-    Triggers the Hero Foundation (Origin/Ambition) injection to Neo4j.
-    """
-    try:
-        from src.database.inject_hero_foundation import inject_hero_data
-        inject_hero_data()
-        return jsonify({"message": "Hero foundation injected successfully."})
-    except Exception as e:
-        logger.error(f"Error injecting foundation: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+# --- Entrypoint ---
+app = create_app()
 
 if __name__ == '__main__':
-    logger.info("==================================================================================")
+    logger = logging.getLogger("APP_ROUTER")
+    logger.info("=" * 82)
     logger.warning("Starting the Agentic Personal Porter via Flask's built-in development server.")
     logger.warning("This server is not suitable for production deployments.")
     logger.info("For a production WSGI server, please execute: ./run_production.sh (which uses Gunicorn)")
-    logger.info("==================================================================================")
-    
-    # Securely check for debug mode via environment variable
+    logger.info("=" * 82)
+
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     logger.info(f"Server starting on port 5090 (Debug Mode: {debug_mode})...")
-    
+
     app.run(debug=debug_mode, host='0.0.0.0', port=5090)
