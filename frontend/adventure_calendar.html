@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Log - Agentic Personal Porter</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .day-cell {
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-gray-800 p-4 text-white shadow-md z-10 sticky top-0">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold tracking-tight">Agentic Personal Porter</h1>
+            <div class="space-x-4 text-sm font-medium">
+                <a href="/index.html" class="hover:text-blue-300 transition">Hub</a>
+                <a href="/adventure_log" class="hover:text-blue-300 transition">Adventure Log</a>
+                <a href="/adventure_calendar" class="text-blue-400 font-bold border-b-2 border-blue-400 pb-1">Monthly Log</a>
+                <a href="/inventory.html" class="hover:text-blue-300 transition">Inventory</a>
+                <a href="/artifacts.html" class="hover:text-blue-300 transition">Artifacts</a>
+                <a href="/journal_review" class="hover:text-blue-300 transition">Journal Review</a>
+                <a href="/oracle_predictions" class="hover:text-blue-300 transition">Oracle</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4">
+        <div class="glass-panel p-6 rounded-2xl max-w-7xl mx-auto shadow-md">
+            <!-- Year Header & Selection -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-3xl font-extrabold text-gray-800" id="calendar-title">Monthly Exploration Log</h2>
+                    <p class="text-gray-600 italic mt-1">Review your yearly historical logs, track progress, and plan the future.</p>
+                </div>
+                <!-- Controls -->
+                <div class="flex items-center gap-4">
+                    <button id="prev-year-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition-colors text-sm shadow">◀ Previous Year</button>
+                    <span id="current-year-display" class="text-2xl font-black text-indigo-700">2026</span>
+                    <button id="next-year-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition-colors text-sm shadow">Next Year ▶</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading-spinner" class="text-center py-12 hidden">
+                <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-700"></div>
+                <p class="mt-4 text-gray-500 font-medium tracking-widest uppercase text-sm">Syncing with Temporal Grid...</p>
+            </div>
+
+            <!-- The Grid of 12 Months -->
+            <div id="yearly-grid-container" class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                <!-- Rendered heavily via JS -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for Detailed Day View -->
+    <div id="day-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 transition-opacity">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-lg w-full transform scale-95 transition-transform" id="day-modal-content">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h3 class="text-2xl font-bold text-gray-800" id="modal-date-title">Date</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-red-500 text-2xl font-bold">&times;</button>
+            </div>
+            <div id="modal-body" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                <!-- Day details dynamically injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./js/auth.js"></script>
+    <script src="./js/adventure_calendar.js"></script>
+</body>
+</html>

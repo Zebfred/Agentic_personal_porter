@@ -20,6 +20,11 @@ def index():
 def adventure_log():
     return send_from_directory('../frontend', 'Adventure_Time_log.html')
 
+@static_bp.route('/adventure_calendar')
+@static_bp.route('/adventure_calendar.html')
+def adventure_calendar():
+    return send_from_directory('../frontend', 'adventure_calendar.html')
+
 @static_bp.route('/journal_review')
 @static_bp.route('/journal_review.html')
 def journal_review():

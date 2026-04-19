@@ -85,6 +85,33 @@ def get_historical_logs():
         logger.error(f"Error fetching monthly logs: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@journal_bp.route('/api/logs/year', methods=['GET', 'OPTIONS'])
+@require_api_key
+def get_yearly_logs_route():
+    """
+    Fetches all nested monthly journal entries for a given year.
+    Query params:
+        year: str format 'YYYY'
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        year = request.args.get('year')
+        if not year:
+            return jsonify({"error": "Missing year parameter (format: YYYY)"}), 400
+
+        mongo_storage = SovereignMongoStorage()
+        user_id = os.environ.get("HERO_NAME", "Hero")
+        data = mongo_storage.get_yearly_logs(year, user_id=user_id)
+
+        return jsonify({
+            "status": "success",
+            "data": data
+        })
+    except Exception as e:
+        logger.error(f"Error fetching yearly logs: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 
 @journal_bp.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key

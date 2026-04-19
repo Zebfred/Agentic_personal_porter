@@ -18,6 +18,7 @@ from src.utils.path_utils import load_env_vars, get_auth_file
 from src.database.context_engine import SovereignContextEngine
 from src.config import NeoConfig
 from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler, TokenLimitExceededError
+from src.utils.monitoring import FirstServingMonitoringHandler
 
 # DB and Embedding Imports
 from src.integrations.embeddings_client import BGEM3EmbeddingsClient
@@ -199,7 +200,8 @@ Core Detriments: {detriments_context}
     
     # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
     breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker])
+    monitor = FirstServingMonitoringHandler()
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker, monitor])
     return agent_executor
 
 def run_first_serving_porter(user_input: str) -> dict:

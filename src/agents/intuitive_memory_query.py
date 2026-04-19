@@ -1,12 +1,20 @@
 #OUTDATED, but might prove useful for something else
 from pymongo import MongoClient
 from langchain_mongodb import MongoDBAtlasVectorSearch
-from langchain_openai import OpenAIEmbeddings # Or your preferred embedding model
+
+class LocalBGEM3Wrapper:
+    def __init__(self):
+        from src.integrations.embeddings_client import BGEM3EmbeddingsClient
+        self.client = BGEM3EmbeddingsClient()
+    def embed_documents(self, texts):
+        return self.client.get_embeddings_batch(texts)
+    def embed_query(self, text):
+        return self.client.get_embedding(text)
 
 # 1. Initialize the "Librarian" (Vector DB Connection)
 client = MongoClient("YOUR_GCP_MONGODB_URI")
 collection = client["Porter"]["Intuitive_Memory"]
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small") # Efficient for 1GB limits
+embeddings = LocalBGEM3Wrapper()
 
 vector_store = MongoDBAtlasVectorSearch(
     collection=collection,

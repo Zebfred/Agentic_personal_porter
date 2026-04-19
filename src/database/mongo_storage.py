@@ -81,6 +81,16 @@ class SovereignMongoStorage:
         doc = self.journal_col.find_one({"month_id": year_month, "user_id": user_id}, {"_id": 0})
         return doc if doc else {}
 
+    def get_yearly_logs(self, year: str, user_id: str = "Hero") -> list:
+        """
+        Retrieves all nested month objects for a given year.
+        year format: 'YYYY'
+        """
+        # Regex matching YYYY-MM
+        pattern = f"^{year}-"
+        cursor = self.journal_col.find({"month_id": {"$regex": pattern}, "user_id": user_id}, {"_id": 0})
+        return list(cursor)
+
     def save_agent_reflection(self, reflection_data: dict):
         """
         Saves an AI-generated reflection into the agent_reflections collection.
