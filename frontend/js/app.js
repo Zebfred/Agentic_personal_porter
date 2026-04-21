@@ -121,14 +121,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <!-- Intention Area -->
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
                         <label for="intention-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">My Intention</label>
-                        <textarea id="intention-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${chunkData.intention}</textarea>
+                        <textarea id="intention-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${escapeHTML(chunkData.intention)}</textarea>
                     </div>
 
                     <!-- Actuals Form -->
                     <div class="space-y-4">
                         <div>
                             <label for="actual-title-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Actual Activity</label>
-                            <input type="text" id="actual-title-${chunkId}" value="${chunkData.activityTitle}" class="actual-title-input w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="What actually happened?">
+                            <input type="text" id="actual-title-${chunkId}" value="${escapeHTML(chunkData.activityTitle)}" class="actual-title-input w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="What actually happened?">
                         </div>
 
                         <div class="flex items-center gap-4">
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div id="inventory-note-container-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
                             <label for="inventory-note-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inventory Note</label>
-                            <textarea id="inventory-note-${chunkId}" rows="2" class="inventory-note-textarea w-full border border-yellow-200 bg-yellow-50 rounded-md p-2 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="What did you gain?">${chunkData.inventoryNote}</textarea>
+                            <textarea id="inventory-note-${chunkId}" rows="2" class="inventory-note-textarea w-full border border-yellow-200 bg-yellow-50 rounded-md p-2 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="What did you gain?">${escapeHTML(chunkData.inventoryNote)}</textarea>
                         </div>
                         
                         <div class="mt-4">
@@ -170,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         <div id="detriment-note-container-${chunkId}" class="${chunkData.detrimentalDetour ? '' : 'hidden'}">
                             <label for="detriment-note-${chunkId}" class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">What did we lose?</label>
-                            <textarea id="detriment-note-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${chunkData.detrimentNote}</textarea>
+                            <textarea id="detriment-note-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${escapeHTML(chunkData.detrimentNote)}</textarea>
                         </div>
                     </div>
                 </div>

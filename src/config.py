@@ -24,6 +24,7 @@ class MongoConfig:
     DB_NAME = "porter_mach2"
     RAW_COLLECTION = "raw_calendar_events"
     FORMATTED_COLLECTION = "formatted_calendar_events"
+    DAILY_CATEGORIZED_EVENTS = "daily_categorized_events"
     
     # New Event Schema Collections
     RAW_TIMESERIES_COLLECTION = "calendar_events_timeseries"

@@ -1,0 +1,16 @@
+<!-- Navbar -->
+<nav class="bg-gray-800 p-4 text-white shadow-md z-10 sticky top-0">
+    <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-2xl font-bold tracking-tight">Agentic Personal Porter</h1>
+        <div class="space-x-4 text-sm font-medium">
+            <a href="/" class="{% if request.path in ['/', '/index.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Hub</a>
+            <a href="/adventure_log" class="{% if request.path in ['/adventure_log', '/Adventure_Time_log.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Adventure Log</a>
+            <a href="/adventure_calendar" class="{% if request.path in ['/adventure_calendar', '/adventure_calendar.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Calendar</a>
+            <a href="/inventory.html" class="{% if request.path in ['/inventory', '/inventory.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Inventory</a>
+            <a href="/artifacts.html" class="{% if request.path in ['/artifacts', '/artifacts.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Artifacts</a>
+            <a href="/journal_review" class="{% if request.path in ['/journal_review', '/journal_review.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Journal Review</a>
+            <a href="/oracle_predictions" class="{% if request.path in ['/oracle_predictions', '/Oracle_predictions.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Oracle</a>
+            <a href="/graph_explorer.html" class="{% if request.path in ['/graph_explorer', '/graph_explorer.html'] %}text-blue-400 font-bold border-b-2 border-blue-400 pb-1{% else %}hover:text-blue-300 transition{% endif %}">Graph Map</a>
+        </div>
+    </div>
+</nav>

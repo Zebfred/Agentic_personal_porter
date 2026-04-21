@@ -183,11 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const gaps = data.results.split('\\n').filter(l => l.trim().startsWith('-'));
                     const dailyTarget = gaps[0] || "Review your core foundations.";
                     recBox.innerHTML = `
-                        <p class="text-sm font-medium text-gray-800 leading-relaxed">${dailyTarget.replace('-', '<strong class="text-indigo-600 font-black">🎯 Target:</strong> <br>')}</p>
+                        <p class="text-sm font-medium text-gray-800 leading-relaxed">${escapeHTML(dailyTarget).replace('-', '<strong class="text-indigo-600 font-black">🎯 Target:</strong> <br>')}</p>
                         <p class="text-xs text-gray-400 mt-4 italic">Update the relevant entry in the main panel and hit Commit Changes to resolve this gap.</p>
                     `;
                 } else {
-                    recBox.innerHTML = `<p class="text-sm font-bold text-emerald-600">✅ ${data.results}</p>`;
+                    recBox.innerHTML = `<p class="text-sm font-bold text-emerald-600">✅ ${escapeHTML(data.results)}</p>`;
                 }
             }
         } catch(e) {

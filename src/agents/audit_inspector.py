@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timezone
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
+from src.database.mongo_client.uuid_manager import UUIDGenerator
 
 class AuditInspector:
     """
@@ -12,7 +13,9 @@ class AuditInspector:
     """
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
-        self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
+        self.daily_col = self.db[MongoConfig.DAILY_CATEGORIZED_EVENTS]
+        self.actual_col = self.db[MongoConfig.ACTUAL_COLLECTION]
+        self.unified_col = self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
         
     def batch_unverified_records(self) -> List[Dict]:
         """
@@ -20,7 +23,7 @@ class AuditInspector:
         for presentation on the Verification Dashboard. Now sorted to highlight low-confidence items first.
         """
         # Fetch up to 10 unverified
-        records = list(self.raw_col.find({"classification_verified": False}).limit(10))
+        records = list(self.daily_col.find({"status": "Pending Verification"}).limit(10))
         
         # Ensure ObjectId is scrubbed for JSON serialization back to the frontend
         for r in records:
@@ -39,7 +42,7 @@ class AuditInspector:
         """
         Retrieves the most recently verified records for the Dashboard ledger.
         """
-        records = list(self.raw_col.find({"classification_verified": True}).sort("verification_time", -1).limit(limit))
+        records = list(self.daily_col.find({"status": "Verified"}).sort("verification_time", -1).limit(limit))
         for r in records:
              if "_id" in r:
                  r["_id"] = str(r["_id"])
@@ -48,9 +51,57 @@ class AuditInspector:
     def approve_batch(self, gcal_ids: List[str]) -> int:
         """
         Mark a batch of records as explicitly verified by the human.
+        Also writes them permanently to the event_actuals ground truth collection.
         """
-        result = self.raw_col.update_many(
-            {"gcal_id": {"$in": gcal_ids}},
-            {"$set": {"classification_verified": True, "verification_time": datetime.now(timezone.utc)}}
-        )
-        return result.modified_count
+        records = list(self.daily_col.find({"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification"}))
+        modified_count = 0
+        
+        for r in records:
+            gcal_id = r.get("gcal_id")
+            event_uuid = UUIDGenerator.generate_for_event(gcal_id)
+            duration_mins = r.get("duration_minutes", 60)
+            
+            actual_payload = {
+                "title": r.get("title", "Untitled"),
+                "category": r.get("pillar"),
+                "energy_spent": duration_mins,
+                "status": "Verified"
+            }
+            
+            time_slot = {
+                "start": r.get("start"),
+                "end": r.get("end", r.get("start")) # Mock end if missing
+            }
+            
+            # Map into Actual collection
+            self.actual_col.update_one(
+                {"_id": event_uuid},
+                {"$set": {
+                    "user_id": "hero_01",
+                    "gcal_id": gcal_id,
+                    "time_slot": time_slot,
+                    "actual": actual_payload,
+                    "metadata": {
+                        "source": "verification_dashboard",
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                }},
+                upsert=True
+            )
+            
+            # Update Unified Collection
+            self.unified_col.update_one(
+                {"_id": event_uuid},
+                {"$set": {
+                    "actual": actual_payload
+                }}
+            )
+            
+            # Mark daily event as verified
+            res = self.daily_col.update_one(
+                {"_id": r["_id"]},
+                {"$set": {"status": "Verified", "verification_time": datetime.now(timezone.utc)}}
+            )
+            modified_count += res.modified_count
+            
+        return modified_count

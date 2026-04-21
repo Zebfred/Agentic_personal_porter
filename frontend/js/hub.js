@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     });
                 } else {
-                     scanContainer.innerHTML = `<div class="text-green-600 font-bold bg-green-50 p-4 rounded"><p>✅ ${data.results}</p></div>`;
+                     scanContainer.innerHTML = `<div class="text-green-600 font-bold bg-green-50 p-4 rounded"><p>✅ ${escapeHTML(data.results)}</p></div>`;
                 }
             }
         } catch (e) {
@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                           const tag = isLowConfidence ? `<span class="text-red-600 font-bold text-xs ml-2">(${r.confidence_score}% Conf)</span>` : '';
                           
                           unvContainer.innerHTML += `
-                            <a href="/journal_review?target_id=${r.gcal_id}" class="block hover:-translate-y-0.5 transition-transform">
+                            <a href="/journal_review?target_id=${encodeURIComponent(r.gcal_id)}" class="block hover:-translate-y-0.5 transition-transform">
                                 <div class="border ${bg} rounded p-2 text-sm flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow">
                                     <div><strong class="text-gray-800">${escapeHTML(r.pillar || 'Uncategorized')}</strong> ${tag}<br><span class="text-gray-600 text-xs truncate max-w-[200px] inline-block">${escapeHTML(r.summary || 'Event')}</span></div>
                                 </div>

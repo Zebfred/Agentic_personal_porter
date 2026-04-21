@@ -18,10 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
         "July", "August", "September", "October", "November", "December"
     ];
 
-    const currentYearDisplay = document.getElementById('current-year-display');
-    const yearlyGridContainer = document.getElementById('yearly-grid-container');
+    const calendarTitle = document.getElementById('calendar-title');
+    const monthlyGridContainer = document.getElementById('monthly-grid-container');
     const loadingSpinner = document.getElementById('loading-spinner');
     
+    // Controls
+    const prevMonthBtn = document.getElementById('prev-month-btn');
+    const nextMonthBtn = document.getElementById('next-month-btn');
+    const todayBtn = document.getElementById('today-btn');
+
     // Modal
     const dayModal = document.getElementById('day-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
@@ -29,18 +34,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const modalBody = document.getElementById('modal-body');
 
     let activeYear = new Date().getFullYear();
+    let activeMonth = new Date().getMonth(); // 0-11
     let yearlyDataCache = {}; // Cache to prevent excessive fetching
     
     // --- Initial Setup ---
     const init = async () => {
-        await loadYear(activeYear);
+        await loadMonthData(activeYear, activeMonth);
     };
 
     // --- Data Fetching ---
-    const loadYear = async (year) => {
-        activeYear = year;
-        currentYearDisplay.textContent = year;
-        yearlyGridContainer.innerHTML = '';
+    const loadMonthData = async (year, month) => {
+        calendarTitle.textContent = `${MONTH_NAMES[month]} ${year}`;
+        monthlyGridContainer.innerHTML = '';
         loadingSpinner.classList.remove('hidden');
 
         try {
@@ -53,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     const payload = await response.json();
                     let formattedData = {};
-                    // Transform list of nested month objects into a keyed map by month_id
                     if (payload.status === 'success' && payload.data) {
                         payload.data.forEach(monthDoc => {
                             formattedData[monthDoc.month_id] = monthDoc;
@@ -65,92 +69,114 @@ document.addEventListener('DOMContentLoaded', () => {
                     yearlyDataCache[year] = {};
                 }
             }
-            renderYearlyGrid(year, yearlyDataCache[year]);
+            renderMonthGrid(year, month, yearlyDataCache[year]);
         } catch (e) {
             console.error('Error fetching yearly logs:', e);
-            yearlyGridContainer.innerHTML = '<p class="text-red-500 font-bold p-6">Failed to load temporal grid.</p>';
+            monthlyGridContainer.innerHTML = '<div class="col-span-7 bg-white p-6"><p class="text-red-500 font-bold text-center">Failed to load temporal grid.</p></div>';
         } finally {
             loadingSpinner.classList.add('hidden');
         }
     };
 
     // --- Rendering Logic ---
-    const renderYearlyGrid = (year, yearData) => {
-        yearlyGridContainer.innerHTML = '';
+    const renderMonthGrid = (year, month, yearData) => {
+        monthlyGridContainer.innerHTML = '';
+        const monthStr = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const monthDoc = yearData[monthStr] || {};
+        
+        // Date math
+        const firstDay = new Date(year, month, 1).getDay(); // 0 (Sun) to 6 (Sat)
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-        // Build 12 Monthly blocks
-        for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
-            const monthStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
-            const monthDoc = yearData[monthStr] || {};
-            
-            const monthWrapper = document.createElement('div');
-            monthWrapper.className = 'bg-white p-4 rounded-xl border border-gray-200 shadow-sm';
-            
-            const monthTitle = document.createElement('h3');
-            monthTitle.className = 'text-xl font-bold text-gray-800 mb-4 tracking-tight border-b pb-2';
-            monthTitle.textContent = MONTH_NAMES[monthIndex];
-            monthWrapper.appendChild(monthTitle);
-            
-            // Sub-grid for days
-            const daysGrid = document.createElement('div');
-            daysGrid.className = 'grid grid-cols-7 gap-1 text-center';
-            
-            // Add DOW headers
-            const dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            dow.forEach(d => {
-                const header = document.createElement('div');
-                header.className = 'text-xs font-bold text-gray-400 mb-1';
-                header.textContent = d;
-                daysGrid.appendChild(header);
-            });
+        // Total weeks to show: usually 5, sometimes 6
+        const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+        
+        // Render padding (previous month)
+        for (let i = firstDay - 1; i >= 0; i--) {
+            const padDay = daysInPrevMonth - i;
+            const cell = createDayCell(null, padDay, true);
+            monthlyGridContainer.appendChild(cell);
+        }
 
-            // Date math
-            const firstDay = new Date(year, monthIndex, 1).getDay();
-            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-            // Blank padding for start
-            for (let i = 0; i < firstDay; i++) {
-                daysGrid.appendChild(document.createElement('div'));
-            }
-
-            // Valid days
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateStr = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayBtn = document.createElement('button');
-                dayBtn.className = 'relative p-2 aspect-square rounded font-medium text-sm transition hover:scale-105 active:scale-95 flex flex-col justify-center items-center gap-1';
-                
-                // Determine if this day has data
-                let hasData = false;
-                let dayData = null;
-                
-                if (monthDoc.weeks) {
-                    for (const week of Object.values(monthDoc.weeks)) {
-                        if (week[dateStr] && week[dateStr].chunks && Object.keys(week[dateStr].chunks).length > 0) {
-                            hasData = true;
-                            dayData = week[dateStr];
-                            break;
-                        }
+        // Render actual days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            
+            // Extract data
+            let hasData = false;
+            let dayData = null;
+            if (monthDoc.weeks) {
+                for (const week of Object.values(monthDoc.weeks)) {
+                    if (week[dateStr] && week[dateStr].chunks && Object.keys(week[dateStr].chunks).length > 0) {
+                        hasData = true;
+                        dayData = week[dateStr];
+                        break;
                     }
                 }
-
-                if (hasData) {
-                    dayBtn.classList.add('bg-indigo-50', 'text-indigo-900', 'border', 'border-indigo-200', 'hover:bg-indigo-100', 'cursor-pointer');
-                    dayBtn.innerHTML = `<span>${day}</span><div class="w-2 h-2 bg-indigo-500 rounded-full shadow-sm mt-0.5"></div>`;
-                    
-                    dayBtn.addEventListener('click', () => {
-                        openDayModal(dateStr, dayData);
-                    });
-                } else {
-                    dayBtn.classList.add('bg-gray-50', 'text-gray-500', 'border', 'border-transparent', 'hover:bg-gray-100');
-                    dayBtn.textContent = day;
-                }
-
-                daysGrid.appendChild(dayBtn);
             }
-
-            monthWrapper.appendChild(daysGrid);
-            yearlyGridContainer.appendChild(monthWrapper);
+            
+            const cell = createDayCell(dateStr, day, false, hasData, dayData);
+            monthlyGridContainer.appendChild(cell);
         }
+
+        // Render padding (next month)
+        const filledCells = firstDay + daysInMonth;
+        let nextMonthDay = 1;
+        for (let i = filledCells; i < totalCells; i++) {
+            const cell = createDayCell(null, nextMonthDay++, true);
+            monthlyGridContainer.appendChild(cell);
+        }
+    };
+
+    const createDayCell = (dateStr, dayNum, isPadding, hasData = false, dayData = null) => {
+        const cell = document.createElement('div');
+        cell.className = 'day-cell bg-white hover:bg-gray-50 flex flex-col p-2 transition group';
+        
+        if (isPadding) {
+            cell.classList.add('bg-gray-50', 'text-gray-400');
+            cell.innerHTML = `<span class="text-sm font-medium self-end opacity-50">${dayNum}</span>`;
+            return cell;
+        }
+
+        // Highlight today
+        const today = new Date();
+        const isToday = (today.getFullYear() === activeYear && today.getMonth() === activeMonth && today.getDate() === dayNum);
+        
+        const dateEl = document.createElement('span');
+        dateEl.className = 'text-sm font-medium self-end mb-1 z-10 ' + (isToday ? 'bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md' : 'text-gray-700');
+        dateEl.textContent = dayNum;
+        cell.appendChild(dateEl);
+
+        if (hasData) {
+            cell.classList.add('cursor-pointer');
+            cell.addEventListener('click', () => {
+                openDayModal(dateStr, dayData);
+            });
+
+            const chunkContainer = document.createElement('div');
+            chunkContainer.className = 'flex flex-col gap-1 overflow-y-auto custom-scrollbar no-scrollbar text-xs mt-1';
+            
+            const timeOrdered = ['late-night', 'early-morning', 'late-morning', 'afternoon', 'evening', 'early-night'];
+            timeOrdered.forEach(chunkId => {
+                if (dayData.chunks[chunkId]) {
+                    const chunk = dayData.chunks[chunkId];
+                    const pill = document.createElement('div');
+                    let colorClass = 'bg-blue-50 text-blue-800 border-blue-200';
+                    if (chunk.isValuableDetour) colorClass = 'bg-yellow-50 text-yellow-800 border-yellow-200';
+                    if (chunk.isDetrimentalDetour) colorClass = 'bg-red-50 text-red-800 border-red-200';
+                    
+                    pill.className = `truncate px-1.5 py-0.5 rounded border ${colorClass} font-semibold shadow-sm`;
+                    pill.textContent = chunk.activityTitle || chunk.actual || chunkId.replace('-', ' ');
+                    chunkContainer.appendChild(pill);
+                }
+            });
+            cell.appendChild(chunkContainer);
+        } else {
+            cell.innerHTML += `<div class="flex-grow flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><span class="text-xs text-gray-400 font-bold tracking-wider uppercase">+ Log Details</span></div>`;
+        }
+
+        return cell;
     };
 
     // --- Modal Logic ---
@@ -228,8 +254,30 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Listeners ---
-    document.getElementById('prev-year-btn').addEventListener('click', () => loadYear(activeYear - 1));
-    document.getElementById('next-year-btn').addEventListener('click', () => loadYear(activeYear + 1));
+    prevMonthBtn.addEventListener('click', () => {
+        activeMonth--;
+        if (activeMonth < 0) {
+            activeMonth = 11;
+            activeYear--;
+        }
+        loadMonthData(activeYear, activeMonth);
+    });
+
+    nextMonthBtn.addEventListener('click', () => {
+        activeMonth++;
+        if (activeMonth > 11) {
+            activeMonth = 0;
+            activeYear++;
+        }
+        loadMonthData(activeYear, activeMonth);
+    });
+
+    todayBtn.addEventListener('click', () => {
+        const today = new Date();
+        activeYear = today.getFullYear();
+        activeMonth = today.getMonth();
+        loadMonthData(activeYear, activeMonth);
+    });
     
     closeModalBtn.addEventListener('click', closeDayModal);
     dayModal.addEventListener('click', (e) => {

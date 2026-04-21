@@ -47,6 +47,60 @@ def save_log():
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
         db_confirmation = log_to_neo4j(log_data_dict)
+        
+        # 3. Mach 3 Rework: Write strictly to event_actuals and unified_events as ground truth
+        try:
+            from src.database.mongo_client.connection import MongoConnectionManager
+            from src.config import MongoConfig
+            from src.database.mongo_client.uuid_manager import UUIDGenerator
+            
+            db = MongoConnectionManager.get_db()
+            actual_col = db[MongoConfig.ACTUAL_COLLECTION]
+            unified_col = db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
+            
+            day_str = log_data_dict.get("day", "unknown_date")
+            time_chunk = log_data_dict.get("timeChunk", "unknown_time")
+            synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
+            event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id)
+            
+            actual_payload = {
+                "title": log_data_dict.get("title", "Adventure Log Entry"),
+                "category": log_data_dict.get("category", "General"),
+                "energy_spent": int(log_data_dict.get("energy_spent", 60)),
+                "status": "Verified Log"
+            }
+            
+            time_slot = {
+                "start": day_str,
+                "end": day_str
+            }
+            
+            actual_col.update_one(
+                {"_id": event_uuid},
+                {"$set": {
+                    "user_id": os.environ.get("HERO_NAME", "Hero"),
+                    "gcal_id": synthetic_gcal_id,
+                    "time_slot": time_slot,
+                    "actual": actual_payload,
+                    "metadata": {
+                        "source": "adventure_log",
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                }},
+                upsert=True
+            )
+            
+            unified_col.update_one(
+                {"_id": event_uuid},
+                {"$set": {
+                    "user_id": os.environ.get("HERO_NAME", "Hero"),
+                    "time_slot": time_slot,
+                    "actual": actual_payload
+                }},
+                upsert=True
+            )
+        except Exception as e_actual:
+            logger.warning(f"Failed to write to actuals/unified: {e_actual}")
 
         return jsonify({
             "status": "success",

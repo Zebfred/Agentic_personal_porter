@@ -61,9 +61,9 @@ class CalendarTimeseriesClient:
         payload = {
             "start_time": start_dt,
             "metadata": {
-                "gcal_id": gcal_id,
+                "gcal_id": str(gcal_id),
                 "sync_status": "staged",
-                "event_type": gcal_event.get("eventType", "default")
+                "event_type": str(gcal_event.get("eventType", "default"))
             },
             "raw_data": gcal_event,
             "porter_ingested_at": datetime.now(timezone.utc)
@@ -73,7 +73,7 @@ class CalendarTimeseriesClient:
         try:
             self.timeseries_col.insert_one(payload)
         except Exception as e:
-            print(f"Failed to insert timeseries event: {e}")
+            print(f"Failed to insert timeseries event for gcal_id {gcal_id}: {e}")
             return False
         
         # Trigger downstream processor to split into schemas

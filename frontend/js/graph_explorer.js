@@ -1,6 +1,14 @@
 // auth.js is loaded globally via a separate script tag in the HTML
 
 document.addEventListener("DOMContentLoaded", () => {
+    // XSS prevention: escape all dynamic values before innerHTML insertion
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g,
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
+        );
+    };
+
     const container = document.getElementById('network-container');
     const loadingIndicator = document.getElementById('loading-indicator');
     const detailsPanel = document.getElementById('node-details');
@@ -87,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Could display edge details if wanted
                 const edgeId = params.edges[0];
                 const edgeData = fullEdges.get(edgeId);
-                detailsPanel.innerHTML = `<p class="font-bold">Relationship: ${edgeData.label || 'N/A'}</p>`;
+                detailsPanel.innerHTML = `<p class="font-bold">Relationship: ${escapeHTML(edgeData.label || 'N/A')}</p>`;
             } else {
                 detailsPanel.innerHTML = `<p class="text-gray-500 italic">Click on any node in the graph to view its details.</p>`;
             }
@@ -95,13 +103,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function displayNodeDetails(node) {
-        let html = `<h4 class="font-bold text-lg text-blue-800 mb-2">${node.title || 'Unknown Node'}</h4>`;
-        html += `<div class="bg-gray-100 px-2 py-1 rounded inline-block text-xs font-semibold mb-3">${node.group || node.label}</div>`;
+        let html = `<h4 class="font-bold text-lg text-blue-800 mb-2">${escapeHTML(node.title || 'Unknown Node')}</h4>`;
+        html += `<div class="bg-gray-100 px-2 py-1 rounded inline-block text-xs font-semibold mb-3">${escapeHTML(node.group || node.label)}</div>`;
         html += `<dl class="space-y-2">`;
         
         // Render properties gracefully
         if (node.title !== node.title) {
-           html += `<div><dt class="text-xs text-gray-500 font-bold uppercase">Name/Desc</dt><dd class="text-sm">${node.title}</dd></div>`; 
+           html += `<div><dt class="text-xs text-gray-500 font-bold uppercase">Name/Desc</dt><dd class="text-sm">${escapeHTML(node.title)}</dd></div>`; 
         }
         html += `</dl>`;
         
@@ -142,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
             renderNetwork();
         } catch (error) {
             console.error(error);
-            detailsPanel.innerHTML = `<p class="text-red-600 font-bold">Error loading graph: ${error.message}</p>`;
+            detailsPanel.innerHTML = `<p class="text-red-600 font-bold">Error loading graph: ${escapeHTML(error.message)}</p>`;
         } finally {
             loadingIndicator.classList.add('hidden');
         }

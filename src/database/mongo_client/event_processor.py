@@ -60,7 +60,7 @@ class EventProcessorClient:
         
         # Determine category (Pillar/Subcategory)
         category_data = determine_category(title, color_id)
-        record_type = event_record_type(raw_gcal_event)
+        # record_type = event_record_type(raw_gcal_event) # Commented out per Mach 3 Rework: GCal is strictly Intent.
         
         # Build Standard Payload Block
         base_payload = {
@@ -77,10 +77,9 @@ class EventProcessorClient:
         }
 
         # Handle Routing based on Record Type
-        # Assuming all events start as Intention unless modified after the start time.
+        # Mach 3 Rework: Google Calendar is strictly the source of Intent.
         
-        # 1. Update Intention Collection (Only if it's new or originally an intention)
-        # We always want a baseline intention if possible.
+        # 1. Update Intention Collection
         self.intent_col.update_one(
             {"_id": event_uuid},
             {"$set": {
@@ -96,30 +95,9 @@ class EventProcessorClient:
             upsert=True
         )
         
-        # 2. Update Actual Collection (Only if it has been touched/is an actual log)
+        # 2. Actuals are NO LONGER written from Google Calendar ingestion.
+        # They are strictly written from the Adventure Log and Verification Dashboard.
         actual_payload = None
-        if record_type == "Actual":
-            actual_payload = {
-                "title": title, # Usually the same, but maybe modified
-                "category": category_data.get("pillar"),
-                "energy_spent": duration_mins, # placeholder mapped to minutes
-                "notes": raw_gcal_event.get("description", ""),
-                "status": "Logged"
-            }
-            self.actual_col.update_one(
-                {"_id": event_uuid},
-                {"$set": {
-                    "user_id": "hero_01",
-                    "gcal_id": gcal_id,
-                    "time_slot": time_slot,
-                    "actual": actual_payload,
-                    "metadata": {
-                        "source": "google_calendar",
-                        "last_sync": datetime.now(timezone.utc).isoformat()
-                    }
-                }},
-                upsert=True
-            )
             
         # 3. Update Unified Collection
         # This allows a single query to calculate the Delta natively, exactly as requested.
@@ -129,6 +107,7 @@ class EventProcessorClient:
             "$set": {
                 "user_id": "hero_01",
                 "time_slot": time_slot,
+                "intent": base_payload,
                 "metadata": {
                     "source": "google_calendar",
                     "last_sync": datetime.now(timezone.utc).isoformat()
@@ -136,13 +115,8 @@ class EventProcessorClient:
             }
         }
         
-        # Note: If it's pure intent, we set it. 
-        # By separating the payload injections, atomicity is preserved on the actual updates.
-        if record_type == "Intention":
-            unified_update["$set"]["intent"] = base_payload
-        elif record_type == "Actual" and actual_payload:
-            unified_update["$set"]["actual"] = actual_payload
-            unified_update["$set"]["delta"] = self._calculate_delta(duration_mins, actual_payload["energy_spent"])
+        # Note: GCal is strictly Intent. We always set the intent block.
+        # Actuals and Deltas will be set by the Human-in-the-Loop workflows.
 
         self.unified_col.update_one(
             {"_id": event_uuid},

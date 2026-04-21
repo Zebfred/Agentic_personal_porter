@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    // XSS prevention: escape all dynamic values before innerHTML insertion
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g,
+            tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])
+        );
+    };
+
     // getApiKey removed in favor of Auth module
 
     const ui = {
@@ -23,8 +31,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 el.className = 'bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-indigo-50 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group';
                 el.innerHTML = `
                     <div class="absolute w-1 h-full bg-indigo-500 left-0 top-0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <p class="font-bold text-gray-800 text-lg leading-tight mb-1">${detour.inventoryNote}</p>
-                    <p class="text-sm font-medium text-indigo-600 mb-2">${detour.title}</p>
+                    <p class="font-bold text-gray-800 text-lg leading-tight mb-1">${escapeHTML(detour.inventoryNote)}</p>
+                    <p class="text-sm font-medium text-indigo-600 mb-2">${escapeHTML(detour.title)}</p>
                     <div class="flex items-center text-xs text-gray-400 gap-1 mt-2">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         ${new Date(detour.timestamp).toLocaleString()}
@@ -56,8 +64,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.stats) {
             ui.stats.innerHTML = Object.entries(data.stats).map(([k, v]) => `
                 <div class="flex justify-between items-center bg-white/10 rounded-lg px-4 py-2 border border-white/20">
-                    <span class="font-semibold capitalize text-indigo-100">${k}</span>
-                    <span class="font-black text-xl text-white">${v}</span>
+                    <span class="font-semibold capitalize text-indigo-100">${escapeHTML(k)}</span>
+                    <span class="font-black text-xl text-white">${escapeHTML(String(v))}</span>
                 </div>
             `).join('');
         }
@@ -66,8 +74,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (data.finances) {
             ui.finances.innerHTML = Object.entries(data.finances).map(([k, v]) => `
                 <div class="bg-white/10 rounded-xl p-4 text-center border border-white/20 shadow-inner">
-                    <p class="text-xs uppercase tracking-wider font-semibold text-amber-200 mb-1">${k.replace('_', ' ')}</p>
-                    <p class="text-2xl font-black text-white">${v}</p>
+                    <p class="text-xs uppercase tracking-wider font-semibold text-amber-200 mb-1">${escapeHTML(k.replace('_', ' '))}</p>
+                    <p class="text-2xl font-black text-white">${escapeHTML(String(v))}</p>
                 </div>
             `).join('');
         }
