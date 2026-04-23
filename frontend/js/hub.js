@@ -4,7 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendButton = document.getElementById('porter-chat-send');
 
     // Stealth trigger to wake up the cloud vector infrastructure while user is browsing
-    fetch('/api/wake_infrastructure', { method: 'POST' }).catch(e => console.log('Wake pulse ignored'));
+    if (window.Auth && window.Auth.fetchWithAuth) {
+        window.Auth.fetchWithAuth('/api/wake_infrastructure', { method: 'POST' }).catch(e => console.log('Wake pulse ignored'));
+    } else {
+        fetch('/api/wake_infrastructure', { method: 'POST' }).catch(e => console.log('Wake pulse ignored'));
+    }
 
     // Utility function to escape HTML to prevent XSS
     const escapeHTML = (str) => {
@@ -79,15 +83,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Use Auth.fetchWithAuth from auth.js if available
-            const fetchFn = window.Auth && window.Auth.fetchWithAuth ? window.Auth.fetchWithAuth : fetch;
-            
-            const response = await fetchFn('/api/chat/porter', {
+            let response;
+            const chatOptions = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ message })
-            });
+            };
+
+            if (window.Auth && window.Auth.fetchWithAuth) {
+                response = await window.Auth.fetchWithAuth('/api/chat/porter', chatOptions);
+            } else {
+                response = await fetch('/api/chat/porter', chatOptions);
+            }
 
             // Remove thinking indicator
             document.getElementById(thinkingId)?.remove();

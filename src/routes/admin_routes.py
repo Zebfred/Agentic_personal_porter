@@ -32,6 +32,7 @@ def admin_sync_calendar():
 
 
 @admin_bp.route('/wake_infrastructure', methods=['POST', 'OPTIONS'])
+@require_api_key
 def wake_infrastructure():
     """
     Called by the frontend to silently warm up internal cloud infrastructure (like the Spot BGE-M3 instance)
