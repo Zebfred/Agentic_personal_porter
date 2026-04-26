@@ -54,8 +54,8 @@ def test_query_endpoint(client):
         json={"query": "What is reinforcement learning?", "top_k": 3}
     )
     
-    # Should either succeed or fail gracefully
-    assert response.status_code in [200, 500]
+    # Should either succeed, fail gracefully, or return 404 if the vector store is empty
+    assert response.status_code in [200, 404, 500]
     
     if response.status_code == 200:
         data = response.json()

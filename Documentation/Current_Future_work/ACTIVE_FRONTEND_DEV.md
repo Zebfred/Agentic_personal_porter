@@ -38,13 +38,12 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 - [ ] **Low Cognitive Load:** Agent-inferred labels for activities (from the Mongo staging) must be visibly flagged on the frontend, easily correctable by the user, and confirmable with a single click.
 - [ ] **Artifact UI Hook:** Update the `inject_hero_foundation` logic to pull smoothly from the new Artifact Management UI rather than existing strictly as a backend dev script.
 
-## Upcoming Priority: Formal Production Login System
-*Status: Completed and awaiting human verification.*
+## Completed: Formal Production Login System & Tenant Portals
+*Status: Completed and fully verified across all scopes.*
 
-- [x] **Authentication UI:** Design and build a secure, polished login and registration screen for the application. (Awaiting human verification)
-- [x] **Session Management:** Implement frontend token handling (e.g., JWT) securely stored in memory or HTTP-only cookies, replacing the current prompt-based local storage API key method. (Awaiting human verification)
-- [x] **Route Protection:** Ensure all frontend pages proactively check authentication state and redirect unauthenticated users to the new login screen. (Awaiting human verification)
-Building a proper user login
+- [x] **Authentication UI:** Secure, polished login and registration screen for the application using proper `postMessage` OAuth flow with Google Web Client IDs. (Verified)
+- [x] **Session Management:** Implemented frontend JWT handling securely stored in memory with HTTP-only cookies in backend, replacing the old local storage API key method. Relaxed OAuth scopes implemented to prevent crash loops. (Verified)
+- [x] **Route Protection & Portals:** Configured distinct User vs. Admin (`/admin_index.html`) portals. Established 'Shadow State' impersonation banner to prevent accidental admin modifications to user data. (Verified)
 
 ## Future Work: Advanced Guild Tiering
 *Status: Architecture proposed, deferred for immediate login stability.*

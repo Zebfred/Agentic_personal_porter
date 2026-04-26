@@ -19,4 +19,4 @@ Once the backend and agent orchestration layers have been fully refactored to be
 
 ## Implementation Notes
 - **Location**: These reworked cards should likely be placed back into `frontend/index.html` (potentially replacing or sitting alongside the newly added "Adventure Log" overview).
-- **Backend Dependency**: Do not attempt to add these back to the UI until the `GTKYLibrarian` and `SovereignGraphInjector` have been fully audited to ensure they partition data properly and expose user-scoped API routes for fetching these metrics.
+- **Backend Dependency**: **[COMPLETED]** The backend data-layer partition (Silas Audit Remediation) has been fully executed. `SovereignGraphInjector`, `GTKYLibrarian`, and all `uuid_manager` events now strictly support `user_email` partitioning. The next step is building the explicit API endpoint routes (`/api/user/pulse`, `/api/user/unverified_audits`) to expose this safely to the frontend without breaking boundaries.

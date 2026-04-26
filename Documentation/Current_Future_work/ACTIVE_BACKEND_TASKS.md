@@ -2,13 +2,27 @@
 
 This document tracks immediate, high-priority tasks for the Python backend infrastructure (`app.py`, agent pipelines, data ingestion, and cloud deployments).
 
-## Priority: First-Serving Agent API & Hub Support
-*Status: Requirements drafted in ACTIVE_AGENT_DEV.md*
+> **HANDOFF NOTE FOR NEXT AGENT**: The single-tenant "Hero" architecture has been formally dismantled. The system is now fully Multi-Tenant.
+> - **Identity**: `os.environ.get("HERO_NAME")` is removed. You must extract `request.user_email` from the JWT middleware.
+> - **UUIDs**: `UUIDGenerator.generate_for_event()` now strictly requires `(gcal_id, user_email)` to prevent cross-tenant collisions.
+> - **Data Reset**: Before testing agents, you must run `python helper_scripts/wipe_all_databases.py` to drop the old global Neo4j and MongoDB state and begin with a clean multi-tenant slate.
+> - **Saga Tracking**: Journal routes now natively inject `saga_status` (`RECEIVED`, `GRAPH_INJECTED`, `FAILED`). Agents must update this status to `LLM_PROCESSING` during execution.
 
-- [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub.
-- [ ] **Graph Metric Endpoints:** Build endpoints that explicitly query Neo4j for high-level progress metrics to populate the Hub dashboard.
+## Priority: First-Serving Agent API & Hub Support
+*Status: Multi-Tenant Backend Partitioning Complete. Agent Pipelines are next.*
+
+- [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub. Ensure it respects `request.user_email`.
+- [ ] **Graph Metric Endpoints:** Build endpoints that explicitly query Neo4j for high-level progress metrics to populate the User Hub dashboard, partitioned by `user_email`.
 - [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.(started)
-- [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI.
+- [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI. Ensure it returns `saga_status`.
+
+## Completed: Silas Audit Multi-Tenant Partitioning
+*Status: Completed and ready for Agent integration.*
+
+- [x] **Eradicate Single-Tenant Hardcoding**: Replaced `HERO_NAME` env var access with dynamic `user_email` propagation across data and routing layers.
+- [x] **Multi-Tenant Identifiers**: Upgraded `UUIDGenerator` to hash `user_email` + `gcal_id`.
+- [x] **Compound Indexing**: Added dynamic MongoDB index generation for `user_email` + `start_time` across all timeseries and unified event collections.
+- [x] **Saga Tracking**: Embedded `saga_status` tracking across the `/process_journal` pipeline.
 
 ## Highest Priority: Server Networking & Cloud Deployment Fixes
 *Status: Investigating structural connection issues for production.*
