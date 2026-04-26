@@ -14,7 +14,6 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-from src.database.neo4j_client import close_driver
 
 # Add project root to Python path so imports work when run directly
 project_root = Path(__file__).parent.parent
@@ -72,10 +71,11 @@ def create_app():
 
     app = Flask(__name__)
 
-    @app.teardown_appcontext
-    def teardown_neo4j(exception):
-        """Ensure Neo4j driver is closed when application context ends."""
-        close_driver()
+    # ⚡ Bolt Optimization:
+    # Removed @app.teardown_appcontext hook for close_driver().
+    # Flask teardowns run at the end of every request. Closing the driver here
+    # destroys the Neo4j connection pool, forcing a costly reconnection for the next request.
+    # Allowing the global driver singleton to persist properly utilizes pooling.
 
     # --- CORS ---
     allowed_origins_str = os.environ.get(
