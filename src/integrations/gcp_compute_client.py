@@ -23,6 +23,7 @@ class GCPComputeClient:
         except Exception as e:
             logger.error(f"Failed to initialize GCP Credentials. Ensure Application Default Credentials are set. {e}")
             self.service = None
+        self._auth_failed = False
 
     def get_instance_status(self, instance: str, zone: str = "us-central1-a") -> str:
         """ Returns the exact status of the VM (e.g. RUNNING, TERMINATED). Returns 'UNKNOWN' on error. """
@@ -34,7 +35,12 @@ class GCPComputeClient:
             status = response.get('status', 'UNKNOWN')
             return status
         except Exception as e:
-            logger.error(f"Error checking status for {instance}: {e}")
+            if "Reauthentication is needed" in str(e) or "RefreshError" in str(type(e).__name__):
+                if not self._auth_failed:
+                    logger.error(f"GCP Reauthentication is needed. Please run `gcloud auth application-default login` to reauthenticate.")
+                    self._auth_failed = True
+            else:
+                logger.error(f"Error checking status for {instance}: {e}")
             return "UNKNOWN"
 
     def wake_instance(self, instance: str, zone: str = "us-central1-a", block_until_running: bool = False):
