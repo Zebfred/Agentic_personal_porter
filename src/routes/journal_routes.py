@@ -6,7 +6,7 @@ and triggering the daily AI reflection via CrewAI.
 """
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
 
@@ -41,12 +41,42 @@ def save_log():
             logger.error(f"Validation Error in save_log: {e}")
             return jsonify({"error": f"Invalid data format: {str(e)}"}), 400
 
+        # If flat format doesn't have sync_status, initialize it
+        if "sync_status" not in log_data_dict:
+            log_data_dict["sync_status"] = {"neo4j": False, "mongo_actuals": False, "unified": False}
+        if "saga_status" not in log_data_dict:
+            log_data_dict["saga_status"] = {
+                "status": "RECEIVED", 
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "details": f"Journal entry received for day {log_data_dict.get('day')} chunk {log_data_dict.get('timeChunk')}"
+            }
+
         # 1. Save pristine Frontend log to MongoDB Landing Zone
         mongo_storage = SovereignMongoStorage()
         mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
+        
+        day_str = log_data_dict.get("day")
+        time_chunk = log_data_dict.get("timeChunk")
+        user_id = getattr(request, 'user_email', 'Hero')
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
-        db_confirmation = log_to_neo4j(log_data_dict)
+        db_confirmation = "Failed"
+        try:
+            db_confirmation = log_to_neo4j(log_data_dict, user_id)
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
+                "neo4j": True,
+                "saga_status.status": "GRAPH_INJECTED",
+                "saga_status.timestamp": datetime.now(timezone.utc).isoformat(),
+                "saga_status.details": f"Injected to Neo4j successfully: {db_confirmation}"
+            }, user_id=user_id)
+        except Exception as e_neo:
+            logger.warning(f"Failed to write to Neo4j: {e_neo}")
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
+                "neo4j": False, 
+                "neo4j_error": str(e_neo),
+                "saga_status.status": "FAILED",
+                "saga_status.details": f"Neo4j Injection Failed: {e_neo}"
+            }, user_id=user_id)
         
         # 3. Mach 3 Rework: Write strictly to event_actuals and unified_events as ground truth
         try:
@@ -61,13 +91,14 @@ def save_log():
             day_str = log_data_dict.get("day", "unknown_date")
             time_chunk = log_data_dict.get("timeChunk", "unknown_time")
             synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
-            event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id)
+            event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, user_id)
             
             actual_payload = {
                 "title": log_data_dict.get("title", "Adventure Log Entry"),
                 "category": log_data_dict.get("category", "General"),
                 "energy_spent": int(log_data_dict.get("energy_spent", 60)),
-                "status": "Verified Log"
+                "status": "Verified Log",
+                "matches_intent": log_data_dict.get("matchesIntent", False)
             }
             
             time_slot = {
@@ -78,7 +109,7 @@ def save_log():
             actual_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": os.environ.get("HERO_NAME", "Hero"),
+                    "user_id": user_id,
                     "gcal_id": synthetic_gcal_id,
                     "time_slot": time_slot,
                     "actual": actual_payload,
@@ -93,14 +124,16 @@ def save_log():
             unified_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": os.environ.get("HERO_NAME", "Hero"),
+                    "user_id": user_id,
                     "time_slot": time_slot,
                     "actual": actual_payload
                 }},
                 upsert=True
             )
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": True, "unified": True}, user_id=user_id)
         except Exception as e_actual:
             logger.warning(f"Failed to write to actuals/unified: {e_actual}")
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": False, "unified": False, "mongo_error": str(e_actual)}, user_id=user_id)
 
         return jsonify({
             "status": "success",
@@ -128,7 +161,7 @@ def get_historical_logs():
             return jsonify({"error": "Missing month parameter (format: YYYY-MM)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_id = os.environ.get("HERO_NAME", "Hero")
+        user_id = getattr(request, 'user_email', 'Hero')
         month_data = mongo_storage.get_monthly_log(month, user_id=user_id)
 
         return jsonify({
@@ -155,7 +188,7 @@ def get_yearly_logs_route():
             return jsonify({"error": "Missing year parameter (format: YYYY)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_id = os.environ.get("HERO_NAME", "Hero")
+        user_id = getattr(request, 'user_email', 'Hero')
         data = mongo_storage.get_yearly_logs(year, user_id=user_id)
 
         return jsonify({
@@ -212,7 +245,7 @@ def process_journal():
                     target_date = (today + timedelta(days=days_diff)).strftime('%Y-%m-%d')
 
                     # Fetch calendar events using helper function
-                    events = fetch_calendar_events_for_date(target_date)
+                    events = fetch_calendar_events_for_date(target_date, getattr(request, 'user_email', None))
 
                     if events:
                         event_titles = [e.get('summary', 'Untitled') for e in events]
@@ -229,7 +262,7 @@ def process_journal():
             mongo_storage = SovereignMongoStorage()
             reflection_id = mongo_storage.save_agent_reflection({
                 "day": day,
-                "user_id": os.environ.get("HERO_NAME", "Hero"),
+                "user_id": getattr(request, 'user_email', 'Hero'),
                 "reflection_text": result_text,
                 "metadata": {
                     "source": "daily_recon",

@@ -25,4 +25,4 @@ fi
 
 # Number of workers is typically CPUs * 2 + 1
 # We are currently defaulting to 1 worker + 4 threads to resemble Dockerfile container setup.
-gunicorn --bind 0.0.0.0:6010 --workers 1 --threads 4 src.app:app
+gunicorn --bind 127.0.0.1:6010:6010 --workers 1 --threads 4 src.app:app

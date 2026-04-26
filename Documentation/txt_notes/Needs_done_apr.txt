@@ -1,4 +1,0 @@
-Volume Persistence: If/When you host this on GCP Cloud Run or Docker, the data/chroma_db directory must be mapped to a physically mounted volume or a Cloud Storage bucket mount. If not, the ephemeral server will wipe your physical vector database every time the server goes to sleep.
-Client/Server Mode Transition: Currently, your code spawns an embedded SQLite PersistentClient. Because your Flask backend utilizes multi-threaded Gunicorn workers, multiple users messaging at once can cause "Database is Locked" SQLite collisions. The fix involves spinning up ChromaDB as a secondary local container inside your deployment, which allows your Python code to query via an HTTP HttpClient rather than writing locally to disk.
-Cron Snapshots: Setting up a cron script that compresses the chroma_db folder into a .tar.gz and pushes it to cloud storage alongside your Neo4j backups nightly.
-

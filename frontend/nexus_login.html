@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - Nexus Guild</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client"></script>
+    <style>
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+        }
+        @keyframes pulse-slow {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.05); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 0.3; }
+        }
+        .animate-pulse-slow { animation: pulse-slow 8s infinite; }
+    </style>
+</head>
+<body class="bg-gray-900 flex items-center justify-center min-h-screen relative overflow-hidden font-sans">
+    <!-- Decorative background blobs -->
+    <div class="absolute w-full h-full inset-0 z-0 flex items-center justify-center">
+        <div class="w-96 h-96 bg-gray-600 rounded-full mix-blend-screen filter blur-[100px] opacity-40 animate-pulse-slow"></div>
+    </div>
+
+    <div class="z-10 w-full max-w-md p-6">
+        <div class="glass-panel rounded-3xl p-8 shadow-2xl">
+            <div class="text-center mb-10">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-lg bg-gradient-to-tr from-gray-700 to-gray-900 text-white mb-4 shadow-lg border border-gray-600">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path></svg>
+                </div>
+                <h1 class="text-3xl font-black text-white tracking-tight">Nexus-Guild</h1>
+                <p class="text-gray-400 mt-2 font-medium">Administrator Portal</p>
+            </div>
+
+            <div id="error-message" class="hidden transform transition-all bg-red-900 border-l-4 border-red-500 text-red-200 p-4 rounded text-sm font-medium mb-6">
+                Authentication failed.
+            </div>
+            
+            <div class="flex flex-col items-center justify-center mt-6 min-h-[40px] gap-4">
+                <div id="google-btn-container"></div>
+            </div>
+            
+            <div class="mt-6">
+                <p class="text-center text-xs text-gray-500">
+                    Restricted to @nexus-ds-ml-consulting.com identities only.
+                </p>
+            </div>
+
+            <p class="text-center text-xs text-gray-600 mt-8 font-medium">Powered by Porter Auth Engine</p>
+            <p class="text-center text-xs text-gray-500 mt-2 font-bold tracking-wider uppercase">A Nexus DS/ML Consulting Deployment</p>
+        </div>
+    </div>
+
+    <script src="./js/auth.js"></script>
+    <script>
+        let oauthClient;
+
+        async function loadGoogleClientId() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.google_client_id && window.google) {
+                        oauthClient = google.accounts.oauth2.initCodeClient({
+                            client_id: data.google_client_id,
+                            scope: 'openid email profile https://www.googleapis.com/auth/calendar',
+                            ux_mode: 'popup',
+                            callback: handleGoogleAuthCode
+                        });
+                        
+                        const container = document.getElementById('google-btn-container');
+                        container.innerHTML = `
+                            <button onclick="oauthClient.requestCode()" class="flex items-center gap-3 bg-gray-800 border border-gray-600 rounded-lg px-6 py-3 shadow-lg hover:bg-gray-700 transition w-full justify-center text-white font-medium">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                                Admin Sign In
+                            </button>
+                        `;
+                    } else {
+                        console.error('Google Client ID not found in config');
+                    }
+                }
+            } catch (err) {
+                console.error('Could not load Google Client ID config dynamically.', err);
+            }
+        }
+        
+        loadGoogleClientId();
+
+        async function handleGoogleAuthCode(response) {
+            const errorMsg = document.getElementById('error-message');
+            errorMsg.classList.add('hidden');
+            
+            if (response.error) {
+                errorMsg.textContent = response.error;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const apiResponse = await fetch('/api/nexus/login/code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: response.code })
+                });
+                
+                const data = await apiResponse.json();
+                
+                if (apiResponse.ok && data.token) {
+                    Auth.setToken(data.token);
+                    sessionStorage.setItem('porter_role', data.role);
+                    sessionStorage.setItem('porter_account_type', data.account_type);
+                    
+                    window.location.href = 'admin_index.html';
+                } else {
+                    throw new Error(data.error || 'Admin login failed');
+                }
+            } catch (err) {
+                errorMsg.textContent = err.message || 'Connection error';
+                errorMsg.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

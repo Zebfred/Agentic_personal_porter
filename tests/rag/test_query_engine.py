@@ -45,7 +45,7 @@ def mock_embedder():
 @patch.dict(os.environ, {'GROQ_API_KEY': 'test_key'})
 def test_query_engine_initialization(mock_vector_store, mock_embedder):
     """Test RAGQueryEngine initialization."""
-    with patch('rag_core.query_engine.ChatGroq'):
+    with patch('rag_system.rag_core.query_engine.ChatGroq'):
         engine = RAGQueryEngine(
             vector_store=mock_vector_store,
             embedder=mock_embedder
@@ -57,7 +57,7 @@ def test_query_engine_initialization(mock_vector_store, mock_embedder):
 @patch.dict(os.environ, {'GROQ_API_KEY': 'test_key'})
 def test_build_context(mock_vector_store, mock_embedder):
     """Test context building."""
-    with patch('rag_core.query_engine.ChatGroq'):
+    with patch('rag_system.rag_core.query_engine.ChatGroq'):
         engine = RAGQueryEngine(
             vector_store=mock_vector_store,
             embedder=mock_embedder
@@ -90,7 +90,7 @@ def test_build_context(mock_vector_store, mock_embedder):
 @patch.dict(os.environ, {'GROQ_API_KEY': 'test_key'})
 def test_construct_prompt(mock_vector_store, mock_embedder):
     """Test prompt construction."""
-    with patch('rag_core.query_engine.ChatGroq'):
+    with patch('rag_system.rag_core.query_engine.ChatGroq'):
         engine = RAGQueryEngine(
             vector_store=mock_vector_store,
             embedder=mock_embedder
@@ -109,7 +109,7 @@ def test_construct_prompt(mock_vector_store, mock_embedder):
 @patch.dict(os.environ, {'GROQ_API_KEY': 'test_key'})
 def test_extract_sources(mock_vector_store, mock_embedder):
     """Test source extraction."""
-    with patch('rag_core.query_engine.ChatGroq'):
+    with patch('rag_system.rag_core.query_engine.ChatGroq'):
         engine = RAGQueryEngine(
             vector_store=mock_vector_store,
             embedder=mock_embedder

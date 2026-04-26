@@ -73,3 +73,39 @@ def get_calendar_credentials(scopes=None):
             token.write(creds.to_json())
 
     return creds
+
+def get_calendar_credentials_for_user(refresh_token: str, scopes=None):
+    """
+    Creates valid Google OAuth Credentials using a refresh token from the database.
+    Requires the global client_id and client_secret to refresh the token.
+    """
+    import json
+    paths = get_auth_paths()
+    target_scopes = scopes if scopes else SCOPES
+    
+    if not os.path.exists(paths["credentials"]):
+        raise FileNotFoundError(
+            f"Missing credentials file at {paths['credentials']}. "
+            "Cannot refresh user token without client secrets."
+        )
+        
+    with open(paths["credentials"], 'r') as f:
+        client_config = json.load(f)
+        
+    # Handle both 'web' and 'installed' types of credentials.json
+    client_info = client_config.get('web') or client_config.get('installed')
+    if not client_info:
+        raise ValueError("Invalid credentials.json format")
+        
+    creds = Credentials(
+        token=None,
+        refresh_token=refresh_token,
+        token_uri=client_info.get('token_uri', 'https://oauth2.googleapis.com/token'),
+        client_id=client_info.get('client_id'),
+        client_secret=client_info.get('client_secret'),
+        scopes=target_scopes
+    )
+    
+    # Force a refresh to get an access token
+    creds.refresh(Request())
+    return creds

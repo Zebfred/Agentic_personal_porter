@@ -55,6 +55,25 @@ def login_page():
 def graph_explorer():
     return render_template('graph_explorer.html')
 
+@static_bp.route('/admin/pulse')
+@static_bp.route('/admin_pulse.html')
+def admin_pulse():
+    return render_template('admin_pulse.html')
+
+@static_bp.route('/profile')
+@static_bp.route('/profile.html')
+def profile_page():
+    return render_template('profile.html')
+
+@static_bp.route('/nexus_login')
+@static_bp.route('/nexus_login.html')
+def nexus_login_page():
+    return render_template('nexus_login.html')
+
+@static_bp.route('/admin_index')
+@static_bp.route('/admin_index.html')
+def admin_index_page():
+    return render_template('admin_index.html')
 
 # --- Static Asset Routes ---
 

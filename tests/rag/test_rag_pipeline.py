@@ -91,14 +91,25 @@ def test_end_to_end_pipeline(temp_data_dir):
     assert vector_store.get_collection_size() == len(chunks)
     
     # Step 4: Query
-    if os.getenv('GROQ_API_KEY'):
-        engine = RAGQueryEngine(vector_store=vector_store, embedder=embedder)
-        
-        result = engine.answer_question("What is Q-learning?", top_k=2)
-        
-        assert 'answer' in result
-        assert 'sources' in result
-        assert len(result['sources']) > 0
+    if os.getenv('GROQ_API_KEY') or True: # Force test execution via mock
+        from unittest.mock import patch, MagicMock
+        with patch('rag_system.rag_core.query_engine.ChatGroq') as MockChatGroq:
+            # Setup mock response
+            mock_client = MagicMock()
+            mock_message = MagicMock()
+            mock_message.content = "Q-learning is a model-free reinforcement learning algorithm."
+            mock_client.invoke.return_value = mock_message
+            MockChatGroq.return_value = mock_client
+            
+            # Since we mock the client, we need to bypass any env checks inside RAGQueryEngine
+            with patch.dict(os.environ, {"GROQ_API_KEY": "mocked_key"}):
+                engine = RAGQueryEngine(vector_store=vector_store, embedder=embedder)
+                
+                result = engine.answer_question("What is Q-learning?", top_k=2)
+                
+                assert 'answer' in result
+                assert 'sources' in result
+                assert len(result['sources']) > 0
     else:
         pytest.skip("GROQ_API_KEY not set, skipping query test")
 

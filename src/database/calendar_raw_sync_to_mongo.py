@@ -37,30 +37,33 @@ class SovereignCalendarSync:
         from src.database.mongo_client.calendar_timeseries import CalendarTimeseriesClient
         self.ts_client = CalendarTimeseriesClient()
 
-    def get_gcal_service(self):
+    def get_gcal_service(self, refresh_token=None):
         """Authenticates and returns the GCal service."""
-        # Use the centralized helper for consistency across the project
-        creds = get_calendar_credentials(scopes=self.scopes)
+        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user, get_calendar_credentials
+        if refresh_token:
+            creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
+        else:
+            creds = get_calendar_credentials(scopes=self.scopes)
         return build('calendar', 'v3', credentials=creds)
 
-    def pull_recent_events(self, days=7):
+    def pull_recent_events(self, days=7, user_email="Hero", refresh_token=None):
         """
         Standard sync for cron jobs. Defaults to 7 days of data.
         """
-        return self._execute_pull(days)
+        return self._execute_pull(days, user_email, refresh_token)
 
-    def pull_large_batch(self, days=90):
+    def pull_large_batch(self, days=90, user_email="Hero", refresh_token=None):
         """
         Perform a one-time historical pull to populate the Landing Zone.
         """
-        print(f"!!! Initiating Large Batch Pull: {days} days of history !!!")
-        return self._execute_pull(days)
+        print(f"!!! Initiating Large Batch Pull: {days} days of history for {user_email} !!!")
+        return self._execute_pull(days, user_email, refresh_token)
 
-    def _execute_pull(self, days):
+    def _execute_pull(self, days, user_email, refresh_token):
         """
         Internal execution logic for GCal -> MongoDB.
         """
-        service = self.get_gcal_service()
+        service = self.get_gcal_service(refresh_token)
         
         now = datetime.now(timezone.utc)
         delta = timedelta(days=days)
@@ -97,6 +100,7 @@ class SovereignCalendarSync:
                 # 1. Standard Landing Zone (For Downstream CrewAI sync pipeline)
                 payload = {
                     "gcal_id": event_id,
+                    "user_email": user_email,
                     "summary": event.get('summary', 'No Title'),
                     "start": event.get('start', {}).get('dateTime') or event.get('start', {}).get('date'),
                     "end": event.get('end', {}).get('dateTime') or event.get('end', {}).get('date'),
@@ -106,7 +110,7 @@ class SovereignCalendarSync:
                     "classification_verified": False
                 }
 
-                # Upsert into MongoDB based on GCal Unique ID
+                # Upsert into MongoDB based on GCal Unique ID and user_email
                 self.raw_collection.update_one(
                     {"gcal_id": event_id},
                     {"$set": payload},
@@ -114,7 +118,7 @@ class SovereignCalendarSync:
                 )
                 
                 # 2. Native Time-Series Dual-Write
-                success = self.ts_client.stage_raw_event(event)
+                success = self.ts_client.stage_raw_event(event, user_email=user_email)
                 
                 # Increment operation count
                 ops_count += 1

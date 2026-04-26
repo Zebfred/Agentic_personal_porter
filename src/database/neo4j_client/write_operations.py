@@ -1,14 +1,14 @@
 import os
 from .connection import get_driver
 
-def log_to_neo4j(log_data: dict) -> str:
+def log_to_neo4j(log_data: dict, user_email: str) -> str:
     """
     Logs a complete journal entry to the Neo4j database.
     Returns a confirmation message.
     """
     driver = get_driver()
     with driver.session() as session:
-        result_node = session.execute_write(_create_log_entry, log_data)
+        result_node = session.execute_write(_create_log_entry, log_data, user_email)
         
         # another potential fix
         # We must check if result_node is not None before trying to access it.
@@ -18,7 +18,7 @@ def log_to_neo4j(log_data: dict) -> str:
             print("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
 
-def _create_log_entry(tx, log_data: dict):
+def _create_log_entry(tx, log_data: dict, user_email: str):
     """
     Enhanced function that creates nodes and relationships with meaningful connections.
     """
@@ -26,6 +26,7 @@ def _create_log_entry(tx, log_data: dict):
     actual_text = log_data.get('actual', '')
     feeling = log_data.get('feeling', '')
     brain_fog = log_data.get('brainFog', 0)
+    matches_intent = log_data.get('matchesIntent', False)
     is_valuable_detour = log_data.get('isValuableDetour', False)
     inventory_note = log_data.get('inventoryNote', '')
     
@@ -62,6 +63,7 @@ def _create_log_entry(tx, log_data: dict):
             activity: $actual,
             feeling: $feeling,
             brainFog: $brainFog,
+            matchesIntent: $matchesIntent,
             isValuableDetour: $isValuableDetour,
             inventoryNote: $inventoryNote,
             timestamp: datetime()
@@ -131,13 +133,14 @@ def _create_log_entry(tx, log_data: dict):
     )
     
     result = tx.run(query,
-                    userName=os.environ.get("HERO_NAME", "Hero"),
+                    userName=user_email,
                     day=log_data.get('day'),
                     timeChunkId=log_data.get('timeChunk'),
                     intention=intention_text,
                     actual=actual_text,
                     feeling=feeling,
                     brainFog=int(brain_fog) if brain_fog else 0,
+                    matchesIntent=matches_intent,
                     isValuableDetour=is_valuable_detour,
                     inventoryNote=inventory_note,
                     reflection=log_data.get('reflection', ''),

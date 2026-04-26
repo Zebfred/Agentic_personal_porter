@@ -45,3 +45,15 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 - [x] **Session Management:** Implement frontend token handling (e.g., JWT) securely stored in memory or HTTP-only cookies, replacing the current prompt-based local storage API key method. (Awaiting human verification)
 - [x] **Route Protection:** Ensure all frontend pages proactively check authentication state and redirect unauthenticated users to the new login screen. (Awaiting human verification)
 Building a proper user login
+
+## Future Work: Advanced Guild Tiering
+*Status: Architecture proposed, deferred for immediate login stability.*
+
+- [ ] **Guild Master & Guild Member Roles:** Implement the `guild_master` and `guild_member` relationships. This will allow the root admin (the business identity) to connect seamlessly to personal identities, bridging data securely without granting full root access to the personal identity. This is deferred as a future feature once basic multi-user orchestration is stabilized.
+
+## Active Bugs & Display Issues
+*Status: Issues formally documented, awaiting resolution.*
+
+- [ ] **Artifacts Display (`/artifacts.html`):** The *Ambition & Intent*, *Hero Detriments*, and *Pillars Mapping* sections all have issues correctly displaying their data.
+- [ ] **Journal Review Data Load (`/journal_review`):** Has issues loading data due to timeseries arrays being empty. 
+- [ ] **Graph Explorer UX (`/graph_explorer`):** The interface is cluttered and unreadable, requiring UX refactoring.

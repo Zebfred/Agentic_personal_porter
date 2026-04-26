@@ -22,21 +22,30 @@ class AuditInspector:
         Retrieves all recent categorizations that lack human-in-the-loop verification
         for presentation on the Verification Dashboard. Now sorted to highlight low-confidence items first.
         """
-        # Fetch up to 10 unverified
-        records = list(self.daily_col.find({"status": "Pending Verification"}).limit(10))
+        from src.database.mongo_client.agent_health import AgentHeartbeatManager
+        health_manager = AgentHeartbeatManager()
+        run_id = health_manager.start_agent_run("audit_inspector", {"action": "batch_unverified_records"})
         
-        # Ensure ObjectId is scrubbed for JSON serialization back to the frontend
-        for r in records:
-             if "_id" in r:
-                 r["_id"] = str(r["_id"])
-                 
-             # Provide default confidence if not present from legacy data
-             if "confidence_score" not in r:
-                 r["confidence_score"] = 0
-                 
-        # Sort lowest confidence first
-        records.sort(key=lambda x: x["confidence_score"])
-        return records
+        try:
+            # Fetch up to 10 unverified
+            records = list(self.daily_col.find({"status": "Pending Verification"}).limit(10))
+            
+            # Ensure ObjectId is scrubbed for JSON serialization back to the frontend
+            for r in records:
+                 if "_id" in r:
+                     r["_id"] = str(r["_id"])
+                     
+                 # Provide default confidence if not present from legacy data
+                 if "confidence_score" not in r:
+                     r["confidence_score"] = 0
+                     
+            # Sort lowest confidence first
+            records.sort(key=lambda x: x["confidence_score"])
+            health_manager.end_agent_run(run_id, status="success", result_summary=f"Found {len(records)} unverified.")
+            return records
+        except Exception as e:
+            health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
+            raise e
 
     def get_recently_verified_records(self, limit: int = 10) -> List[Dict]:
         """
@@ -77,7 +86,7 @@ class AuditInspector:
             self.actual_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": "hero_01",
+                    "user_id": os.environ.get("HERO_NAME", "Hero"),
                     "gcal_id": gcal_id,
                     "time_slot": time_slot,
                     "actual": actual_payload,

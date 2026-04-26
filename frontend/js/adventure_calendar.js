@@ -51,9 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Check cache first
             if (!yearlyDataCache[year]) {
-                const response = await fetch(`/api/logs/year?year=${year}`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('porter_token')}` }
-                });
+                const response = await Auth.fetchWithAuth(`/api/logs/year?year=${year}`);
                 
                 if (response.ok) {
                     const payload = await response.json();
@@ -131,10 +129,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const createDayCell = (dateStr, dayNum, isPadding, hasData = false, dayData = null) => {
         const cell = document.createElement('div');
-        cell.className = 'day-cell bg-white hover:bg-gray-50 flex flex-col p-2 transition group';
+        cell.className = 'day-cell bg-surface hover:bg-surface-hover flex flex-col p-2 transition group rounded-xl shadow-sm border border-border min-h-[120px]';
         
         if (isPadding) {
-            cell.classList.add('bg-gray-50', 'text-gray-400');
+            cell.classList.add('bg-background', 'text-muted');
+            cell.classList.remove('bg-surface', 'hover:bg-surface-hover');
             cell.innerHTML = `<span class="text-sm font-medium self-end opacity-50">${dayNum}</span>`;
             return cell;
         }
@@ -144,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isToday = (today.getFullYear() === activeYear && today.getMonth() === activeMonth && today.getDate() === dayNum);
         
         const dateEl = document.createElement('span');
-        dateEl.className = 'text-sm font-medium self-end mb-1 z-10 ' + (isToday ? 'bg-indigo-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md' : 'text-gray-700');
+        dateEl.className = 'text-sm font-medium self-end mb-1 z-10 ' + (isToday ? 'bg-primary text-on-primary rounded-full w-6 h-6 flex items-center justify-center shadow-md' : 'text-main');
         dateEl.textContent = dayNum;
         cell.appendChild(dateEl);
 

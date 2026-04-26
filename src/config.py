@@ -34,3 +34,6 @@ class MongoConfig:
     
     # Vector DB Collection for Agents
     VECTOR_DB_COLLECTION = "semantic_vectors"
+    
+    # Agent Heartbeat/Health Logging
+    AGENT_HEALTH_COLLECTION = "agent_health_log"

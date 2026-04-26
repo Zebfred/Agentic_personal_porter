@@ -1,1 +1,43 @@
 @import "tailwindcss";
+
+:root {
+  /* Semantic Design Tokens */
+  --primary-action: #4f46e5; /* indigo-600 */
+  --primary-action-hover: #4338ca; /* indigo-700 */
+  --secondary-action: #0ea5e9; /* sky-500 */
+  
+  --surface-bg: #ffffff; /* white */
+  --surface-hover: #f9fafb; /* gray-50 */
+  --app-bg: #f3f4f6; /* gray-100 */
+  --nav-bg: #334155; /* slate-700, muted blue */
+  
+  --text-main: #1f2937; /* gray-800 */
+  --text-muted: #6b7280; /* gray-500 */
+  --text-on-primary: #ffffff;
+  
+  --border-subtle: #e5e7eb; /* gray-200 */
+  --border-focus: #4f46e5; /* indigo-600 */
+  
+  --status-success: #10b981; /* emerald-500 */
+  --status-error: #ef4444; /* red-500 */
+  --status-warning: #f59e0b; /* amber-500 */
+}
+
+@theme {
+  /* Expose semantic tokens as Tailwind classes */
+  --color-primary: var(--primary-action);
+  --color-primary-hover: var(--primary-action-hover);
+  --color-secondary: var(--secondary-action);
+  --color-surface: var(--surface-bg);
+  --color-surface-hover: var(--surface-hover);
+  --color-background: var(--app-bg);
+  --color-nav: var(--nav-bg);
+  --color-main: var(--text-main);
+  --color-muted: var(--text-muted);
+  --color-on-primary: var(--text-on-primary);
+  --color-border: var(--border-subtle);
+  --color-border-focus: var(--border-focus);
+  --color-success: var(--status-success);
+  --color-error: var(--status-error);
+  --color-warning: var(--status-warning);
+}

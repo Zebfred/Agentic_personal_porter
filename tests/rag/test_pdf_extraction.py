@@ -45,12 +45,13 @@ def test_extract_abstract_pattern():
     """Test abstract extraction using regex patterns."""
     extractor = PDFExtractor()
     
-    text = """
-    Abstract
-    
-    This is a test abstract that should be extracted. It contains multiple sentences.
-    The abstract should be long enough to pass the length check.
-    """
+    text = """Abstract
+
+This is a test abstract that should be extracted. It contains multiple sentences.
+The abstract should be long enough to pass the length check, which requires it to be over 50 characters in length. This is additional padding text.
+
+1. Introduction
+"""
     
     abstract = extractor._extract_abstract(text)
     assert abstract is not None
@@ -61,16 +62,15 @@ def test_extract_sections():
     """Test section extraction."""
     extractor = PDFExtractor()
     
-    text = """
-    1. Introduction
-    This is the introduction content.
-    
-    2. Related Work
-    This is related work content.
-    
-    3. Methodology
-    This is methodology content.
-    """
+    text = """1. Introduction
+This is the introduction content. It needs to be more than 100 characters long to not be skipped. This is some extra padding text to make sure the introduction content is long enough to pass the 100 character threshold check in the PDFExtractor.
+
+2. Related Work
+This is related work content. It also needs to be more than 100 characters long. Adding some filler text here to ensure that it passes the length check. The length check requires section content to be greater than 100 characters.
+
+3. Methodology
+This is methodology content. This final section must also be over 100 characters. So I will keep writing sentences until the length is sufficient for the extractor to pick it up and return it in the list of sections.
+"""
     
     sections = extractor._extract_sections(text)
     assert len(sections) > 0

@@ -32,7 +32,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
 
             self.traces_collection.insert_one({
                 "session_id": self.session_id,
-                "timestamp": datetime.datetime.utcnow(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "chat_model_start",
                 "messages": msgs,
             })
@@ -46,7 +46,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
         try:
             self.traces_collection.insert_one({
                 "session_id": self.session_id,
-                "timestamp": datetime.datetime.utcnow(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "llm_start",
                 "prompts": prompts,
             })
@@ -71,7 +71,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
 
             self.traces_collection.insert_one({
                 "session_id": self.session_id,
-                "timestamp": datetime.datetime.utcnow(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "llm_end",
                 "token_usage": tokens,
                 "generated_texts": generated_texts
@@ -87,7 +87,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
             tool_name = serialized.get("name", "UnknownTool")
             self.happenings_collection.insert_one({
                 "session_id": self.session_id,
-                "timestamp": datetime.datetime.utcnow(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "tool_start",
                 "tool_name": tool_name,
                 "tool_input": input_str
@@ -102,7 +102,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
             tool_name = kwargs.get("name", "UnknownTool")
             self.happenings_collection.insert_one({
                 "session_id": self.session_id,
-                "timestamp": datetime.datetime.utcnow(),
+                "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "tool_end",
                 "tool_name": tool_name,
                 "tool_output": output

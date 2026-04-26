@@ -49,15 +49,22 @@ class TimeKeeperAgent:
         """
         from datetime import timedelta
         from dateutil import parser
+        from src.database.mongo_client.agent_health import AgentHeartbeatManager
+        health_manager = AgentHeartbeatManager()
+        run_id = health_manager.start_agent_run("time_keeper_agent", {"action": "summarize_day", "date_iso": date_iso})
+        
         try:
             start_dt = parser.parse(date_iso).replace(hour=0, minute=0, second=0)
             end_dt = start_dt + timedelta(days=1)
             
             events = self.get_events_in_range(start_dt.isoformat(), end_dt.isoformat())
             if not events:
+                health_manager.end_agent_run(run_id, status="success", result_summary="No events found.")
                 return f"No temporal events resolved for {date_iso}."
                 
             summaries = [f"- {e.get('raw_data', {}).get('summary', 'Unknown Event')} at {e.get('start_time')}" for e in events]
+            health_manager.end_agent_run(run_id, status="success", result_summary=f"Found {len(events)} events.")
             return f"TimeKeeper Summary for {date_iso}:\n" + "\n".join(summaries)
         except Exception as e:
+            health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
             return f"TimeKeeper Error: {e}"

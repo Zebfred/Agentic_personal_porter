@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         feeling: '',
                         brainFog: 0,
                         valuableDetour: false,
+                        matchesIntent: false,
                         inventoryNote: '',
                         detrimentalDetour: false,
                         detrimentNote: '',
@@ -150,6 +151,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
 
                         <div>
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="matches-intent-${chunkId}" class="matches-intent-checkbox form-checkbox h-4 w-4 text-green-600 rounded" ${chunkData.matchesIntent ? 'checked' : ''}>
+                                <span class="ml-2 text-sm font-medium text-gray-600">Actual activity matches Intend</span>
+                            </label>
+                        </div>
+                        <div class="mt-2">
                             <label class="inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="valuable-detour-${chunkId}" class="valuable-detour-checkbox form-checkbox h-4 w-4 text-blue-600 rounded" ${chunkData.valuableDetour ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Mark as Valuable Detour</span>
@@ -328,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const feelingRadio = card.querySelector(`input[name="feeling-${chunkId}"]:checked`);
             const feeling = feelingRadio ? feelingRadio.value : '';
             const brainFog = card.querySelector(`#brain-fog-${chunkId}`).value;
+            const matchesIntent = card.querySelector(`#matches-intent-${chunkId}`).checked;
             const valuableDetour = card.querySelector(`#valuable-detour-${chunkId}`).checked;
             const inventoryNote = card.querySelector(`#inventory-note-${chunkId}`).value;
             const detrimentalDetour = card.querySelector(`#detrimental-detour-${chunkId}`).checked;
@@ -336,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Update Local State
             const chunkData = {
                 intention, activityTitle, feeling, brainFog,
-                valuableDetour, inventoryNote,
+                matchesIntent, valuableDetour, inventoryNote,
                 detrimentalDetour, detrimentNote,
                 aiReflection: weeklyLog[day][chunkId].aiReflection || ""
             };
@@ -353,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // const journalEntry = `Intention: ${intention}. Actual: ${activityTitle}. Feeling: ${feeling}. Brain Fog: ${brainFog}%.`;
             const logDataForDb = {
                 day: activeDateMap[day], timeChunk: chunkId, intention, actual: activityTitle,
-                feeling, brainFog: parseInt(brainFog),
+                feeling, brainFog: parseInt(brainFog), matchesIntent,
                 isValuableDetour: valuableDetour, inventoryNote,
                 isDetrimentalDetour: detrimentalDetour, detrimentNote
             };
@@ -521,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     newLog[day][chunk.id] = {
                         intention: '', activityTitle: '', feeling: '', brainFog: 0,
-                        valuableDetour: false, inventoryNote: '',
+                        matchesIntent: false, valuableDetour: false, inventoryNote: '',
                         detrimentalDetour: false, detrimentNote: '', aiReflection: ''
                     };
                 }

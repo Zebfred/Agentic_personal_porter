@@ -17,12 +17,40 @@ const Auth = {
     
     clearToken: () => {
         sessionStorage.removeItem(Auth.TOKEN_KEY);
+        sessionStorage.removeItem('porter_role');
+        sessionStorage.removeItem('porter_account_type');
         // Clean up legacy API key if present during migration
         localStorage.removeItem('porterApiKey');
+    },
+
+    logout: () => {
+        const adminToken = sessionStorage.getItem('admin_token');
+        if (adminToken && sessionStorage.getItem('is_impersonation')) {
+            sessionStorage.removeItem('is_impersonation');
+            sessionStorage.setItem(Auth.TOKEN_KEY, adminToken);
+            sessionStorage.removeItem('admin_token');
+            try {
+                const payload = JSON.parse(atob(adminToken.split('.')[1]));
+                sessionStorage.setItem('porter_role', payload.role);
+                sessionStorage.setItem('porter_account_type', payload.account_type);
+            } catch(e) {}
+            window.location.href = 'admin_index.html';
+        } else {
+            Auth.clearToken();
+            window.location.href = 'login.html';
+        }
     },
     
     isAuthenticated: () => {
         return !!Auth.getToken();
+    },
+
+    getRole: () => {
+        return sessionStorage.getItem('porter_role') || 'user';
+    },
+
+    getAccountType: () => {
+        return sessionStorage.getItem('porter_account_type') || 'hero';
     },
     
     // Check auth state on page load. Call this at the top of protected pages.

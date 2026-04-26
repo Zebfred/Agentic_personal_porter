@@ -25,11 +25,15 @@ class SovereignGraphInjector:
         self.driver = get_driver()
 
     def close(self):
+        if hasattr(self, 'driver') and self.driver:
+            self.driver.close()
 
-    def inject_calendar_to_graph(self, formatted_events, hero_name=None):
+    def inject_calendar_to_graph(self, formatted_events, user_email=None):
         import os
-        if hero_name is None:
-            hero_name = os.environ.get("HERO_NAME", "Hero")
+        if user_email is None:
+            user_email = os.environ.get("NEXUS_ADMIN_EMAIL", "")
+        if not user_email:
+            raise ValueError("user_email is required: pass it explicitly or set NEXUS_ADMIN_EMAIL env var.")
         """
         Takes the 'Golden Objects' into wires them into the existing Hero/Intent graph.
         """
@@ -50,16 +54,16 @@ class SovereignGraphInjector:
         # This query creates the Event and links it to the Intent from hero_ambition.json
         # using the 'pillar' (e.g., 'Career related') as the bridge.
         query = """
-        MATCH (h:Hero {name: $hero_name})
+        MATCH (h:Hero {email: $user_email})
         
         // 1. Ensure a Calendar node exists for the Hero
-        MERGE (h)-[:HAS_CALENDAR]->(c:Calendar {name: "Primary"})
+        MERGE (h)-[:HAS_CALENDAR]->(c:Calendar {name: "Primary", user_email: $user_email})
         
         WITH h, c
         UNWIND $events AS event_data
         
         // 2. Create the Event Node using GCal ID for Idempotency
-        MERGE (e:Event {gcal_id: event_data.gcal_id})
+        MERGE (e:Event {gcal_id: event_data.gcal_id, user_email: $user_email})
         SET e.title = event_data.title,
             e.start_iso = event_data.start,
             e.duration_min = event_data.duration_minutes,
@@ -83,7 +87,7 @@ class SovereignGraphInjector:
 
         try:
             with self.driver.session() as session:
-                result = session.run(query, hero_name=hero_name, events=formatted_events)
+                result = session.run(query, user_email=user_email, events=formatted_events)
                 summary = result.single()
                 return summary["injected_count"] if summary else 0
         except Exception as e:

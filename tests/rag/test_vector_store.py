@@ -87,7 +87,8 @@ def test_clear_collection(temp_vector_store):
     chunks = [
         {
             'text': 'Test chunk.',
-            'embedding': np.random.rand(768).tolist()
+            'embedding': np.random.rand(768).tolist(),
+            'paper_title': 'test_clear'
         }
     ]
     embeddings = np.array([chunk['embedding'] for chunk in chunks])

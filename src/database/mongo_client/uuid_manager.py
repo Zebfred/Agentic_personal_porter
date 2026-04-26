@@ -10,8 +10,9 @@ class UUIDGenerator:
     NAMESPACE_GCAL = uuid.UUID('2db0f24e-4e4b-4b20-9428-fb48722a2105')
 
     @classmethod
-    def generate_for_event(cls, gcal_id: str) -> str:
+    def generate_for_event(cls, gcal_id: str, user_email: str) -> str:
         """
-        Generates a deterministic UUID based on the Google Calendar ID.
+        Generates a deterministic UUID based on the User Email and Google Calendar ID.
         """
-        return str(uuid.uuid5(cls.NAMESPACE_GCAL, gcal_id))
+        combined_string = f"{user_email}::{gcal_id}"
+        return str(uuid.uuid5(cls.NAMESPACE_GCAL, combined_string))

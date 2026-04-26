@@ -123,14 +123,22 @@ def run_crew(journal_entry: str, log_data: dict = None):
     )
     
     from src.utils.token_circuit_breaker import TokenLimitExceededError
+    from src.database.mongo_client.agent_health import AgentHeartbeatManager
+    
+    health_manager = AgentHeartbeatManager()
+    run_id = health_manager.start_agent_run("mach_3_crew", {"journal_entry": journal_entry})
+    
     print("--- Starting Mach 2 Daily Recon ---")
     try:
         result = crew.kickoff()
+        health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:
         print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return "ERROR: Socratic Categorizer experienced a logic loop and was forcefully halted by the Token Circuit Breaker to preserve API limits."
     except Exception as e:
         print(f"\n[RUNTIME ERROR] {e}")
+        health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return f"ERROR: Unexpected Backend Error during Categorization: {e}"
         
     # Extract the string content

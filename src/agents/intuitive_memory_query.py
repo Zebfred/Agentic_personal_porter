@@ -1,4 +1,6 @@
-#OUTDATED, but might prove useful for something else
+# OUTDATED: Note that this file contains module-level code (lines 14-23) that executes on import.
+# This causes an import-time side effect (connection hang) if accidentally imported.
+# Kept for reference.
 from pymongo import MongoClient
 from langchain_mongodb import MongoDBAtlasVectorSearch
 

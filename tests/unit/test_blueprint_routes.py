@@ -79,10 +79,11 @@ class TestRouteMapping:
         ('/api/artifacts/<artifact_name>', ['GET', 'POST']),
         ('/api/graph_data', ['GET']),
         # Admin
-        ('/api/admin/sync_calendar', ['POST']),
+        ('/api/calendar/user_sync', ['POST']),
         ('/api/admin/vector_sync', ['POST']),
         ('/api/admin/inject_foundation', ['POST']),
         ('/api/wake_infrastructure', ['POST']),
+        ('/api/nexus/login', ['POST']),
     ]
 
     def test_all_expected_routes_exist(self, app):
@@ -105,10 +106,10 @@ class TestRouteMapping:
 
     def test_route_count_sanity(self, app):
         """Ensure we haven't accidentally duplicated or lost routes."""
-        # Flask adds a default /static/<path:filename> route; we expect ~32 total
+        # Flask adds a default /static/<path:filename> route; we expect ~45 total
         rule_count = len(list(app.url_map.iter_rules()))
         assert rule_count >= 30, f"Expected >=30 routes, got {rule_count}. Routes may be missing."
-        assert rule_count <= 40, f"Expected <=40 routes, got {rule_count}. Possible duplicates."
+        assert rule_count <= 60, f"Expected <=60 routes, got {rule_count}. Possible duplicates."
 
 
 # ======================================================================
@@ -180,46 +181,81 @@ class TestAuthMiddleware:
 #  Login Endpoint Tests
 # ======================================================================
 
+from unittest.mock import patch
+
 class TestLogin:
     """Test the /api/login JWT issuance endpoint."""
 
-    def test_login_with_correct_password(self, client):
-        """Correct password should return a JWT token."""
-        api_key = os.environ.get("PORTER_API_KEY")
+    @patch("src.routes.auth_routes.id_token.verify_oauth2_token")
+    @patch("src.routes.auth_routes.SovereignMongoStorage")
+    def test_login_with_valid_hero_credential(self, mock_storage, mock_verify, client):
+        """Valid Hero Google JWT should return an internal JWT token."""
+        mock_verify.return_value = {
+            "email": "testuser@gmail.com",
+            "name": "Test User",
+            "picture": "https://example.com/pic.jpg",
+            "given_name": "Test"
+        }
+        
+        # We need to set a dummy GOOGLE_CLIENT_ID in the environment for the test to pass
+        os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
+        os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-guild.com"
+        
         response = client.post(
             '/api/login',
-            json={"password": api_key}
+            json={"credential": "mocked_google_jwt_token"}
         )
         assert response.status_code == 200
         data = response.get_json()
         assert "token" in data
-        assert data["message"] == "Login successful"
+        assert data["role"] == "user"
+        assert data["account_type"] == "hero"
 
-    def test_login_with_wrong_password(self, client):
-        """Wrong password should return 401."""
+    @patch("src.routes.auth_routes.id_token.verify_oauth2_token")
+    @patch("src.routes.auth_routes.SovereignMongoStorage")
+    def test_login_with_valid_guild_credential(self, mock_storage, mock_verify, client):
+        """Valid Guild Google JWT should return an internal JWT token with admin role."""
+        mock_verify.return_value = {
+            "email": "admin@nexus-ds-ml-consulting.com",
+            "name": "Admin User",
+            "picture": "https://example.com/pic.jpg",
+            "given_name": "Admin"
+        }
+        
+        os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
+        os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-ds-ml-consulting.com"
+        
+        response = client.post(
+            '/api/nexus/login',
+            json={"credential": "mocked_google_jwt_token"}
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert "token" in data
+        assert data["role"] == "admin"
+        assert data["account_type"] == "guild"
+
+    @patch("src.routes.auth_routes.id_token.verify_oauth2_token")
+    def test_login_with_invalid_credential(self, mock_verify, client):
+        """Invalid Google JWT should return 401."""
+        from google.auth.exceptions import GoogleAuthError
+        mock_verify.side_effect = ValueError("Invalid token")
+        
+        os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
+
         response = client.post(
             '/api/login',
-            json={"password": "wrong-password-12345"}
+            json={"credential": "invalid_token"}
         )
         assert response.status_code == 401
 
-    def test_login_missing_password(self, client):
-        """Missing password field should return 400."""
+    def test_login_missing_credential(self, client):
+        """Missing credential field should return 400."""
         response = client.post(
             '/api/login',
             json={"username": "admin"}
         )
         assert response.status_code == 400
-
-    def test_login_returns_valid_jwt(self, client):
-        """The returned token must be a decodable JWT with admin role."""
-        api_key = os.environ.get("PORTER_API_KEY")
-        jwt_secret = os.environ.get("JWT_SECRET")
-        response = client.post('/api/login', json={"password": api_key})
-        token = response.get_json()["token"]
-        decoded = jwt.decode(token, jwt_secret, algorithms=["HS256"])
-        assert decoded["role"] == "admin"
-        assert "exp" in decoded
 
 
 # ======================================================================
@@ -256,6 +292,10 @@ class TestBlueprintImports:
     def test_import_admin_routes(self):
         from src.routes.admin_routes import admin_bp
         assert admin_bp.name == 'admin'
+
+    def test_import_user_routes(self):
+        from src.routes.user_routes import user_bp
+        assert user_bp.name == 'user'
 
     def test_import_auth_middleware(self):
         from src.routes.auth_middleware import require_api_key

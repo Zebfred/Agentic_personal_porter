@@ -16,6 +16,23 @@ from functools import wraps
 from flask import request, jsonify, make_response
 
 
+def require_role(*roles):
+    """
+    Decorator that enforces strict role-based access.
+    Must be used AFTER @require_api_key.
+    Example: @require_role('admin', 'guild_member')
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user_role = getattr(request, 'user_role', 'user')
+            if user_role not in roles:
+                return jsonify({"error": f"Forbidden: Requires one of {roles}"}), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 def require_api_key(f):
     """Decorator that enforces API key or JWT authentication on a route."""
     @wraps(f)
@@ -40,14 +57,23 @@ def require_api_key(f):
 
         # Check if it's the raw API Key (used by background python scripts usually)
         if api_key and hmac.compare_digest(token_str, api_key):
+            request.user_email = "system_script@localhost"
+            request.user_role = "admin"
+            request.user_account_type = "system"
             return f(*args, **kwargs)
 
         # Try checking if it's a valid JWT from the frontend login UI
         if jwt_secret:
             try:
                 decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
-                if decoded.get("role") == "admin":
-                    return f(*args, **kwargs)
+                # Inject identity into request context for downstream routes
+                request.user_email = decoded.get("email")
+                request.user_role = decoded.get("role", "user")
+                request.user_account_type = decoded.get("account_type", "hero")
+                
+                # We no longer hard-reject non-admins here. 
+                # Endpoint-level @require_role decorators will handle fine-grained authorization.
+                return f(*args, **kwargs)
             except jwt.ExpiredSignatureError:
                 return jsonify({"error": "Unauthorized: Token expired"}), 401
             except jwt.InvalidTokenError:

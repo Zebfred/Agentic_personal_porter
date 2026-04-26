@@ -94,6 +94,7 @@ def create_app():
     from src.routes.calendar_routes import calendar_bp
     from src.routes.inventory_routes import inventory_bp
     from src.routes.admin_routes import admin_bp
+    from src.routes.user_routes import user_bp
 
     # Static routes have no prefix — they serve /, /index.html, /js/*, etc.
     app.register_blueprint(static_bp)
@@ -117,7 +118,10 @@ def create_app():
     # Admin routes: /api/admin/*, /api/wake_infrastructure
     app.register_blueprint(admin_bp, url_prefix='/api')
 
-    logger.info(f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 7 blueprints.")
+    # User routes: /api/user/*
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+
+    logger.info(f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 8 blueprints.")
     return app
 
 

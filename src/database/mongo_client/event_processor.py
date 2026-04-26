@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
+import os
 
 root = Path(__file__).resolve().parent.parent.parent.parent
 if str(root) not in sys.path:
@@ -33,7 +34,7 @@ class EventProcessorClient:
             "unaccounted_minutes": 0 # Default placeholder
         }
 
-    def process_and_route_event(self, raw_gcal_event: dict):
+    def process_and_route_event(self, raw_gcal_event: dict, user_email: str):
         """
         Takes raw json from the Timeseries collection, parses it, and
         routes it to the correct Intent/Actual/Unified representations.
@@ -42,7 +43,7 @@ class EventProcessorClient:
         if not gcal_id:
             return None
             
-        event_uuid = UUIDGenerator.generate_for_event(gcal_id)
+        event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
         
         # 1. Parse base details
         start_str = raw_gcal_event.get('start', {}).get('dateTime') or raw_gcal_event.get('start', {}).get('date')
@@ -83,7 +84,7 @@ class EventProcessorClient:
         self.intent_col.update_one(
             {"_id": event_uuid},
             {"$set": {
-                "user_id": "hero_01", # hardcoded for Single Tenant alpha
+                "user_id": user_email,
                 "gcal_id": gcal_id,
                 "time_slot": time_slot,
                 "intent": base_payload,
@@ -105,7 +106,7 @@ class EventProcessorClient:
         
         unified_update = {
             "$set": {
-                "user_id": "hero_01",
+                "user_id": user_email,
                 "time_slot": time_slot,
                 "intent": base_payload,
                 "metadata": {

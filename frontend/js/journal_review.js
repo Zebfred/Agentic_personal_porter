@@ -35,9 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function fetchReviewData(dateStr) {
         // We call the newly minted adventure log which returns Socratic Delta over X days
         // Right now our backend logic takes days_back, so passing the date string handles it.
-        fetch(`/api/calendar/adventure_log?date=${dateStr}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('porter_token')}` }
-        })
+        Auth.fetchWithAuth(`/api/calendar/adventure_log?date=${dateStr}`)
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success' && data.data) {
@@ -52,9 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // Also fetch the events natively if we want to build a re-classification target list
-        fetch(`/api/calendar/get_calendar_events?date=${dateStr}`, {
-             headers: { 'Authorization': `Bearer ${localStorage.getItem('porter_token')}` }
-        }).then(res => res.json()).then(data => {
+        Auth.fetchWithAuth(`/api/calendar/get_calendar_events?date=${dateStr}`).then(res => res.json()).then(data => {
             window.currentEvents = data.events || [];
         });
     }
@@ -159,10 +155,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function executeJournalAction(action, gcalId, extraData) {
         const payload = { action, gcal_id: gcalId, ...extraData };
-        fetch('/api/journal/edit_event', {
+        Auth.fetchWithAuth('/api/journal/edit_event', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('porter_token')}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload)

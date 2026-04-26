@@ -8,6 +8,7 @@ class JournalLogBase(BaseModel):
     actual: str
     feeling: Optional[str] = ""
     brainFog: Optional[Union[int, str]] = 0
+    matchesIntent: Optional[bool] = False
     isValuableDetour: Optional[bool] = False
     inventoryNote: Optional[str] = ""
     reflection: Optional[str] = ""

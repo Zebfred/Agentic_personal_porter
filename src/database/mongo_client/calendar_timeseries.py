@@ -37,7 +37,7 @@ class CalendarTimeseriesClient:
         self.timeseries_col = self.db[collection_name]
         self.processor = EventProcessorClient()
 
-    def stage_raw_event(self, gcal_event: dict) -> bool:
+    def stage_raw_event(self, gcal_event: dict, user_email: str = "Hero") -> bool:
         """
         Upserts the completely raw JSON from google calendar into the timeseries collection.
         Automatically triggers the downstream processor to route to intent/actual schemas.
@@ -62,6 +62,7 @@ class CalendarTimeseriesClient:
             "start_time": start_dt,
             "metadata": {
                 "gcal_id": str(gcal_id),
+                "user_email": user_email,
                 "sync_status": "staged",
                 "event_type": str(gcal_event.get("eventType", "default"))
             },
@@ -78,7 +79,7 @@ class CalendarTimeseriesClient:
         
         # Trigger downstream processor to split into schemas
         try:
-           self.processor.process_and_route_event(gcal_event)
+           self.processor.process_and_route_event(gcal_event, user_email)
            return True
         except Exception as e:
            print(f"Error processing event {gcal_id}: {e}")

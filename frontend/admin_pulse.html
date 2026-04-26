@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Pulse - Agentic Personal Porter</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .dark-glass {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-ok { background-color: #10B981; box-shadow: 0 0 8px #10B981; }
+        .status-fail { background-color: #EF4444; box-shadow: 0 0 8px #EF4444; }
+        .status-pending { background-color: #F59E0B; box-shadow: 0 0 8px #F59E0B; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    {% include 'components/navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-red-600 to-purple-600 mb-2">System Pulse</h2>
+                <p class="text-gray-600">Real-time health monitoring of Mach 3 Data Pipelines.</p>
+            </div>
+            <button id="refresh-pulse-btn" class="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+                🔄 Refresh Pulse
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Graph DB Status -->
+            <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-purple-500 shadow-lg">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🕸️</span> Graph DB Identity Topology (Neo4j)</h3>
+                
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Total Nodes</span>
+                        <span id="neo4j-nodes" class="text-2xl font-bold text-purple-600">...</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Total Edges</span>
+                        <span id="neo4j-edges" class="text-2xl font-bold text-indigo-500">...</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Latest "Day" Node Anchor</span>
+                        <span id="neo4j-latest-day" class="text-lg font-bold text-gray-800">...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Vector DB Status -->
+            <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-blue-500 shadow-lg">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🧠</span> Vector Databases (Chroma & Weaviate)</h3>
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Last Sync Status</span>
+                        <div class="flex items-center gap-2">
+                            <span id="vector-status-indicator" class="status-indicator status-pending"></span>
+                            <span id="vector-status-text" class="text-lg font-bold text-gray-800">Pending</span>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Chroma Items (Reflections)</span>
+                        <span id="vector-chroma-count" class="text-xl font-bold text-blue-600">...</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Weaviate Items (Journals)</span>
+                        <span id="vector-weaviate-count" class="text-xl font-bold text-cyan-600">...</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Embedding Dimensions</span>
+                        <span id="vector-dimensions" class="text-lg font-bold text-gray-500">...</span>
+                    </div>
+                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+                        <span class="text-gray-600 font-medium">Last Update Time</span>
+                        <span id="vector-last-sync" class="text-sm font-mono text-gray-500">...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agent Health Monitor -->
+            <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-teal-500 shadow-lg lg:col-span-2">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🤖</span> Agent Health Monitor</h3>
+                <div id="agent-health-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Agent cards will be injected here -->
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center">
+                        <span class="text-gray-500 italic">Loading agent statuses...</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cron Orchestrators Status -->
+            <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-green-500 shadow-lg lg:col-span-2">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>⚙️</span> Orchestrator Cron Jobs</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="font-bold text-gray-700 mb-2">Google Calendar Pipeline</h4>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Status</span>
+                            <div class="flex items-center gap-2">
+                                <span id="cal-status-indicator" class="status-indicator status-pending"></span>
+                                <span id="cal-status-text" class="text-sm font-bold text-gray-800">Pending</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Sync Integrity</span>
+                            <span id="cal-sync-integrity" class="text-sm font-bold text-gray-800">...</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">Last Sync</span>
+                            <span id="cal-last-sync" class="text-sm font-mono text-gray-500">...</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="font-bold text-gray-700 mb-2">System Pulse Timestamp</h4>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-500">Endpoint Status</span>
+                            <div class="flex items-center gap-2">
+                                <span id="pulse-status-indicator" class="status-indicator status-pending"></span>
+                                <span id="pulse-status-text" class="text-sm font-bold text-gray-800">Connecting...</span>
+                            </div>
+                        </div>
+                         <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-500">Data Fetched</span>
+                            <span id="pulse-timestamp" class="text-sm font-mono text-gray-500">...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script src="./js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const escapeHTML = (str) => {
+                if (!str) return '';
+                return String(str).replace(/[&<>'"]/g,
+                    tag => ({
+                        '&': '&amp;',
+                        '<': '&lt;',
+                        '>': '&gt;',
+                        "'": '&#39;',
+                        '"': '&quot;'
+                    }[tag])
+                );
+            };
+
+            const fetchPulseData = async () => {
+                try {
+                    const response = await Auth.fetchWithAuth('/api/admin/pulse');
+
+                    if (response.status === 401 || response.status === 403) {
+                        alert("Unauthorized to view system pulse.");
+                        return;
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        console.error("Pulse Error:", data.error);
+                        document.getElementById('pulse-status-indicator').className = 'status-indicator status-fail';
+                        document.getElementById('pulse-status-text').innerText = 'Error';
+                        return;
+                    }
+
+                    // Populate Graph DB
+                    document.getElementById('neo4j-nodes').innerText = data.graph_db.node_count;
+                    document.getElementById('neo4j-edges').innerText = data.graph_db.edge_count;
+                    document.getElementById('neo4j-latest-day').innerText = data.graph_db.latest_day_node || "N/A";
+
+                    // Populate Vector DB
+                    const vec = data.vector_db_sync || {};
+                    const vecStatus = vec.status === 'success';
+                    document.getElementById('vector-status-indicator').className = `status-indicator ${vecStatus ? 'status-ok' : 'status-fail'}`;
+                    document.getElementById('vector-status-text').innerText = vec.status ? vec.status.toUpperCase() : 'UNKNOWN';
+                    document.getElementById('vector-chroma-count').innerText = vec.chroma_items_synced ?? 'N/A';
+                    document.getElementById('vector-weaviate-count').innerText = vec.weaviate_items_synced ?? 'N/A';
+                    document.getElementById('vector-dimensions').innerText = vec.embedding_dimensions ?? 'N/A';
+                    document.getElementById('vector-last-sync').innerText = vec.last_vector_sync ? new Date(vec.last_vector_sync).toLocaleString() : 'N/A';
+
+                    // Populate Cal Sync
+                    const cal = data.calendar_sync || {};
+                    const calStatus = cal.status === 'success';
+                    document.getElementById('cal-status-indicator').className = `status-indicator ${calStatus ? 'status-ok' : 'status-fail'}`;
+                    document.getElementById('cal-status-text').innerText = cal.status ? cal.status.toUpperCase() : 'UNKNOWN';
+                    
+                    const integritySpan = document.getElementById('cal-sync-integrity');
+                    if (cal.Sync_Integrity !== undefined) {
+                        integritySpan.innerText = cal.Sync_Integrity ? "OK" : "FAIL";
+                        integritySpan.className = `text-sm font-bold ${cal.Sync_Integrity ? 'text-green-600' : 'text-red-600'}`;
+                    } else {
+                        integritySpan.innerText = "N/A";
+                    }
+
+                    document.getElementById('cal-last-sync').innerText = cal.last_gcal_sync ? new Date(cal.last_gcal_sync).toLocaleString() : 'N/A';
+
+                    // Endpoint Status
+                    document.getElementById('pulse-status-indicator').className = 'status-indicator status-ok';
+                    document.getElementById('pulse-status-text').innerText = 'Online';
+                    document.getElementById('pulse-timestamp').innerText = new Date(data.timestamp).toLocaleString();
+
+                    // Populate Agent Health
+                    const agentGrid = document.getElementById('agent-health-grid');
+                    if (data.agent_health && Object.keys(data.agent_health).length > 0) {
+                        agentGrid.innerHTML = ''; // clear loading state
+                        for (const [agentName, agentData] of Object.entries(data.agent_health)) {
+                            let statusClass = 'status-pending';
+                            if (agentData.status === 'success') statusClass = 'status-ok';
+                            else if (agentData.status === 'fail') statusClass = 'status-fail';
+                            
+                            const lastRun = agentData.end_time ? new Date(agentData.end_time).toLocaleString() : (agentData.start_time ? new Date(agentData.start_time).toLocaleString() : 'N/A');
+                            const safeErrorMsg = escapeHTML(agentData.error_msg);
+                            const safeAgentName = escapeHTML(agentName);
+                            const safeStatus = escapeHTML(agentData.status || 'unknown').toUpperCase();
+                            const errorHtml = safeErrorMsg ? `<div class="text-xs text-red-500 mt-2 truncate" title="${safeErrorMsg}">${safeErrorMsg}</div>` : '';
+                            const durationHtml = agentData.duration_seconds ? `<span class="text-xs text-gray-400">(${agentData.duration_seconds.toFixed(2)}s)</span>` : '';
+                            
+                            const cardHtml = `
+                                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h4 class="font-bold text-gray-700 text-sm truncate" title="${safeAgentName}">${safeAgentName}</h4>
+                                        <div class="flex items-center gap-2">
+                                            <span class="status-indicator ${statusClass}"></span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-gray-500">Status</span>
+                                            <span class="text-xs font-bold text-gray-800">${safeStatus} ${durationHtml}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs text-gray-500">Last Run</span>
+                                            <span class="text-xs font-mono text-gray-500">${lastRun}</span>
+                                        </div>
+                                        ${errorHtml}
+                                    </div>
+                                </div>
+                            `;
+                            agentGrid.insertAdjacentHTML('beforeend', cardHtml);
+                        }
+                    } else {
+                        agentGrid.innerHTML = '<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center col-span-full"><span class="text-gray-500 italic">No agent health data found.</span></div>';
+                    }
+
+                } catch (error) {
+                    console.error("Failed to fetch pulse:", error);
+                    document.getElementById('pulse-status-indicator').className = 'status-indicator status-fail';
+                    document.getElementById('pulse-status-text').innerText = 'Network Error';
+                }
+            };
+
+            document.getElementById('refresh-pulse-btn').addEventListener('click', fetchPulseData);
+            
+            // Initial fetch
+            fetchPulseData();
+        });
+    </script>
+</body>
+</html>

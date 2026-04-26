@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus-Guild Hub - Agentic Personal Porter</title>
+    <link href="./css/style.css" rel="stylesheet">
+    <style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-background text-main min-h-screen flex flex-col">
+    <!-- Navbar -->
+    {% include 'components/navbar.html' %}
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-end">
+            <div>
+                <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-muted to-main mb-2">
+                    Welcome Back, Admin
+                    <span class="ml-4 text-xs bg-main text-surface py-1 px-3 rounded-full shadow align-middle">Managed by Nexus-Guild</span>
+                </h2>
+                <p class="text-muted">Your high-level metrics and infrastructure controls.</p>
+            </div>
+            <button id="sync-calendar-btn" class="bg-success hover:opacity-90 text-on-primary font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+                📅 Sync Calendar
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column -->
+            <div class="lg:col-span-2 space-y-8">
+                <!-- Overview Stats -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg bg-surface">
+                    <h3 class="text-xl font-bold text-main mb-4 flex items-center gap-2"><span>📊</span> Identity Graph Pulses</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-surface p-4 rounded-xl shadow-sm border border-border flex justify-between items-center">
+                            <span class="text-muted font-medium">Synced Events (<span class="text-xs">All Time</span>)</span>
+                            <span id="pulse-synced-events" class="text-2xl font-bold text-secondary">...</span>
+                        </div>
+                        <div class="bg-surface p-4 rounded-xl shadow-sm border border-border flex justify-between items-center">
+                            <span class="text-muted font-medium">Valuable Detours (<span class="text-xs">This Week</span>)</span>
+                            <span id="pulse-valuable-detours" class="text-2xl font-bold text-success">...</span>
+                        </div>
+                         <div class="bg-surface p-4 rounded-xl shadow-sm border border-border flex justify-between items-center">
+                            <span class="text-muted font-medium">Logged Reflections</span>
+                            <span id="pulse-logged-reflections" class="text-2xl font-bold text-primary">...</span>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-primary">
+                    <h3 class="text-xl font-bold text-main mb-4">Infrastructure Health</h3>
+                    <p class="text-muted">See <a href="/graph_explorer" class="text-primary hover:underline">Graph Explorer</a> for detailed views.</p>
+                </section>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-8">
+                <!-- Verification Dashboard -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-error">
+                    <div class="flex justify-between items-center mb-4">
+                         <h3 class="text-xl font-bold text-main flex items-center gap-2"><span>🛡️</span> Verification Dashboard</h3>
+                         <button id="btn-approve-audits" class="bg-error hover:opacity-90 text-on-primary text-xs font-bold py-1 px-3 rounded shadow hidden">Approve All</button>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 class="text-xs font-bold text-muted uppercase tracking-wider mb-2">Needs Review (Low Confidence)</h4>
+                        <div id="dashboard-unverified" class="space-y-2 max-h-40 overflow-y-auto">
+                            <div class="text-sm text-muted italic">Scanning audits...</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-muted uppercase tracking-wider mb-2">Recently Verified</h4>
+                        <div id="dashboard-verified" class="space-y-2 max-h-40 overflow-y-auto">
+                            <div class="text-sm text-muted italic">Scanning history...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Impersonation Dashboard -->
+                <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-primary">
+                    <h3 class="text-xl font-bold text-main mb-4 flex items-center gap-2"><span>🎭</span> Shadow State</h3>
+                    <p class="text-xs text-muted mb-4">Temporarily assume the identity of a standard user to view their portal and debug their state.</p>
+                    <div class="flex flex-col gap-2">
+                        <input type="email" id="impersonate-email" placeholder="User Email" class="px-3 py-2 border rounded shadow-inner focus:outline-none focus:ring focus:border-primary">
+                        <button id="btn-impersonate" class="bg-primary hover:bg-primary-hover text-on-primary font-bold py-2 rounded shadow transition">
+                            Impersonate User
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <script src="./js/auth.js"></script>
+    <script type="module" src="./js/admin_hub.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Require admin role specifically
+            if (!Auth.isAuthenticated()) {
+                window.location.href = 'nexus_login.html';
+                return;
+            }
+            if (Auth.getRole() !== 'admin') {
+                window.location.href = 'index.html'; // Kick non-admins out
+            }
+        });
+    </script>
+</body>
+</html>

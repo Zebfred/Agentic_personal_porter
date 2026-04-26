@@ -34,6 +34,25 @@ class SovereignMongoStorage:
         self.journal_col = self.db['journal_entries']
         self.artifacts_col = self.db['hero_artifacts']
         self.reflections_col = self.db['agent_reflections']
+        self.system_status_col = self.db['system_status']
+        self.users_col = self.db['users']
+        self._ensure_indexes()
+
+    def _ensure_indexes(self):
+        """Create compound indexes to speed up multi-tenant queries."""
+        from pymongo import ASCENDING
+        
+        # In the Timeseries (raw events), index on email + start time for quick window querying
+        self.raw_col.create_index([("metadata.user_email", ASCENDING), ("start_time", ASCENDING)])
+        
+        # In formatted collections, index on email + start time
+        self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
+        
+        # Intent and Actual collections for quick queries
+        self.db['calendar_intent_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
+        self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
+        self.db['calendar_unified_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
+
 
     def save_journal_entry(self, log_data: dict, user_id: str = "Hero"):
         """
@@ -72,6 +91,46 @@ class SovereignMongoStorage:
             log_data["processed_at"] = datetime.now(timezone.utc)
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
+
+    def update_journal_sync_status(self, mongo_doc_id: str, day_str: str, time_chunk: str, status_updates: dict, user_id: str = "Hero"):
+        """
+        Updates the sync_status of a journal entry, regardless of whether it's nested or flat.
+        """
+        if not day_str or not time_chunk:
+            from bson.objectid import ObjectId
+            try:
+                self.journal_col.update_one(
+                    {"_id": ObjectId(mongo_doc_id)},
+                    {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
+                )
+            except Exception as e:
+                print(f"Error updating flat journal entry status: {e}")
+            return
+
+        try:
+            dt = datetime.strptime(day_str, "%Y-%m-%d")
+            month_id = dt.strftime("%Y-%m")
+            iso_year, iso_week, iso_weekday = dt.isocalendar()
+            week_id = f"W{iso_week:02d}"
+            
+            query = {"month_id": month_id, "user_id": user_id}
+            
+            set_updates = {}
+            for k, v in status_updates.items():
+                update_path = f"weeks.{week_id}.{day_str}.chunks.{time_chunk}.sync_status.{k}"
+                set_updates[update_path] = v
+                
+            self.journal_col.update_one(query, {"$set": set_updates})
+        except ValueError:
+            # Fallback for legacy
+            from bson.objectid import ObjectId
+            try:
+                self.journal_col.update_one(
+                    {"_id": ObjectId(mongo_doc_id)},
+                    {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
+                )
+            except Exception as e:
+                print(f"Error updating flat journal entry status: {e}")
 
     def get_monthly_log(self, year_month: str, user_id: str = "Hero") -> dict:
         """
@@ -116,6 +175,108 @@ class SovereignMongoStorage:
             {"$set": {"data": data, "updated_at": datetime.now(timezone.utc)}},
             upsert=True
         )
+
+    def upsert_system_status(self, key: str, value_dict: dict):
+        """
+        Upserts status metadata for system monitoring (e.g. for Pulse endpoint).
+        """
+        value_dict["updated_at"] = datetime.now(timezone.utc)
+        self.system_status_col.update_one(
+            {"status_key": key},
+            {"$set": {"data": value_dict}},
+            upsert=True
+        )
+        
+    def get_system_status(self, key: str) -> dict:
+        """
+        Retrieves status metadata for a specific component.
+        """
+        doc = self.system_status_col.find_one({"status_key": key}, {"_id": 0})
+        return doc.get("data") if doc else {}
+
+    def get_or_create_user(self, email: str, profile_data: dict) -> dict:
+        """
+        Retrieves an existing user by email or provisions a new one (sign-up).
+        """
+        user = self.users_col.find_one({"email": email}, {"_id": 0})
+        now = datetime.now(timezone.utc)
+        
+        if not user:
+            user = {
+                "email": email,
+                "profile": profile_data,
+                "created_at": now,
+                "last_login": now,
+                "guild_invite_status": "pending", # default status
+                "role": "user", # Default role
+                "opt_in_calendar_sync": False,
+                "privacy_opt_in_analytics": False, # Explicit opt-in for admin visibility
+                "google_refresh_token": None
+            }
+            # Special case for root admin
+            nexus_admin_email = os.environ.get("NEXUS_ADMIN_EMAIL", "")
+            if nexus_admin_email and email == nexus_admin_email:
+                user["guild_invite_status"] = "accepted"
+                
+            self.users_col.insert_one(user)
+        else:
+            self.users_col.update_one(
+                {"email": email},
+                {"$set": {
+                    "last_login": now,
+                    "profile.name": profile_data.get("name", user.get("profile", {}).get("name")),
+                    "profile.picture": profile_data.get("picture", user.get("profile", {}).get("picture"))
+                }}
+            )
+            user["last_login"] = now
+            user["profile"] = profile_data
+            
+        return user
+
+    def update_user_sync_preferences(self, email: str, opt_in: bool, refresh_token: str = None):
+        """
+        Updates a user's calendar sync preferences and OAuth refresh token.
+        """
+        update_doc = {"opt_in_calendar_sync": opt_in}
+        if refresh_token is not None:
+            update_doc["google_refresh_token"] = refresh_token
+            
+        self.users_col.update_one(
+            {"email": email},
+            {"$set": update_doc}
+        )
+
+    def toggle_privacy_opt_in(self, email: str, opt_in: bool) -> bool:
+        """
+        Updates whether the user consents to sharing detailed analytics with the admin.
+        """
+        result = self.users_col.update_one(
+            {"email": email},
+            {"$set": {"privacy_opt_in_analytics": opt_in, "updated_at": datetime.now(timezone.utc)}}
+        )
+        return result.modified_count > 0
+
+    def get_sync_opted_in_users(self) -> list:
+        """
+        Returns a list of user profiles who have opted into background calendar sync.
+        """
+        return list(self.users_col.find({"opt_in_calendar_sync": True}, {"_id": 0}))
+
+    def get_user_by_email(self, email: str) -> dict:
+        """
+        Fetches the full user profile by email.
+        """
+        return self.users_col.find_one({"email": email}, {"_id": 0})
+        
+    def update_guild_invite_status(self, email: str, status: str) -> bool:
+        """
+        Updates the user's guild invite status (e.g. 'accepted', 'declined').
+        """
+        result = self.users_col.update_one(
+            {"email": email},
+            {"$set": {"guild_invite_status": status, "updated_at": datetime.now(timezone.utc)}}
+        )
+        return result.modified_count > 0
 
     def process_all_unstaged(self):
         """

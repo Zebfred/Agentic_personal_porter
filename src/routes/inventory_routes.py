@@ -44,7 +44,9 @@ def get_inventory():
     """
     try:
         from src.database.neo4j_client import get_valuable_detours
-        detours = get_valuable_detours(user_name=os.environ.get("HERO_NAME", "Hero"))
+        
+        user_email = getattr(request, 'user_email', 'Hero')
+        detours = get_valuable_detours(user_name=user_email)
 
         response_data = {
             "valuable_detours": detours,

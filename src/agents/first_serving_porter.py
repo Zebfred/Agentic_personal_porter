@@ -205,6 +205,10 @@ Core Detriments: {detriments_context}
     return agent_executor
 
 def run_first_serving_porter(user_input: str) -> dict:
+    from src.database.mongo_client.agent_health import AgentHeartbeatManager
+    health_manager = AgentHeartbeatManager()
+    run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input})
+    
     context = get_mach2_context()
     executor = get_porter_agent_executor()
     
@@ -218,14 +222,17 @@ def run_first_serving_porter(user_input: str) -> dict:
             "ambition_context": str(context.get("ambition", "Unknown")),
             "detriments_context": str(context.get("detriments", "Unknown"))
         })
+        health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:
         print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": "My apologies, Sir. I suffered a systemic logic loop and had to sever my own processing connection to protect our API limit. Please ask me again with different parameters.",
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Token Circuit Breaker Tripped."]
         }
     except Exception as e:
         print(f"\n[RUNTIME ERROR] {e}")
+        health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": f"An unexpected error occurred during execution: {e}",
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Unexpected Backend Error."]

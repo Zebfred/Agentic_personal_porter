@@ -9,7 +9,7 @@ def client():
     with app.test_client() as client:
         yield client
 
-@patch('src.app.run_first_serving_porter')
+@patch('src.routes.chat_routes.run_first_serving_porter')
 def test_porter_chat_route(mock_run_porter, client):
     # Mock the return value of the agent
     mock_run_porter.return_value = {
@@ -30,7 +30,7 @@ def test_porter_chat_route(mock_run_porter, client):
     assert len(data["transparency_logs"]) == 1
     mock_run_porter.assert_called_once_with('Update my motivation.')
 
-@patch('src.app.run_first_serving_porter')
+@patch('src.routes.chat_routes.run_first_serving_porter')
 def test_porter_chat_route_missing_message(mock_run_porter, client):
     response = client.post(
         '/api/chat/porter',

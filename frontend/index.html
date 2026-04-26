@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,12 +14,14 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         }
+
         .chat-container {
             height: 300px;
             overflow-y: auto;
         }
     </style>
 </head>
+
 <body class="bg-gray-100 text-gray-800 min-h-screen flex flex-col">
     <!-- Navbar -->
     {% include 'components/navbar.html' %}
@@ -27,10 +30,13 @@
     <main class="flex-grow container mx-auto px-4 py-8">
         <header class="mb-8 flex justify-between items-end">
             <div>
-                <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">Welcome Back, Hero</h2>
+                <h2
+                    class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
+                    Welcome Back, Hero</h2>
                 <p class="text-gray-600">Your high-level metrics and direct porter communications.</p>
             </div>
-            <button id="sync-calendar-btn" class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+            <button id="sync-calendar-btn"
+                class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
                 📅 Sync Calendar
             </button>
         </header>
@@ -40,30 +46,43 @@
             <div class="lg:col-span-2 space-y-8">
                 <!-- Porter Chat Terminal -->
                 <section class="glass-panel p-6 rounded-2xl border-l-8 border-l-blue-500 shadow-lg">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🤖</span> First-Serving Porter</h3>
-                    <div id="porter-chat-container" class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🤖</span>
+                        First-Serving Porter</h3>
+                    <div id="porter-chat-container"
+                        class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
                         <div class="flex gap-4">
-                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">🤖</div>
+                            <div
+                                class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">
+                                🤖</div>
                             <div class="bg-gray-100 rounded-2xl rounded-tl-none p-4 text-gray-800">
-                                <p class="mb-2">Greetings! I've analyzed your current <strong>Identity Graph</strong>.</p>
-                                <p class="text-sm border-t pt-2 mt-2 text-gray-600 italic">I noticed your <span class="font-bold text-blue-600">Origin Story</span> is missing the section detailing your primary motivations. Would you like to fill that out now?</p>
+                                <p class="mb-2">Greetings! I've analyzed your current <strong>Identity Graph</strong>.
+                                </p>
+                                <p class="text-sm border-t pt-2 mt-2 text-gray-600 italic">I noticed your <span
+                                        class="font-bold text-blue-600">Origin Story</span> is missing the section
+                                    detailing your primary motivations. Would you like to fill that out now?</p>
                             </div>
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <input id="porter-chat-input" type="text" class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
-                        <button id="porter-chat-send" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">Send</button>
+                        <input id="porter-chat-input" type="text"
+                            class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
+                        <button id="porter-chat-send"
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition">Send</button>
                     </div>
                 </section>
 
                 <!-- Missing Artifacts Prompts -->
                 <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-yellow-400">
-                    <h3 class="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2"><span>📂</span> Missing Artifact Scans</h3>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2"><span>📂</span> Missing
+                        Artifact Scans</h3>
                     <p class="text-gray-600 mb-4">Your Porter has detected incomplete data models.</p>
                     <div id="dynamic-artifact-scans" class="space-y-4">
                         <!-- Dynamic gap items go here -->
                         <div class="text-sm text-gray-500 italic flex items-center gap-2">
-                           <div class="animate-spin h-3 w-3 border-2 border-yellow-500 border-t-transparent rounded-full"></div> Loading GTKY Architect Scan...
+                            <div
+                                class="animate-spin h-3 w-3 border-2 border-yellow-500 border-t-transparent rounded-full">
+                            </div> Loading GTKY Architect Scan...
                         </div>
                     </div>
                 </section>
@@ -71,44 +90,21 @@
 
             <!-- Right Column: Metrics & Calendar -->
             <div class="space-y-8">
-                <!-- Overview Stats -->
+                <!-- User Overview Stats -->
                 <section class="glass-panel p-6 rounded-2xl shadow-lg bg-gradient-to-br from-white to-gray-50">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4">Identity Graph Pulses</h3>
-                    
+                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"><span>🗺️</span> Adventure Log</h3>
                     <div class="space-y-4">
                         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                            <span class="text-gray-600 font-medium">Synced Events (<span class="text-xs">All Time</span>)</span>
-                            <span class="text-2xl font-bold text-blue-600">13,542</span>
+                            <span class="text-gray-600 font-medium">Intentions Logged (<span class="text-xs">30 Days</span>)</span>
+                            <span id="user-intentions-logged" class="text-2xl font-bold text-blue-600">...</span>
                         </div>
                         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                            <span class="text-gray-600 font-medium">Valuable Detours (<span class="text-xs">This Week</span>)</span>
-                            <span class="text-2xl font-bold text-green-500">4</span>
+                            <span class="text-gray-600 font-medium">Actual Activities</span>
+                            <span id="user-actual-activities" class="text-2xl font-bold text-green-500">...</span>
                         </div>
-                         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
-                            <span class="text-gray-600 font-medium">Logged Reflections</span>
-                            <span class="text-2xl font-bold text-purple-500">12</span>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Verification Dashboard -->
-                <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-red-400">
-                    <div class="flex justify-between items-center mb-4">
-                         <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2"><span>🛡️</span> Verification Dashboard</h3>
-                         <button id="btn-approve-audits" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1 px-3 rounded shadow hidden">Approve All</button>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Needs Review (Low Confidence)</h4>
-                        <div id="dashboard-unverified" class="space-y-2 max-h-40 overflow-y-auto">
-                            <div class="text-sm text-gray-400 italic">Scanning audits...</div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Recently Verified</h4>
-                        <div id="dashboard-verified" class="space-y-2 max-h-40 overflow-y-auto">
-                            <div class="text-sm text-gray-400 italic">Scanning history...</div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center mt-4">
+                            <span class="text-gray-600 font-medium">Matched Intentions</span>
+                            <span id="user-matched-intentions" class="text-2xl font-bold text-purple-600">...</span>
                         </div>
                     </div>
                 </section>
@@ -136,6 +132,34 @@
     </main>
 
     <script src="./js/auth.js"></script>
-    <script type="module" src="./js/hub.js"></script>
+    <script type="module" src="./js/user_hub.js"></script>
+    <script>
+        // Apply Role-Based Theming (Fiona Protocol)
+        document.addEventListener('DOMContentLoaded', () => {
+            const role = Auth.getRole();
+            const accountType = Auth.getAccountType();
+
+            // Adjust welcome message
+            const welcomeHeader = document.querySelector('h2.text-transparent');
+            if (welcomeHeader) {
+                welcomeHeader.textContent = accountType === 'guild' ? 'Welcome Back, Admin' : 'Welcome Back, Hero';
+
+                if (accountType === 'guild') {
+                    // Glassmorphic Guild styling (Subtle)
+                    welcomeHeader.className = "text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-gray-500 to-gray-700 mb-2";
+                    document.body.classList.add('bg-gray-200');
+                    // Add "Managed by Nexus-Guild" badge
+                    const badge = document.createElement('span');
+                    badge.className = "ml-4 text-xs bg-gray-700 text-white py-1 px-3 rounded-full shadow align-middle";
+                    badge.textContent = "Managed by Nexus-Guild";
+                    welcomeHeader.parentElement.appendChild(badge);
+                } else {
+                    // Vibrant Hero styling
+                    welcomeHeader.className = "text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 mb-2";
+                }
+            }
+        });
+    </script>
 </body>
+
 </html>

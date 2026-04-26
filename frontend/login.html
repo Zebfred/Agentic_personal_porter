@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Agentic Personal Porter</title>
     <link href="./css/style.css" rel="stylesheet">
+    <script src="https://accounts.google.com/gsi/client"></script>
     <style>
         .glass-panel {
             background: rgba(255, 255, 255, 0.7);
@@ -39,60 +40,91 @@
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 </div>
                 <h1 class="text-3xl font-black text-gray-800 tracking-tight">Agentic Porter</h1>
-                <p class="text-gray-500 mt-2 font-medium">Enter your master key to access the graph.</p>
+                <p class="text-gray-500 mt-2 font-medium">Authenticate to access the graph.</p>
             </div>
 
-            <form id="login-form" class="space-y-6">
-                <div id="error-message" class="hidden transform transition-all bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded text-sm font-medium">
-                    Invalid credentials or server offline.
-                </div>
-                
-                <div>
-                    <label for="password" class="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wide">Master Key</label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                            </svg>
-                        </div>
-                        <input type="password" id="password" name="password" required 
-                            class="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-4 focus:ring-purple-500/20 focus:border-purple-500 transition-all bg-white/50 shadow-inner font-mono text-gray-800"
-                            placeholder="••••••••••••••">
-                    </div>
-                </div>
-
-                <button type="submit" id="login-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-md text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-purple-500/30 transform transition-all hover:-translate-y-0.5 mt-4">
-                    Authenticate
-                </button>
-            </form>
+            <div id="error-message" class="hidden transform transition-all bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded text-sm font-medium mb-6">
+                Authentication failed or server offline.
+            </div>
             
-            <p class="text-center text-xs text-gray-400 mt-8 font-medium">Session secured by Porter Auth Engine</p>
+            <div class="flex flex-col items-center justify-center mt-6 min-h-[40px] gap-4">
+                <!-- We will programmatically inject the Google Sign-In button here
+                     once we fetch the GOOGLE_CLIENT_ID from the backend config. -->
+                <div id="google-btn-container"></div>
+            </div>
+            
+            <div class="mt-6">
+                <p class="text-center text-sm text-gray-500">
+                    Welcome to the home of your Agentic Personal Porter, Hero. Sign in to enter the Nexus. 
+                </p>
+            </div>
+
+            <p class="text-center text-xs text-gray-400 mt-8 font-medium">Session secured by Porter Auth Engine (Google OAuth)</p>
+            <p class="text-center text-xs text-gray-400 mt-2 font-bold tracking-wider uppercase">A Nexus DS/ML Consulting Deployment</p>
         </div>
     </div>
 
     <script src="./js/auth.js"></script>
     <script>
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('login-btn');
+        let oauthClient;
+
+        async function loadGoogleClientId() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.google_client_id && window.google) {
+                        oauthClient = google.accounts.oauth2.initCodeClient({
+                            client_id: data.google_client_id,
+                            scope: 'openid email profile https://www.googleapis.com/auth/calendar',
+                            ux_mode: 'popup',
+                            callback: handleGoogleAuthCode
+                        });
+                        
+                        // Render a custom button since initCodeClient doesn't provide renderButton
+                        const container = document.getElementById('google-btn-container');
+                        container.innerHTML = `
+                            <button onclick="oauthClient.requestCode()" class="flex items-center gap-3 bg-white border border-gray-300 rounded-lg px-6 py-3 shadow-sm hover:bg-gray-50 transition w-full justify-center text-gray-700 font-medium">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                                Sign in with Google
+                            </button>
+                        `;
+                    } else {
+                        console.error('Google Client ID not found in config');
+                    }
+                }
+            } catch (err) {
+                console.error('Could not load Google Client ID config dynamically.', err);
+            }
+        }
+        
+        loadGoogleClientId();
+
+        async function handleGoogleAuthCode(response) {
             const errorMsg = document.getElementById('error-message');
-            const password = document.getElementById('password').value;
-            
-            btn.innerHTML = '<div class="inline-block animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>';
-            btn.disabled = true;
             errorMsg.classList.add('hidden');
             
+            if (response.error) {
+                errorMsg.textContent = response.error;
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
             try {
-                const response = await fetch('/api/login', {
+                // Send the authorization code to the backend
+                const apiResponse = await fetch('/api/login/code', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
+                    body: JSON.stringify({ code: response.code })
                 });
                 
-                const data = await response.json();
+                const data = await apiResponse.json();
                 
-                if (response.ok && data.token) {
+                if (apiResponse.ok && data.token) {
                     Auth.setToken(data.token);
+                    sessionStorage.setItem('porter_role', data.role);
+                    sessionStorage.setItem('porter_account_type', data.account_type);
+                    
                     window.location.href = 'index.html';
                 } else {
                     throw new Error(data.error || 'Login failed');
@@ -100,10 +132,8 @@
             } catch (err) {
                 errorMsg.textContent = err.message || 'Connection error';
                 errorMsg.classList.remove('hidden');
-                btn.innerHTML = 'Authenticate';
-                btn.disabled = false;
             }
-        });
+        }
     </script>
 </body>
 </html>
