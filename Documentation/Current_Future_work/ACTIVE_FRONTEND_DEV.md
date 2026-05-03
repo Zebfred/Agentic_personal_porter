@@ -5,11 +5,11 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 ## Highest Priority: Frontend Hub Overhaul
 *Status: UI Scaffolding complete - Merged to main*
 
-- [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying specific calculated metrics: *Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours* (calculated dynamically week-to-week to visualize improvement/positive vibes).
+- [x] **The Porter Hub (`index.html`):** UI converted into a central dashboard displaying specific calculated metrics (*Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours*). *(Note: UI layout is complete; full backend aggregation via `/api/user/hub_metrics` is pending)*.
 - [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*.
 - [ ] **Adventure Calendar (NEW):** Build a flexible `Adventure-calendar` endpoint and UI component. This will serve as the base for monthly, "last week", and "next week" rolling views chronologically while keeping frontend payload sizes low.
 - [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
-- [ ] **Verification Dashboard (NEW):** Simple "Dashboard of Inferences" interfacing with the Audit Agent. Updates of First Porter present corrections; user explicitly clicks "Approve" or "Reject". Enables <20-second human friction rule.
+- [x] **Verification Dashboard (NEW):** Migrated the "Dashboard of Inferences" to the main user Hub (`index.html`). Interfaces with the Audit Agent allowing the user to explicitly click "Approve" for unverified audits. Enables <20-second human friction rule.
 - [ ] **Oracle Predictions (`Oracle_predictions.html`):** Create a placeholder UI for future predictive agent features. *(Pending backend and Agent development)*
 - [ ] **Weekly Goal Artifact Selector:** Build a simple UI module on the Hub allowing the user to explicitly define the "Priority Pillar" for the current week, setting the weights for backend agent logic.
 

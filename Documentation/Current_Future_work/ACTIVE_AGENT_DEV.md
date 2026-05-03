@@ -64,3 +64,7 @@ The Flow:
 SLM: Categorizes 90% of routine tasks (Sleep, Meals, Repeating meetings).
 
 Agentic Crew: Only gets triggered for the "Gaps" or complex "Delta" logic that the SLM flags as "Uncertain."
+
+## Verification Log
+- **[May 2026]** Verified model routing in `gtky_librarian.py` and `gtky_historian.py` (`llama-3.3-70b-versatile` & `gpt-5.4-mini`). Human verified successfully via `check_our_agent_models.sh`. Cleaned up `SovereignContextEngine` Neo4j pooling. Archived details in `Documentation/Completed_Tasks/ARCHIVE_Backend_Models_Connections_May2026.md`.
+- **[May 2026 - Silas Audit Remediation]** Resolved CRIT-01 (ghost `:HAS_ARTIFACTS` query → `:DIRECTED_BY`), CRIT-02 (Hero node key standardized to `{hero: $username}`), HIGH-01 (extracted `context_loader.py`), HIGH-02 (unified param names to `username`), HIGH-03 (removed stale constructor params), HIGH-04 (default `"Jimmy"` → `"Hero"`), MED-01 (DRY refactor via `GTKYBaseClassifier`). Renamed `crew_manager_mach3.py` → `crew_manager.py`. Auth JWT now includes `username` from MongoDB. Human verified. **Remaining**: CRIT-03 (schema exports), MED-03/04/05 (file hygiene), username threading not yet wired in `journal_routes.py`, `chat_routes.py`, `admin_routes.py`, `gtky_librarian.py` ingest methods, `audit_inspector.py`. Full handoff details in conversation `b9a67a2c-8033-422d-9e7e-5b4a673f0d8c`.

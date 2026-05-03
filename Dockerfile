@@ -40,17 +40,20 @@ COPY frontend/ ./frontend/
 # Create data directory structure for CrewAI artifacts and logs
 RUN mkdir -p /app/data/reflections
 
+# catch ABI mismatch 
+RUN python -c "import tensorflow; import onnxruntime" 
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
 # Expose the Flask Port
-EXPOSE 5090
+EXPOSE 6030
 
 # Health check to ensure the server is responsive
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5090/ || exit 1
+    CMD curl -f http://localhost:6030/ || exit 1
 
 # Start the application using Gunicorn (WSGI)
-CMD ["gunicorn", "--bind", "0.0.0.0:5090", "--workers", "1", "--threads", "4", "--timeout", "300", "src.app:app"]
+CMD exec gunicorn --bind 0.0.0.0:${PORT:-6030} --workers 1 --threads 4 --timeout 300 src.app:app
