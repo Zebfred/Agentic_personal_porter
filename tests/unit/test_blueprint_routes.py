@@ -196,6 +196,7 @@ class TestLogin:
             "picture": "https://example.com/pic.jpg",
             "given_name": "Test"
         }
+        mock_storage.return_value.get_or_create_user.return_value = {"username": "testuser"}
         
         # We need to set a dummy GOOGLE_CLIENT_ID in the environment for the test to pass
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
@@ -221,6 +222,7 @@ class TestLogin:
             "picture": "https://example.com/pic.jpg",
             "given_name": "Admin"
         }
+        mock_storage.return_value.get_or_create_user.return_value = {"username": "adminuser"}
         
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
         os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-ds-ml-consulting.com"
