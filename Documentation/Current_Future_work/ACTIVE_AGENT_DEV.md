@@ -14,6 +14,8 @@ This document specifically scopes the requirements, prompts, and networking logi
 - [ ] Draft system prompt for the First-Serving Porter.
 - [ ] Connect the agent to the Neo4j reader endpoint so it can pull down the user's active graph data.
 - [ ] Define the inter-agent communication payload structure (how the Porter sends task requests to the classifier agent).
+- [ ] **[URGENT] Update Agents for Formatted Events Pipeline:** The `sync_calendar_to_graph` orchestrator is currently bypassing GTKY agents via a "dry-run" placeholder because the agents are failing to return correctly structured payloads. Agents (Historian/Librarian) must be updated to output the precise schema required to write to `formatted_calendar_events`.
+- [ ] **[URGENT] Multi-Tenant Username Context:** Update all agent prompts and internal tracking to address and log data using the user's `username` instead of hardcoded terms like "Hero" or relying solely on their email address.
 
 ## The Oracle Predictions Agent (Future Feature)
 *Status: Placeholder architecture.*

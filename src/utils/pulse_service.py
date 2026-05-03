@@ -97,7 +97,14 @@ class PulseService:
             except Exception as hm_err:
                 agent_health = {"error": f"Failed to fetch agent health: {hm_err}"}
             
+            # Calculate Sync Integrity (Simple Boolean for the Dashboard)
+            cal_status = cal_sync.get("status", "unknown").lower() if cal_sync else "unknown"
+            vec_status = vec_sync.get("status", "unknown").lower() if vec_sync else "unknown"
+            sync_integrity = "FAIL" if ("error" in cal_status or "failed" in cal_status or 
+                                        "error" in vec_status or "failed" in vec_status) else "OK"
+            
             pulse_data = {
+                "sync_integrity": sync_integrity,
                 "calendar_sync": cal_sync,
                 "vector_db_sync": vec_sync,
                 "graph_db": {

@@ -15,7 +15,7 @@ else
     exit 1
 fi
 
-conda activate pp_env
+conda activate agentic_porter
 
 # Check if gunicorn is available in the environment
 if ! command -v gunicorn &> /dev/null; then

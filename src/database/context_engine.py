@@ -17,37 +17,37 @@ class SovereignContextEngine:
     The 'Bridge' between the Neo4j Identity Graph and the CrewAI Agents.
     Extracts high-fidelity context snapshots to ground the LLM.
     """
-    def __init__(self, NEO4J_URI=None, NEO4J_USER=None, NEO4J_PASS=None):
+    def __init__(self):
         self.driver = get_driver()
 
     def close(self):
         """No-op as connection is managed by singleton."""
         pass
 
-    def get_hero_snapshot(self, user_name="Jimmy"):
+    def get_hero_snapshot(self, username="Hero"):
         """
         Fetches the active 'Hero' context to feed into the Agent System Prompt.
         """
         try:
             with self.driver.session() as session:
-                return session.execute_read(self._fetch_context, user_name)
+                return session.execute_read(self._fetch_context, username)
         except Exception as e:
             return {"error": str(e), "principles": [], "intentions": []}
 
     @staticmethod
-    def _fetch_context(tx, name):
-        # Using the correct schema defined in SovereignGraphInjector:
-        # (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)
+    def _fetch_context(tx, username):
+        # Using the canonical schema defined in inject_hero_foundation.py:
+        # (h:Hero)-[:DIRECTED_BY]->(art:Artifacts)
         query = """
-        MATCH (h:Hero)-[:HAS_ARTIFACTS]->(art:Artifacts)
-        WHERE h.name CONTAINS $name
+        MATCH (h:Hero)-[:DIRECTED_BY]->(art:Artifacts)
+        WHERE h.hero CONTAINS $username
         OPTIONAL MATCH (art)-[:GUIDED_BY]->(p:Principle)
         OPTIONAL MATCH (art)-[:HAS_INTENT]->(i:Intent)
         RETURN 
             collect(distinct p.text) as principles,
             collect(distinct i.category)[..5] as active_intentions
         """
-        result = tx.run(query, name=name)
+        result = tx.run(query, username=username)
         record = result.single()
         if not record:
             return {"principles": [], "intentions": []}
@@ -95,57 +95,3 @@ class SovereignContextEngine:
             return "Forward Progress"
         
         return "High-Friction Deviation"
-
-def run_15min_sanity_test():
-    """
-    Paul5 Quick Test: Verifies logic without needing live GCal/Neo4j if offline.
-    """
-    print("--- Starting Paul5 Sovereign Sanity Test ---")
-    
-    # Mock context mimicking hero_ambition.json
-    mock_context = {
-        "Principles": [
-        "Aim for the highest possible good that is pleasing in the eyes of the lord.", 
-        "--“Remembering that doing what you are capable of is respectable.”",
-        "Pursue the Betterment of my craft, being open to the many forms of opportunity that can take.",
-        "Teach and help others. Seek out being one that others can rely on.",
-        "Build useful things. Do your best to have fun with it! And as often as possible, too!",
-        "Make decisions to grant you more peace instead of what causes you more headaches"
-        ],
-        "Intent": [        
-            {"Career Goal": "Grand RL Practioner of Model and Model-free based Modeling.Principal RL System architect.High Advance Profiency of modern LLM systems and implimentation expert. Competent Principle customer engineer & system admin.Advance practioner of Computer vision Modeling.Would like to be able to diagram tech systems as an Architect and project manager, so formal system design tools and advance competency of more non-techical diagramming and planning tools such as figma.Competent with Traditional and New Database structures and implimentation techinuques. Competent in Web navigation - html, css, js , php. To the degree that I can have useful conversations with other professionals or in support of other goals.Understanding of programming languages and the hardware that supports these systems and goals stated above."}, 
-            {"Health Goal" : "Maintain eating habits that are good for mind and body in the long term. Getting adequate amount of sleep. Workout at least twice a week. Do stuff good for cardio"},
-            {"Loved ones" : [
-                {"Romantic Relationship Goal" : "Be emotionally available for my girlfriend. Do the necessary actions to bring us closer - create a greater depth in our relationship and bring us together in person."},
-                {"Family Goal" : "Be reasonably available for my family."},
-                {"Pet's Goal" : "Be a good dog dad. Take care of my dogs and give them a good life. Take them on fun adventures and give them lots of love and attention."}
-            ]},
-            {"Leisure Goal" : "Engage in social hobby activities.Engage in social hobby activities such as board games and caving opportunities. Enjoy quite hikes with dogs offleash"},
-            {"Interest Goal" : "Explore interests of the world and reality that is not directly related to your career. Learning Hindi."},
-            {"Spiritual Goal" : "Continue to read spiritual literature, meditate, pray, and leave space open to look to a higher power more than one’s own limited self-ego."},
-            {"Social Goal":["To be a good person, and to be a good son, brother, friend, and partner. To be someone that others can rely on and trust. To be someone that is kind and helpful to others. To be someone that is fun to be around. To be someone that is always trying to improve themselves and their craft. To be someone that is always trying to do the right thing, even when it's hard.","Be available to friends, family, and people in my fellowship. Be polite and kind to strangers and be amiable when possible."]
-            },
-            {"Mundane Goal" : "Do the necessary things to maintain a comfortable and functional living space. Do the necessary things to maintain a comfortable and functional car. Do the necessary things to maintain a comfortable and functional wardrobe."},
-            {"Detriments to Avoid" : "Avoid doing things that cause unnecessary stress and headaches. Avoid doing things that cause unnecessary conflict with others. Avoid doing things that cause unnecessary harm."} 
-        ]
-    }
-    
-    # Mock events
-    mock_actual = [
-        {"title": "Deep RL Study", "category": "Career Goal", "start": "2026-03-06T20:00", "duration_minutes": 60},
-        {"title": "Scrolling Doom", "category": "Unknown", "start": "2026-03-06T21:00", "duration_minutes": 45}
-    ]
-    
-    engine = SovereignContextEngine(NeoConfig.NEO4J_URI, NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
-    
-    print("Testing Delta Logic...")
-    report = engine.analyze_day_delta([], mock_actual, mock_context)
-    
-    for entry in report:
-        print(f"Result: [{entry['event']}] -> {entry['status']}")
-    
-    print("--- Test Complete ---")
-
-if __name__ == "__main__":
-    # If running directly, run the test
-    run_15min_sanity_test()

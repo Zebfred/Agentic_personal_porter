@@ -5,7 +5,7 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 ## Highest Priority: Frontend Hub Overhaul
 *Status: UI Scaffolding complete - Merged to main*
 
-- [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying Identity Graph metrics, a "Sync Calendar" action, and an interactive Agent chat interface that queries missing hero artifacts. *(Pending backend and Agent development)*
+- [ ] **The Porter Hub (`index.html`):** Convert the index into a central dashboard displaying specific calculated metrics: *Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours* (calculated dynamically week-to-week to visualize improvement/positive vibes).
 - [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*.
 - [ ] **Adventure Calendar (NEW):** Build a flexible `Adventure-calendar` endpoint and UI component. This will serve as the base for monthly, "last week", and "next week" rolling views chronologically while keeping frontend payload sizes low.
 - [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
@@ -17,6 +17,7 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 *Status: Architecture conceptualized, UI completely missing.*
 
 - [x] **Artifact Builder UI:** Standardized API paths to relative URLs, resolving CORS issues. Artifacts securely viewable and updatable via the new interface.
+- [ ] **Onboarding & Hero Artifact Population (NEW):** Address instructions for filling out a user's Hero object. Create a proper onboarding flow for new users, including guidance for agents on how to interactively help users fill out these artifacts properly (Origin Story, Ambitions, Detriments).
 - [ ] **Proactive Refinements (Future Work):** Implement a mechanism to proactively prompt the user during their daily recon to fill out missing artifact sections or provide minor refinements over time.
 - [ ] **Future Artifact Builder (`hero_future.json`):** Create UI input variants specifically designed to capture the user's ambitions over distinct periods of time (short, mid, and long term).
 
@@ -53,6 +54,6 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 ## Active Bugs & Display Issues
 *Status: Issues formally documented, awaiting resolution.*
 
-- [ ] **Artifacts Display (`/artifacts.html`):** The *Ambition & Intent*, *Hero Detriments*, and *Pillars Mapping* sections all have issues correctly displaying their data.
+- [ ] **Artifacts Display (`/artifacts.html`):** The *Ambition & Intent*, *Hero Detriments*, and *Pillars Mapping* sections requires additional rework regarding the content structure and display of their object data to ensure accurate rendering and usability.
 - [ ] **Journal Review Data Load (`/journal_review`):** Has issues loading data due to timeseries arrays being empty. 
 - [ ] **Graph Explorer UX (`/graph_explorer`):** The interface is cluttered and unreadable, requiring UX refactoring.

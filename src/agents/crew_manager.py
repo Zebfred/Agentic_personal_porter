@@ -40,32 +40,21 @@ llm_mirror = ChatGroq(
     callbacks=[breaker]
 )
 
-# 1. THE IDENTITY ANCHOR (Context Injection)
-def get_mach2_context():
-    engine = SovereignContextEngine(
-        NEO4J_URI=NeoConfig.NEO4J_URI,
-        NEO4J_USER=NeoConfig.NEO4J_USER,
-        NEO4J_PASS=NeoConfig.NEO4J_PASS
-    )
-    hero_name = os.environ.get("HERO_NAME", "Hero")
-    hero_context = engine.get_hero_snapshot(user_name=hero_name)
-    engine.close()
-    return hero_context
+from src.agents.context_loader import get_context
 
-
-def run_crew(journal_entry: str, log_data: dict = None):
+def run_crew(journal_entry: str, log_data: dict = None, username: str = "Hero"):
     """
-    Executes the Mach 2 Socratic Reflection Pipeline.
+    Executes the Sovereign Socratic Reflection Pipeline.
     Combines Frontend 'Intention/Actual' payload with Graph Context.
     """
     from src.database.mongo_storage import SovereignMongoStorage
     import logging
     logger = logging.getLogger(__name__)
-    logger.info("Initializing Mach 2 Sovereign Sync...")
+    logger.info("Initializing Agentic Porter Sovereign Sync...")
 
-    hero_context = get_mach2_context()
+    hero_context = get_context(username=username)
 
-    # 2. THE MACH 2 AGENTS
+    # 2. THE SOVEREIGN AGENTS
     goal_ingester = Agent(
         role='GTKY Librarian (The Curator of Truth)',
         goal='Identify "The Fog of War" in daily logs and log "Valuable Detours" to the User Inventory.',
@@ -91,7 +80,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
 
     task_recon = Task(
         description=(
-            f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {os.environ.get('HERO_NAME', 'Hero')}:\n"
+            f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {username}:\n"
             f"   '{journal_entry}'\n\n"
             f"2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n"
             "3. Identify EXACTLY which of the 9 Hero pillars this combination represents: (1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, 6. Community, 7. Leisure, 8. Spirit, 9. Duty).\n"
@@ -107,7 +96,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
         inventory_note = log_data.get('inventoryNote', 'Gained unforeseen experience.')
         task_curate = Task(
             description=(
-                f"{os.environ.get('HERO_NAME', 'Hero')} has declared the recent activity a 'Valuable Detour'.\n"
+                f"{username} has declared the recent activity a 'Valuable Detour'.\n"
                 f"His note: '{inventory_note}'\n"
                 f"Evaluate this new 'acquired skill' against his overall Origin Story."
             ),
@@ -128,7 +117,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
     health_manager = AgentHeartbeatManager()
     run_id = health_manager.start_agent_run("mach_3_crew", {"journal_entry": journal_entry})
     
-    print("--- Starting Mach 2 Daily Recon ---")
+    print("--- Starting Sovereign Daily Recon ---")
     try:
         result = crew.kickoff()
         health_manager.end_agent_run(run_id, status="success")
@@ -160,7 +149,7 @@ def run_crew(journal_entry: str, log_data: dict = None):
     try:
         reflection_data = {
             "day": current_date,
-            "user_id": os.environ.get("HERO_NAME", "Hero"),
+            "user_id": username,
             "reflection_text": result_text,
             "metadata": {
                 "journal_entry": journal_entry,

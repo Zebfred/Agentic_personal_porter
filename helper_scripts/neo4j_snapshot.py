@@ -69,7 +69,7 @@ class Neo4jSnapshotHandler:
                     })
             
             with open(filename, 'w') as f:
-                json.dump(snapshot, f, indent=2)
+                json.dump(snapshot, f, indent=2, default=str)
                 
             print(f"✅ Snapshot successful. Exported {len(snapshot['nodes'])} nodes and {len(snapshot['relationships'])} relationships.")
             return str(filename)

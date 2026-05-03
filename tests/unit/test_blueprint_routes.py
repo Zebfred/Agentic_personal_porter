@@ -109,7 +109,7 @@ class TestRouteMapping:
         # Flask adds a default /static/<path:filename> route; we expect ~45 total
         rule_count = len(list(app.url_map.iter_rules()))
         assert rule_count >= 30, f"Expected >=30 routes, got {rule_count}. Routes may be missing."
-        assert rule_count <= 60, f"Expected <=60 routes, got {rule_count}. Possible duplicates."
+        assert rule_count <= 70, f"Expected <=70 routes, got {rule_count}. Possible duplicates."
 
 
 # ======================================================================

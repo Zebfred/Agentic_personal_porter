@@ -13,7 +13,7 @@ class AgentHeartbeatManager:
         self.db = MongoConnectionManager.get_db()
         self.collection = self.db[MongoConfig.AGENT_HEALTH_COLLECTION]
         
-    def start_agent_run(self, agent_name: str, context: dict = None) -> str:
+    def start_agent_run(self, agent_name: str, context: dict = None, username: str = None) -> str:
         """
         Registers that an agent has started running.
         Returns a unique run_id to pass to end_agent_run.
@@ -29,7 +29,7 @@ class AgentHeartbeatManager:
             "context": context or {},
             "result_summary": None,
             "error_msg": None,
-            "user_id": os.environ.get("HERO_NAME", "Hero")
+            "username": username or "system"
         }
         
         self.collection.insert_one(payload)

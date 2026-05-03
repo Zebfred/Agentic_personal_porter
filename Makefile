@@ -1,7 +1,7 @@
 # --- Makefile for Agentic Personal Porter ---
 
 # Variables
-CONDA_ENV = pp_env
+CONDA_ENV = agentic_porter
 IMAGE_NAME = agentic-porter
 PORT = 5090
 PYTHON = python
@@ -31,7 +31,7 @@ dev: ## Start the backend in development mode (Flask server)
 
 run: build-css ## Start the backend in production mode (Gunicorn)
 	@echo "Starting production server on port $(PORT)..."
-	conda run -n $(CONDA_ENV) gunicorn --bind 0.0.0.0:$(PORT) --workers 1 --threads 4 src.app:app
+	conda run -n $(CONDA_ENV) gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
 	conda run -n $(CONDA_ENV) pytest tests/

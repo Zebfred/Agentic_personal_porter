@@ -127,10 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <!-- Actuals Form -->
                     <div class="space-y-4">
-                        <div>
-                            <label for="actual-title-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Actual Activity</label>
-                            <input type="text" id="actual-title-${chunkId}" value="${escapeHTML(chunkData.activityTitle)}" class="actual-title-input w-full border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="What actually happened?">
-                        </div>
+                        <!-- Actual Activity input removed per user request (redundant) -->
 
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
@@ -331,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Gather Data
             const intention = card.querySelector(`#intention-${chunkId}`).value;
-            const activityTitle = card.querySelector(`#actual-title-${chunkId}`).value;
             const feelingRadio = card.querySelector(`input[name="feeling-${chunkId}"]:checked`);
             const feeling = feelingRadio ? feelingRadio.value : '';
             const brainFog = card.querySelector(`#brain-fog-${chunkId}`).value;
@@ -340,6 +336,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const inventoryNote = card.querySelector(`#inventory-note-${chunkId}`).value;
             const detrimentalDetour = card.querySelector(`#detrimental-detour-${chunkId}`).checked;
             const detrimentNote = card.querySelector(`#detriment-note-${chunkId}`).value;
+
+            // Derive Actual Activity from checkboxes
+            let activityTitle = "No actual activity recorded.";
+            if (matchesIntent) {
+                activityTitle = intention;
+            } else if (valuableDetour) {
+                activityTitle = inventoryNote;
+            } else if (detrimentalDetour) {
+                activityTitle = detrimentNote;
+            }
 
             // Update Local State
             const chunkData = {

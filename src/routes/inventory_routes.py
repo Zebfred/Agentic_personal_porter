@@ -43,10 +43,18 @@ def get_inventory():
     Fetches the 'Valuable Detours' and skills acquired by the user from Neo4j.
     """
     try:
-        from src.database.neo4j_client import get_valuable_detours
+        from src.database.neo4j_client import get_all_detours
+        from src.database.mongo_storage import SovereignMongoStorage
         
         user_email = getattr(request, 'user_email', 'Hero')
-        detours = get_valuable_detours(user_name=user_email)
+        if user_email != 'Hero':
+            mongo_storage = SovereignMongoStorage()
+            user_doc = mongo_storage.get_user_by_email(user_email)
+            username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        else:
+            username = 'Hero'
+            
+        detours = get_all_detours(username=username)
 
         response_data = {
             "valuable_detours": detours,
@@ -70,7 +78,11 @@ def scan_artifacts():
     """
     try:
         from src.agents.gtky_identity_architect import GTKYIdentityArchitect
-        architect = GTKYIdentityArchitect()
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(request.user_email)
+        username = user_doc.get("username", "system") if user_doc else "system"
+        
+        architect = GTKYIdentityArchitect(username=username)
         scan_results = architect.scan_for_missing_origin()
         return jsonify({"status": "success", "results": scan_results})
     except Exception as e:
@@ -99,15 +111,34 @@ def manage_artifact(artifact_name):
     if request.method == 'GET':
         try:
             mongo_storage = SovereignMongoStorage()
-            data = mongo_storage.get_hero_artifact(artifact_name)
+            user_doc = mongo_storage.get_user_by_email(request.user_email)
+            username = user_doc.get("username", "unknown") if user_doc else "unknown"
 
-            # If not in MongoDB yet, seed it from the filesystem
+            data = mongo_storage.get_hero_artifact(artifact_name, username)
+
+            # If not in MongoDB yet, return an empty template based on the file name
             if not data:
-                if not artifact_path.exists():
-                    return jsonify({"error": "Artifact not found"}), 404
-                with open(artifact_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                mongo_storage.save_hero_artifact(artifact_name, data)
+                if 'hero_origin' in artifact_name:
+                    data = {
+                        "origin_story": {
+                            "epochs": [
+                                {
+                                    "name": "Update your hero origin! Proper Instructions coming soon.",
+                                    "timeframe": "TBD",
+                                    "experiences": [],
+                                    "experience candidate": []
+                                }
+                            ]
+                        }
+                    }
+                else:
+                    data = {
+                        "message": f"Update your {artifact_name.replace('.json', '')}! Proper Instructions coming soon.",
+                        "data": {}
+                    }
+                
+                # Save the new template for the user so it persists
+                mongo_storage.save_hero_artifact(artifact_name, data, username)
 
             return jsonify(data)
         except Exception as e:
@@ -120,16 +151,14 @@ def manage_artifact(artifact_name):
             if not data:
                 return jsonify({"error": "No JSON data provided"}), 400
 
-            # Keep flat-file synchronized as a fallback
-            artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(artifact_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
+            mongo_storage = SovereignMongoStorage()
+            user_doc = mongo_storage.get_user_by_email(request.user_email)
+            username = user_doc.get("username", "unknown") if user_doc else "unknown"
 
             # Update Mongo as Source of Truth
-            mongo_storage = SovereignMongoStorage()
-            mongo_storage.save_hero_artifact(artifact_name, data)
+            mongo_storage.save_hero_artifact(artifact_name, data, username)
 
-            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB"})
+            return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB for user {username}"})
         except Exception as e:
             logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500

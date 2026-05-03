@@ -75,9 +75,11 @@ def login():
         }
 
         # Provision/update user in Mongo to get latest status
+        username = "Hero"
         try:
             storage = SovereignMongoStorage()
             user_doc = storage.get_or_create_user(email, profile_data)
+            username = user_doc.get("username", "Hero")
         except Exception as db_err:
             logger.error(f"Failed to sync user {email} to MongoDB: {db_err}")
 
@@ -92,6 +94,7 @@ def login():
                 "role": role, 
                 "account_type": account_type,
                 "email": email,
+                "username": username,
                 "exp": expiration,
                 "profile": profile_data
             },
@@ -170,9 +173,11 @@ def login_code():
         }
 
         # Provision/update user in Mongo
+        username = "Hero"
         try:
             storage = SovereignMongoStorage()
             user_doc = storage.get_or_create_user(email, profile_data)
+            username = user_doc.get("username", "Hero")
             # Save refresh token if available
             if credentials.refresh_token:
                 storage.update_user_sync_preferences(email, True, credentials.refresh_token)
@@ -189,6 +194,7 @@ def login_code():
                 "role": role, 
                 "account_type": account_type,
                 "email": email,
+                "username": username,
                 "exp": expiration,
                 "profile": profile_data
             },

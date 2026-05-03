@@ -14,7 +14,8 @@ class GTKYIdentityArchitect:
     The Identity Architect handles reading, scanning, and improving the
     fundamental user JSON artifacts: Origin Story, Ambitions, and Detriments.
     """
-    def __init__(self):
+    def __init__(self, username: str = "system"):
+        self.username = username
         self.artifacts_dir = root / "data" / "hero_artifacts"
         self.origin_file = self.artifacts_dir / "hero_origin.json"
         self.ambition_file = self.artifacts_dir / "hero_ambition.json"
@@ -26,7 +27,7 @@ class GTKYIdentityArchitect:
         # 1. Mongo is Source of Truth
         try:
             mongo = SovereignMongoStorage()
-            data = mongo.get_hero_artifact(filename)
+            data = mongo.get_hero_artifact(filename, self.username)
             if data:
                 return data
         except Exception as e:
@@ -40,7 +41,7 @@ class GTKYIdentityArchitect:
                 data = json.load(f)
                 # Seed mongo if missing
                 try:
-                    SovereignMongoStorage().save_hero_artifact(filename, data)
+                    SovereignMongoStorage().save_hero_artifact(filename, data, self.username)
                 except: pass
                 return data
         except Exception as e:
@@ -77,7 +78,7 @@ class GTKYIdentityArchitect:
         
         try:
              mongo = SovereignMongoStorage()
-             mongo.save_hero_artifact(active_name, data)
+             mongo.save_hero_artifact(active_name, data, self.username)
              return f"Successfully routed the update to {active_name} inside MongoDB."
         except Exception as e:
              return f"Failed to persist to MongoDB: {e}"

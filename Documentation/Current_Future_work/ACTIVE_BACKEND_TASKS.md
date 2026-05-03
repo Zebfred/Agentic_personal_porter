@@ -12,7 +12,9 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 *Status: Multi-Tenant Backend Partitioning Complete. Agent Pipelines are next.*
 
 - [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub. Ensure it respects `request.user_email`.
-- [ ] **Graph Metric Endpoints:** Build endpoints that explicitly query Neo4j for high-level progress metrics to populate the User Hub dashboard, partitioned by `user_email`.
+- [ ] **Weekly Planning Endpoint (`/api/planning`):** Build an endpoint connecting to a new "Planning Agent" (or the First-Serving Porter) designed specifically to help the user log a full week's worth of general intentions in one shot.
+- [ ] **Events Classification Queue:** Create a dedicated MongoDB collection (`events_to_be_classified`) to hold raw GCal events that need agent or user triage before entering the Identity Graph.
+- [ ] **Hub Progress Metrics API:** Build `/api/user/hub_metrics` that explicitly calculates: *Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours, and week-over-week Detrimental Detour improvements*.
 - [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.(started)
 - [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI. Ensure it returns `saga_status`.
 
@@ -38,6 +40,8 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [x] **Format & Clean Pipeline:** Pre-process the raw GCal strings into structured, AI-ready JSON strictly inside the Mongo landing zone before it ever touches the primary identity graph. *(Verified: Formatting pipeline processes correctly via `mongo_storage`.)*
 - [x] **Neo4j Merge Validation:** Ensure the `MERGE` logic pushing from Mongo to Neo4j is rigorously idempotent. Test it against massive historical JSON samples to guarantee repeated syncs never degrade the graph or create duplicate "ghost" relationships. *(Verified: Idempotent using `gcal_id` constraints.)*
 - [ ] **Native Mongo Time-Series Collection (NEW):** Create schema mapping for a native MongoDB time-series collection to handle sliding-window calendar ingestion. Must support batch pulls of current events and rolling fetches of historical events.
+- [ ] **Batch Queueing for Historical Calendar Sync:** Conduct "Batch Queueing" for historical Google Calendar data. To safely respect Google Calendar API rate limits and avoid overwhelming LLMs, the backfill ingestion must process events in strictly **1-month chronological chunks** per execution.
+- [ ] **Formatted Events Collection & Routing:** Fix the `formatted_calendar_events` collection logic (which is currently empty). This formatting pipeline is critical for pre-processing the raw GCal strings into structured, AI-ready JSON before it can be accurately routed and injected into the Neo4j Identity Graph.
 - [ ] **First-Serving Ingestion Queuing:** Implement rate-limiting or Redis/Celery queueing to safely buffer high-frequency event ingestion from the `first_serving_porter`.
 
 ## Observability & State Tracing (NEW)

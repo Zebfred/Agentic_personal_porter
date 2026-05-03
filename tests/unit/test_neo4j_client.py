@@ -6,7 +6,7 @@ def test_neo4j_module_imports():
     try:
         import src.database.neo4j_client as client
         assert hasattr(client, 'get_driver')
-        assert hasattr(client, 'get_valuable_detours')
+        assert hasattr(client, 'get_all_detours')
         assert hasattr(client, 'log_to_neo4j')
     except ImportError as e:
         pytest.fail(f"Could not import neo4j_client modules: {str(e)}")

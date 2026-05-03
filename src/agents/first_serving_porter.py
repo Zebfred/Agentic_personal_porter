@@ -31,24 +31,7 @@ raw_api_key = os.getenv("GROQ_API_KEY")
 env_path = get_auth_file('.env')
 load_dotenv(dotenv_path=env_path)
 
-# 1. Provide Context
-def get_mach2_context():
-    engine = SovereignContextEngine(
-        NEO4J_URI=NeoConfig.NEO4J_URI,
-        NEO4J_USER=NeoConfig.NEO4J_USER,
-        NEO4J_PASS=NeoConfig.NEO4J_PASS
-    )
-    hero_name = os.environ.get("HERO_NAME", "Hero")
-    hero_context = engine.get_hero_snapshot(user_name=hero_name)
-    engine.close()
-    
-    # Also load the JSON Artifacts
-    from src.agents.gtky_identity_architect import GTKYIdentityArchitect
-    architect = GTKYIdentityArchitect()
-    hero_context['ambition'] = architect.get_ambition()
-    hero_context['detriments'] = architect.get_detriments()
-    
-    return hero_context
+from src.agents.context_loader import get_context
 
 # 2. Defines Tools
 @tool
@@ -204,19 +187,19 @@ Core Detriments: {detriments_context}
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker, monitor])
     return agent_executor
 
-def run_first_serving_porter(user_input: str) -> dict:
+def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
     health_manager = AgentHeartbeatManager()
     run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input})
     
-    context = get_mach2_context()
+    context = get_context(username=username)
     executor = get_porter_agent_executor()
     
     print("\n--- Invoking First-Serving Porter ---\n")
     try:
         result = executor.invoke({
             "input": user_input,
-            "hero_name": os.environ.get("HERO_NAME", "Hero"),
+            "hero_name": username,
             "intentions": context.get("intentions", "Unknown"),
             "principles": context.get("principles", "Unknown"),
             "ambition_context": str(context.get("ambition", "Unknown")),

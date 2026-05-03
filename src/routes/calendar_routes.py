@@ -159,20 +159,25 @@ def get_adventure_log():
     try:
         from src.database.mongo_storage import SovereignMongoStorage
         mongo = SovereignMongoStorage()
-        user_id = getattr(request, 'user_email', 'Hero')
+        
+        user_email = getattr(request, 'user_email', 'Hero')
+        username = 'Hero'
+        if user_email != 'Hero':
+            user_doc = mongo.get_user_by_email(user_email)
+            username = user_doc.get("username", "Hero") if user_doc else "Hero"
         
         # In a fully robust query we'd filter by date > (now - 30 days).
-        # For now, we do a basic count using the user_id scope.
+        # For now, we do a basic count using the username scope.
         
-        actuals_count = mongo.db["unified_events"].count_documents({"user_id": user_id})
+        actuals_count = mongo.db["unified_events"].count_documents({"user_id": username})
         matched_count = mongo.db["event_actuals"].count_documents({
-            "user_id": user_id, 
+            "user_id": username, 
             "actual.matches_intent": True
         })
         
         # Assuming intention logs might be stored similarly, or just using actuals_count as a proxy 
         # until full explicit intention collection is built out. Let's return the real matched actuals.
-        intentions_count = mongo.db["unified_events"].count_documents({"user_id": user_id, "actual.status": "Verified Log"})
+        intentions_count = mongo.db["unified_events"].count_documents({"user_id": username, "actual.status": "Verified Log"})
 
         analysis = {
             "intentions": intentions_count,

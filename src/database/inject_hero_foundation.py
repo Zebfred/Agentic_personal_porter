@@ -6,7 +6,6 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
-from src.config import NeoConfig
 from src.database.mongo_storage import SovereignMongoStorage
 from src.database.neo4j_client.connection import get_driver
 
@@ -14,11 +13,57 @@ from src.database.neo4j_client.connection import get_driver
 driver = get_driver()
 mongo_storage = SovereignMongoStorage()
 
-
+def get_or_create_time_chunk(driver, target_datetime, username="system"):
+    """
+    Dynamic generation of the Week -> Day -> TimeChunk hierarchy under TimeHub.
+    Enforces UTC to ensure consistent chunk generation.
+    """
+    from datetime import timezone
+    
+    # Enforce UTC
+    if target_datetime.tzinfo is None:
+        dt = target_datetime.replace(tzinfo=timezone.utc)
+    else:
+        dt = target_datetime.astimezone(timezone.utc)
+        
+    chunk_index = (dt.hour // 4) + 1
+    
+    year, week, _ = dt.isocalendar()
+    day_of_week = dt.weekday() + 1
+    
+    week_id = f"{year}-W{week:02d}"
+    day_id = f"{week_id}-D{day_of_week}"
+    chunk_id = f"{day_id}-C{chunk_index}"
+    
+    query = """
+    MATCH (h:Hero {hero: $username})-[:ADHERES_TO]->(t_hub:TimeHub)
+    
+    // Week
+    MERGE (t_hub)-[:HAS_WEEK]->(w:Week {id: $week_id, year: $year, week: $week})
+    
+    // Day
+    MERGE (w)-[:HAS_DAY]->(d:Day {id: $day_id, day_of_week: $day_of_week})
+    
+    // TimeChunk (The specific 4-hour block)
+    MERGE (d)-[:HAS_TIME_CHUNK]->(tc:TimeChunk {id: $chunk_id, chunk_index: $chunk_index})
+    
+    RETURN tc.id AS time_chunk_id
+    """
+    
+    try:
+        with driver.session() as session:
+            result = session.run(query, username=username, week_id=week_id, year=year, week=week, 
+                                 day_id=day_id, day_of_week=day_of_week, 
+                                 chunk_id=chunk_id, chunk_index=chunk_index)
+            record = result.single()
+            return record["time_chunk_id"] if record else None
+    except Exception as e:
+        print(f"Time Structure Generation Error: {e}")
+        return None
 
 def flatten_intents(raw_intents):
     """
-    Flattens the nested Intent structures from hero_ambition.json 
+    Flattens the nested Intent structures from hero_ambition 
     into a clean list of dictionaries for Cypher.
     """
     flattened = []
@@ -104,14 +149,14 @@ def process_epochs(raw_epochs):
 
 import os
 
-def inject_hero_data(hero_name=None):
-    if hero_name is None:
-        hero_name = os.environ.get("HERO_NAME", "Hero")
+def inject_hero_data(username=None):
+    if username is None:
+        username = os.environ.get("HERO_NAME", "Hero")
     """Reads the JSON and runs the Cypher queries to build the Hero foundation."""
     
-    ambition_data = mongo_storage.get_hero_artifact('hero_ambition.json')
+    ambition_data = mongo_storage.get_hero_artifact('hero_ambition', username)
     if not ambition_data:
-        print("Error: hero_ambition.json not found in MongoDB.")
+        print("Error: hero_ambition not found in MongoDB.")
         return
     principles = ambition_data.get("Principles", [])
     raw_intents = ambition_data.get("Intent", [])
@@ -120,9 +165,9 @@ def inject_hero_data(hero_name=None):
     #flat_intents = flatten_intents(ambition_data.get("Intent", []))
 
     
-    origin_data = mongo_storage.get_hero_artifact('hero_origin.json')
+    origin_data = mongo_storage.get_hero_artifact('hero_origin', username)
     if not origin_data:
-        print("Error: hero_origin.json not found in MongoDB.")
+        print("Error: hero_origin not found in MongoDB.")
         return
     raw_epochs = origin_data.get("origin_story", {}).get("epochs", [])
     epochs_data, experiences_data = process_epochs(raw_epochs)
@@ -130,16 +175,45 @@ def inject_hero_data(hero_name=None):
 
     # 3. Cypher Queries
     merge_hero_and_principles_query = """
-    MERGE (h:Hero {name: $hero_name})
-    MERGE (h)-[:HAS_ARTIFACTS]->(art:Artifacts {name: "Hero Artifacts"})
-    WITH art
+    MERGE (h:Hero {hero: $username})
+    
+    // Establish Primary Branches
+    MERGE (h)-[:DIRECTED_BY]->(art:Artifacts {name: "Hero Artifacts"})
+    MERGE (h)-[:ADHERES_TO]->(p_hub:PillarsHub {name: "Life Pillars"})
+    MERGE (h)-[:ADHERES_TO]->(t_hub:TimeHub {name: "Time Structure"})
+    
+    WITH h, art, p_hub
     UNWIND $principles AS principle_text
     MERGE (p:Principle {text: principle_text})
     MERGE (art)-[:GUIDED_BY]->(p)
     """
 
+    # Pillars generation
+    category_map_data = mongo_storage.get_hero_artifact('category_mapping', username)
+    pillars_list = []
+    if category_map_data and "intent_to_actual_mapping" in category_map_data:
+        unique_pillars = set(category_map_data["intent_to_actual_mapping"].keys()).union(
+            set(category_map_data["intent_to_actual_mapping"].values())
+        )
+        pillars_list = list(unique_pillars)
+    else:
+        # Fallback to constants
+        from src.constants import ACTUAL_CATEGORY_MAPPING
+        if "intent_to_actual_mapping" in ACTUAL_CATEGORY_MAPPING:
+            unique_pillars = set(ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].keys()).union(
+                set(ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].values())
+            )
+            pillars_list = list(unique_pillars)
+
+    merge_pillars_query = """
+    MATCH (h:Hero {hero: $username})-[:ADHERES_TO]->(p_hub:PillarsHub)
+    UNWIND $pillars AS pillar_name
+    MERGE (p:Pillar {name: pillar_name})
+    MERGE (p_hub)-[:HAS_PILLAR]->(p)
+    """
+
     merge_intents_query = """
-    MATCH (h:Hero {name: $hero_name})-[:HAS_ARTIFACTS]->(art:Artifacts)
+    MATCH (h:Hero {hero: $username})-[:DIRECTED_BY]->(art:Artifacts)
     UNWIND $intents AS intent
     MERGE (i:Intent {category: intent.category})
     SET i.description = intent.description,
@@ -159,10 +233,10 @@ def inject_hero_data(hero_name=None):
 
     # Timeline & Memories
     merge_epochs_query = """
-    MATCH (h:Hero {name: $hero_name})-[:HAS_ARTIFACTS]->(art:Artifacts)
+    MATCH (h:Hero {hero: $username})-[:DIRECTED_BY]->(art:Artifacts)
 
     // Create the Origin node and link it to Artifacts
-    MERGE (o:Origin {hero_name: $hero_name, name: "Hero_Origins"})
+    MERGE (o:Origin {hero_name: $username, name: "Hero_Origins"})
     MERGE (art)-[:HAS_ORIGIN]->(o)
     WITH o
 
@@ -183,13 +257,17 @@ def inject_hero_data(hero_name=None):
 
     # --- 4. Execute in Neo4j ---
     with driver.session() as session:
-        session.run(merge_hero_and_principles_query, hero_name=hero_name, principles=principles)
-        print(f"✨ Fabulously injected {len(principles)} Principles!")
+        session.run(merge_hero_and_principles_query, username=username, principles=principles)
+        print(f"✨ Fabulously injected {len(principles)} Principles and Primary Branches!")
+
+        if pillars_list:
+            session.run(merge_pillars_query, username=username, pillars=pillars_list)
+            print(f"✨ Dynamically injected {len(pillars_list)} Life Pillars!")
         
-        session.run(merge_intents_query, hero_name=hero_name, intents=flat_intents)
+        session.run(merge_intents_query, username=username, intents=flat_intents)
         print(f"✨ Gorgeously injected {len(flat_intents)} Intents!")
 
-        session.run(merge_epochs_query, hero_name=hero_name, epochs=epochs_data)
+        session.run(merge_epochs_query, username=username, epochs=epochs_data)
         print(f"✨ Mapped {len(epochs_data)} Life Epochs!")
 
         session.run(merge_experiences_query, experiences=experiences_data)
@@ -199,3 +277,4 @@ if __name__ == "__main__":
     try:
         inject_hero_data()
     finally:
+        driver.close()

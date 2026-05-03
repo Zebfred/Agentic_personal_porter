@@ -53,7 +53,7 @@ class GCPComputeClient:
 
         status = self.get_instance_status(instance, zone)
         if status == "RUNNING":
-            logger.info(f"Instance {instance} is already RUNNING.")
+            logger.debug(f"Instance {instance} is already RUNNING.")
             return True
 
         if status == "TERMINATED":

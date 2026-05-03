@@ -1,7 +1,9 @@
-from .api_models import JournalLogBase, JournalRequestSchema, CalendarRequestSchema
+from .api_models import JournalLogBase, JournalRequestSchema, CalendarRequestSchema, DailyReflectionRequestSchema, DailyReflectionLogData
 
 __all__ = [
     'JournalLogBase',
     'JournalRequestSchema', 
-    'CalendarRequestSchema'
+    'CalendarRequestSchema',
+    'DailyReflectionRequestSchema',
+    'DailyReflectionLogData'
 ]

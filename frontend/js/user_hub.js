@@ -195,6 +195,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Load Verification Dashboard
+    const loadVerificationDashboard = async () => {
+        const unvContainer = document.getElementById('dashboard-unverified');
+        const verContainer = document.getElementById('dashboard-verified');
+        const btnApprove = document.getElementById('btn-approve-audits');
+        
+        if (!unvContainer || !verContainer) return;
+
+        const fetchFn = window.Auth && window.Auth.fetchWithAuth ? window.Auth.fetchWithAuth : fetch;
+        
+        let batchGcalIds = [];
+
+        try {
+            // Unverified queue
+            const unvRes = await fetchFn('/api/admin/unverified_audits');
+            if (unvRes.ok) {
+                const data = await unvRes.json();
+                unvContainer.innerHTML = '';
+                if(data.records && data.records.length > 0) {
+                     btnApprove.classList.remove('hidden');
+                     data.records.forEach(r => {
+                          batchGcalIds.push(r.gcal_id);
+                          const isLowConfidence = (r.confidence_score !== undefined && r.confidence_score < 70);
+                          const bg = isLowConfidence ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200';
+                          const tag = isLowConfidence ? `<span class="text-red-600 font-bold text-xs ml-2">(${r.confidence_score}% Conf)</span>` : '';
+                          
+                          unvContainer.innerHTML += `
+                            <a href="/journal_review?target_id=${encodeURIComponent(r.gcal_id)}" class="block hover:-translate-y-0.5 transition-transform">
+                                <div class="border ${bg} rounded p-2 text-sm flex justify-between items-center cursor-pointer hover:shadow-md transition-shadow">
+                                    <div><strong class="text-gray-800">${escapeHTML(r.pillar || 'Uncategorized')}</strong> ${tag}<br><span class="text-gray-600 text-xs truncate max-w-[200px] inline-block">${escapeHTML(r.summary || 'Event')}</span></div>
+                                </div>
+                            </a>
+                          `;
+                     });
+                } else {
+                     unvContainer.innerHTML = '<div class="text-green-600 font-bold text-sm">✅ Zero unverified actions.</div>';
+                }
+            }
+
+            // Verified history
+            const verRes = await fetchFn('/api/admin/verified_history');
+            if (verRes.ok) {
+                const data = await verRes.json();
+                verContainer.innerHTML = '';
+                if(data.records && data.records.length > 0) {
+                     data.records.forEach(r => {
+                          verContainer.innerHTML += `
+                            <div class="border bg-gray-50 border-emerald-100 rounded p-2 text-sm">
+                                <div><span class="text-emerald-500 font-bold">✓ ${escapeHTML(r.pillar || 'Clean')}</span> <span class="text-gray-400 text-xs">${new Date(r.verification_time).toLocaleDateString()}</span></div>
+                            </div>
+                          `;
+                     });
+                } else {
+                     verContainer.innerHTML = '<div class="text-gray-400 text-sm italic">No history yet.</div>';
+                }
+            }
+            
+            if(btnApprove) {
+                 btnApprove.addEventListener('click', async () => {
+                     btnApprove.innerText = "Approving...";
+                     try {
+                         const response = await fetchFn('/api/admin/approve_audits', {
+                             method: 'POST',
+                             headers: { 'Content-Type': 'application/json' },
+                             body: JSON.stringify({ gcal_ids: batchGcalIds })
+                         });
+                         if(response.ok) {
+                             btnApprove.classList.add('hidden');
+                             unvContainer.innerHTML = '<div class="text-green-600 font-bold text-sm">✅ Approved all!</div>';
+                             setTimeout(loadVerificationDashboard, 2000); // refresh layout
+                         }
+                     } catch(e) { console.error(e); }
+                 });
+            }
+            
+        } catch (e) {
+            console.error("Dashboard Load Error", e);
+        }
+    };
+
     // Fetch Adventure Log Delta for Overview
     const loadAdventureLog = async () => {
         try {
@@ -206,11 +286,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (document.getElementById('user-intentions-logged')) {
                         document.getElementById('user-intentions-logged').innerText = data.data.intentions || "0";
                     }
-                    if (document.getElementById('user-actual-activities')) {
-                        document.getElementById('user-actual-activities').innerText = data.data.actuals || "0";
+                    if (document.getElementById('user-calendar-events')) {
+                        // Fallback to data.data.actuals until backend API is updated to return calendar_events
+                        document.getElementById('user-calendar-events').innerText = data.data.calendar_events || data.data.actuals || "0";
+                    }
+                    if (document.getElementById('user-events-classified')) {
+                        document.getElementById('user-events-classified').innerText = data.data.unclassified || "0";
                     }
                     if (document.getElementById('user-matched-intentions')) {
                         document.getElementById('user-matched-intentions').innerText = data.data.matched || "0";
+                    }
+                    if (document.getElementById('user-valuable-detours')) {
+                        document.getElementById('user-valuable-detours').innerText = data.data.valuable_detours || "0";
+                    }
+                    if (document.getElementById('user-detrimental-detours')) {
+                        document.getElementById('user-detrimental-detours').innerText = data.data.detrimental_detours || "0";
+                    }
+                    if (document.getElementById('user-detrimental-delta') && data.data.detrimental_delta) {
+                        const deltaEl = document.getElementById('user-detrimental-delta');
+                        deltaEl.innerText = data.data.detrimental_delta;
+                        deltaEl.classList.remove('hidden');
                     }
                 }
             }
@@ -221,4 +316,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(loadArtifactScans, 500);
     setTimeout(loadAdventureLog, 700);
+    setTimeout(loadVerificationDashboard, 800);
 });
