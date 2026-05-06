@@ -49,7 +49,11 @@ def login():
         
         # Read secrets
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
-        jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
+        jwt_secret = os.environ.get("JWT_SECRET")
+
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
 
         if not google_client_id:
             logger.error("GOOGLE_CLIENT_USER_LOGIN_ID is not configured in the environment.")
@@ -127,7 +131,12 @@ def login_code():
             return jsonify({"error": "Google authorization code required"}), 400
             
         auth_code = data['code']
-        jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
+        jwt_secret = os.environ.get("JWT_SECRET")
+
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
+
         paths = get_auth_paths()
 
         if not os.path.exists(paths["credentials"]):
@@ -226,7 +235,11 @@ def nexus_login():
         token_credential = data['credential']
         
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
-        jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
+        jwt_secret = os.environ.get("JWT_SECRET")
+
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
 
         if not google_client_id:
             logger.error("GOOGLE_CLIENT_USER_LOGIN_ID is not configured in the environment.")
@@ -309,7 +322,12 @@ def nexus_login_code():
             return jsonify({"error": "Google authorization code required"}), 400
             
         auth_code = data['code']
-        jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
+        jwt_secret = os.environ.get("JWT_SECRET")
+
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
+
         paths = get_auth_paths()
 
         if not os.path.exists(paths["credentials"]):
