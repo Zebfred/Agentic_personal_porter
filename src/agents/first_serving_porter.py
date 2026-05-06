@@ -5,12 +5,10 @@ from pydantic import SecretStr
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain.agents import initialize_agent, AgentType
-from langchain.tools import Tool
-from langchain.prompts import PromptTemplate
-from langchain.agents import tool, AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
 
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, ToolMessage
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
@@ -142,7 +140,7 @@ def consult_time_keeper(date_iso: str) -> str:
     return keeper.summarize_day(date_iso)
 
 # 3. Agent Setup
-def get_porter_agent_executor():
+def get_porter_agent(hero_name: str, intentions: str, principles: str, ambition_context: str, detriments_context: str):
     llm = ChatGroq(
         api_key=SecretStr(raw_api_key),
         model="llama-3.3-70b-versatile",
@@ -151,7 +149,7 @@ def get_porter_agent_executor():
     
     tools = [route_to_subagent, update_artifact, scan_origin_story, weaviate_hybrid_search, chroma_vibe_check, fetch_unverified_audits, consult_time_keeper]
     
-    system_prompt = """I. Role Identity
+    system_prompt = f"""I. Role Identity
 You are the First_Serving Porter, the Chief of Staff and primary orchestrator of the Agentic Porter Ecosystem. Your sole mission is to serve as the bridge between the User's Hero Intent (stored in the Neo4j Identity Graph) and the Ground Truth (actual time and action data).
 
 II. Operational Context
@@ -173,19 +171,7 @@ Ambition Snapshot: {ambition_context}
 Core Detriments: {detriments_context}
 """
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ])
-    
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    
-    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
-    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    monitor = FirstServingMonitoringHandler()
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker, monitor])
-    return agent_executor
+    return create_react_agent(llm, tools=tools, state_modifier=system_prompt)
 
 def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
@@ -193,18 +179,22 @@ def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input})
     
     context = get_context(username=username)
-    executor = get_porter_agent_executor()
+    agent = get_porter_agent(
+        hero_name=username,
+        intentions=context.get("intentions", "Unknown"),
+        principles=context.get("principles", "Unknown"),
+        ambition_context=str(context.get("ambition", "Unknown")),
+        detriments_context=str(context.get("detriments", "Unknown"))
+    )
+    
+    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
+    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
+    monitor = FirstServingMonitoringHandler()
+    config = {"callbacks": [breaker, monitor]}
     
     print("\n--- Invoking First-Serving Porter ---\n")
     try:
-        result = executor.invoke({
-            "input": user_input,
-            "hero_name": username,
-            "intentions": context.get("intentions", "Unknown"),
-            "principles": context.get("principles", "Unknown"),
-            "ambition_context": str(context.get("ambition", "Unknown")),
-            "detriments_context": str(context.get("detriments", "Unknown"))
-        })
+        result = agent.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
         health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:
         print(f"\n[CRITICAL RUNTIME ERROR] {e}")
@@ -221,14 +211,17 @@ def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Unexpected Backend Error."]
         }
     
-    intermediate_steps = result.get("intermediate_steps", [])
+    messages = result.get("messages", [])
     transparency_logs = []
-    for action, observation in intermediate_steps:
-        if isinstance(observation, str) and "[TRANSPARENCY HANDOFF]" in observation:
-            transparency_logs.append(observation)
+    
+    for msg in messages:
+        if isinstance(msg, ToolMessage) and isinstance(msg.content, str) and "[TRANSPARENCY HANDOFF]" in msg.content:
+            transparency_logs.append(msg.content)
+            
+    final_response = messages[-1].content if messages else "No response generated."
             
     return {
-        "response": result.get("output", "No response generated."),
+        "response": final_response,
         "transparency_logs": transparency_logs
     }
 

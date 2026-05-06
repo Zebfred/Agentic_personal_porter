@@ -3,7 +3,7 @@
 # Variables
 CONDA_ENV = agentic_porter
 IMAGE_NAME = agentic-porter
-PORT = 5090
+PORT = 6030
 PYTHON = python
 PIP = pip
 
