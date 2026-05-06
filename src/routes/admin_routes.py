@@ -125,6 +125,10 @@ def impersonate_user():
         profile_data = user_doc.get("profile", {})
         jwt_secret = os.environ.get("JWT_SECRET")
         
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
+
         # Generate an impersonation JWT
         expiration = datetime.now(timezone.utc) + timedelta(hours=2) # Shorter duration for impersonation
         internal_token = jwt.encode(
