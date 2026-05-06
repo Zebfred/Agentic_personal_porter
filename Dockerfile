@@ -41,7 +41,7 @@ COPY frontend/ ./frontend/
 RUN mkdir -p /app/data/reflections
 
 # catch ABI mismatch 
-RUN python -c "import tensorflow; import onnxruntime" 
+RUN python -c "import torch; import onnxruntime" 
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
