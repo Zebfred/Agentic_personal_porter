@@ -5,3 +5,6 @@
 ## 2025-02-23 - Flask Teardown Destroying Connection Pools
 **Learning:** In Flask applications, `@app.teardown_appcontext` is executed at the end of every individual HTTP request. Binding `close_driver()` to this hook destroys the database connection pool after every request, negating any performance benefits of a global singleton and forcing expensive reconnections.
 **Action:** Never tie long-lived connection pool closures (like Neo4j drivers) to per-request teardown hooks in Flask. Let the driver singleton manage its own connection lifecycle globally across requests.
+## 2024-11-20 - [Performance Bottleneck Fixed]
+**Learning:** Found an N+1 query vulnerability when iterating and calling `update_one` on the database connection in a loop.
+**Action:** Replaced sequential updates with bulk updates via `UpdateOne` and `bulk_write` method.
