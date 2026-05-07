@@ -26,10 +26,10 @@ root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
 
 # --- Critical security checks ---
-API_KEY = os.environ.get("PORTER_API_KEY")
+API_KEY = os.environ.get("PORTER_ADMIN_KEY")
 if not API_KEY:
     raise ValueError(
-        "CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. "
+        "CRITICAL SECURITY ERROR: PORTER_ADMIN_KEY environment variable is missing. "
         "It must be set in .auth/.env for secure authentication."
     )
 

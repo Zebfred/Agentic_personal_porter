@@ -15,7 +15,7 @@ import jwt
 from datetime import datetime, timedelta
 
 # Ensure env vars are set BEFORE importing the app, just like production
-os.environ.setdefault("PORTER_API_KEY", "test-api-key-for-ci")
+os.environ.setdefault("PORTER_ADMIN_KEY", "test-api-key-for-ci")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-ci")
 os.environ.setdefault("HERO_NAME", "TestHero")
 
@@ -135,7 +135,7 @@ class TestAuthMiddleware:
 
     def test_valid_api_key_returns_success(self, client):
         """A valid raw API key must be accepted."""
-        api_key = os.environ.get("PORTER_API_KEY")
+        api_key = os.environ.get("PORTER_ADMIN_KEY")
         response = client.get(
             '/api/inventory',
             headers={"Authorization": f"Bearer {api_key}"}

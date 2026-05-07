@@ -98,8 +98,9 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             
         chain = prompt | llm_with_fallback
         
+        import time
         golden_objects = []
-        chunk_size = 10
+        chunk_size = 25  # Increased to reduce total API calls
         
         for i in range(0, len(events), chunk_size):
             chunk = events[i:i + chunk_size]
@@ -137,5 +138,9 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                             golden_objects.append(obj)
             except Exception as e:
                 logger.error(f"❌ Failed to classify chunk {i}: {e}")
+                
+            # Rate limiting sleep to prevent 429 Too Many Requests from Groq
+            # Groq free tier often limits to 30 RPM, so ~2.5s per request is safe
+            time.sleep(2.5)
                 
         return golden_objects

@@ -14,12 +14,12 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 # Extract variables from .env
-export PORTER_API_KEY=$(grep -v '^#' $ENV_FILE | grep -e "PORTER_API_KEY" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+export PORTER_ADMIN_KEY=$(grep -v '^#' $ENV_FILE | grep -e "PORTER_ADMIN_KEY" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 export GCP_PROJECT_ID=$(grep -v '^#' $ENV_FILE | grep -e "GCP_PROJECT_ID" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 export GCP_RUN_SERVICE_URL=$(grep -v '^#' $ENV_FILE | grep -e "GCP_RUN_SERVICE_URL" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 
-if [ -z "$PORTER_API_KEY" ] || [ -z "$GCP_PROJECT_ID" ] || [ -z "$GCP_RUN_SERVICE_URL" ]; then
-    echo "ERROR: Required variables (PORTER_API_KEY, GCP_PROJECT_ID, GCP_RUN_SERVICE_URL) missing in $ENV_FILE"
+if [ -z "$PORTER_ADMIN_KEY" ] || [ -z "$GCP_PROJECT_ID" ] || [ -z "$GCP_RUN_SERVICE_URL" ]; then
+    echo "ERROR: Required variables (PORTER_ADMIN_KEY, GCP_PROJECT_ID, GCP_RUN_SERVICE_URL) missing in $ENV_FILE"
     exit 1
 fi
 
@@ -33,7 +33,7 @@ gcloud scheduler jobs create http mach2-calendar-sync \
   --schedule="0 8,22 * * *" \
   --uri="${GCP_RUN_SERVICE_URL}/api/admin/sync_calendar" \
   --http-method=POST \
-  --headers="Authorization=Bearer ${PORTER_API_KEY}" \
+  --headers="Authorization=Bearer ${PORTER_ADMIN_KEY}" \
   --location="us-central1" \
   --project="${GCP_PROJECT_ID}" || echo "Job 1 already exists or failed to update. Use 'update' to override."
 
@@ -45,7 +45,7 @@ gcloud scheduler jobs create http mach2-vector-sync \
   --schedule="0 0,12 * * *" \
   --uri="${GCP_RUN_SERVICE_URL}/api/admin/vector_sync" \
   --http-method=POST \
-  --headers="Authorization=Bearer ${PORTER_API_KEY}" \
+  --headers="Authorization=Bearer ${PORTER_ADMIN_KEY}" \
   --location="us-central1" \
   --project="${GCP_PROJECT_ID}" || echo "Job 2 already exists or failed to update. Use 'update' to override."
 

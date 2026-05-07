@@ -25,7 +25,7 @@ def get_config():
     Returns public configuration needed by the frontend.
     """
     return jsonify({
-        "google_client_id": os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        "google_client_id": os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
     })
 
 
@@ -48,7 +48,7 @@ def login():
         token_credential = data['credential']
         
         # Read secrets
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
 
         if not google_client_id:
@@ -154,7 +154,7 @@ def login_code():
             return jsonify({"error": "Failed to exchange authorization code"}), 401
 
         # Verify Google Token to extract identity
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
                 credentials.id_token, 
@@ -231,7 +231,7 @@ def nexus_login():
             
         token_credential = data['credential']
         
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
 
         if not google_client_id:
@@ -335,7 +335,7 @@ def nexus_login_code():
             return jsonify({"error": "Failed to exchange authorization code"}), 401
 
         # Verify Google Token to extract identity
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
                 credentials.id_token, 

@@ -51,7 +51,7 @@ docker-build: ## Build the production Docker image
 
 docker-run: ## Run the Docker container locally (requires .auth/.env)
 	@echo "Launching container on port $(PORT)..."
-	docker run -p $(PORT):$(PORT) --env-file .auth/.env -v $(PWD)/.auth:/app/.auth -v $(PWD)/data:/app/data $(IMAGE_NAME)
+	docker run -p $(PORT):$(PORT) --env-file .auth/.env -v $(PWD)/.auth:/app/.auth -v $(PWD)/data:/app/data -v ~/.config/gcloud:/root/.config/gcloud:ro $(IMAGE_NAME)
 
 docker-stop: ## Stop any running containers for this project
 	@echo "Stopping $(IMAGE_NAME) containers..."

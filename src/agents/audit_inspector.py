@@ -17,7 +17,7 @@ class AuditInspector:
         self.actual_col = self.db[MongoConfig.ACTUAL_COLLECTION]
         self.unified_col = self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
         
-    def batch_unverified_records(self) -> List[Dict]:
+    def batch_unverified_records(self, user_email: str) -> List[Dict]:
         """
         Retrieves all recent categorizations that lack human-in-the-loop verification
         for presentation on the Verification Dashboard. Now sorted to highlight low-confidence items first.
@@ -28,7 +28,7 @@ class AuditInspector:
         
         try:
             # Fetch up to 10 unverified
-            records = list(self.daily_col.find({"status": "Pending Verification"}).limit(10))
+            records = list(self.daily_col.find({"status": "Pending Verification", "user_email": user_email}).limit(10))
             
             # Ensure ObjectId is scrubbed for JSON serialization back to the frontend
             for r in records:
@@ -47,22 +47,22 @@ class AuditInspector:
             health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
             raise e
 
-    def get_recently_verified_records(self, limit: int = 10) -> List[Dict]:
+    def get_recently_verified_records(self, user_email: str, limit: int = 10) -> List[Dict]:
         """
         Retrieves the most recently verified records for the Dashboard ledger.
         """
-        records = list(self.daily_col.find({"status": "Verified"}).sort("verification_time", -1).limit(limit))
+        records = list(self.daily_col.find({"status": "Verified", "user_email": user_email}).sort("verification_time", -1).limit(limit))
         for r in records:
              if "_id" in r:
                  r["_id"] = str(r["_id"])
         return records
 
-    def approve_batch(self, gcal_ids: List[str]) -> int:
+    def approve_batch(self, gcal_ids: List[str], user_email: str) -> int:
         """
         Mark a batch of records as explicitly verified by the human.
         Also writes them permanently to the event_actuals ground truth collection.
         """
-        records = list(self.daily_col.find({"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification"}))
+        records = list(self.daily_col.find({"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification", "user_email": user_email}))
         modified_count = 0
         
         for r in records:
@@ -86,7 +86,7 @@ class AuditInspector:
             self.actual_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": os.environ.get("HERO_NAME", "Hero"),
+                    "user_id": user_email,
                     "gcal_id": gcal_id,
                     "time_slot": time_slot,
                     "actual": actual_payload,

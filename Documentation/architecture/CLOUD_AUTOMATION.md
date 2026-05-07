@@ -5,7 +5,7 @@ Mach 2 depends on an active stream of Google Calendar entries to power the Ident
 ## 1. The Architecture
 - **Trigger Source:** Google Cloud Scheduler (Cron Job)
 - **Target Endpoint:** `POST https://<YOUR-CLOUD-RUN-URL>/api/admin/sync_calendar`
-- **Authentication:** `Authorization: Bearer <PORTER_API_KEY>`
+- **Authentication:** `Authorization: Bearer <PORTER_ADMIN_KEY>`
 
 When Cloud Scheduler sends the POST request, `app.py` authenticates the token, connects to the Google Calendar API, pulls the newest chunk of data into the MongoDB Landing Zone (`raw_calendar_events`), formats it into the time-series (`formatted_events`), and runs `MERGE` injection into the Neo4j Identity Graph dynamically.
 

@@ -46,7 +46,7 @@ def require_api_key(f):
             return response, 204
 
         # Read secrets at request time, not import time
-        api_key = os.environ.get("PORTER_API_KEY", "")
+        api_key = os.environ.get("PORTER_ADMIN_KEY", "")
         jwt_secret = os.environ.get("JWT_SECRET", "")
 
         supplied_key = request.headers.get("Authorization")

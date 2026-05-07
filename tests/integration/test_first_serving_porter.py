@@ -21,7 +21,7 @@ def test_porter_chat_route(mock_run_porter, client):
     response = client.post(
         '/api/chat/porter',
         json={'message': 'Update my motivation.'},
-        headers={'Authorization': f'Bearer {os.environ.get("PORTER_API_KEY", "default_dev_key")}'}
+        headers={'Authorization': f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'}
     )
 
     assert response.status_code == 200
@@ -35,7 +35,7 @@ def test_porter_chat_route_missing_message(mock_run_porter, client):
     response = client.post(
         '/api/chat/porter',
         json={},
-        headers={'Authorization': f'Bearer {os.environ.get("PORTER_API_KEY", "default_dev_key")}'}
+        headers={'Authorization': f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'}
     )
     assert response.status_code == 400
     mock_run_porter.assert_not_called()

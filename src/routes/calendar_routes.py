@@ -150,6 +150,69 @@ def get_calendar_events():
         logger.error(f"Error fetching calendar events: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected error occurred while fetching calendar events: {str(e)}"}), 500
 
+@calendar_bp.route('/api/calendar/unverified_audits', methods=['GET'])
+@require_api_key
+def get_unverified_audits():
+    """
+    Fetches the unverified records queue for the Verification Dashboard.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.batch_unverified_records(user_email=user_email)
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@calendar_bp.route('/api/calendar/verified_history', methods=['GET'])
+@require_api_key
+def get_verified_history():
+    """
+    Fetches the deeply confirmed historical audits for the Verification Dashboard.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.get_recently_verified_records(user_email=user_email, limit=10)
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching verified history: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@calendar_bp.route('/api/calendar/approve_audits', methods=['POST'])
+@require_api_key
+def approve_audits():
+    """
+    Batch approves a list of record gcal_ids.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        data = request.json
+        gcal_ids = data.get('gcal_ids', [])
+        if not gcal_ids:
+            return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        modified = inspector.approve_batch(gcal_ids, user_email=user_email)
+        return jsonify({"status": "success", "modified_count": modified})
+    except Exception as e:
+        logger.error(f"Error approving audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 @calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
 @require_api_key
 def get_adventure_log():
@@ -160,24 +223,22 @@ def get_adventure_log():
         from src.database.mongo_storage import SovereignMongoStorage
         mongo = SovereignMongoStorage()
         
-        user_email = getattr(request, 'user_email', 'Hero')
-        username = 'Hero'
-        if user_email != 'Hero':
-            user_doc = mongo.get_user_by_email(user_email)
-            username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
         
         # In a fully robust query we'd filter by date > (now - 30 days).
-        # For now, we do a basic count using the username scope.
+        # For now, we do a basic count using the user_email scope.
         
-        actuals_count = mongo.db["unified_events"].count_documents({"user_id": username})
+        actuals_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
         matched_count = mongo.db["event_actuals"].count_documents({
-            "user_id": username, 
+            "user_id": user_email, 
             "actual.matches_intent": True
         })
         
         # Assuming intention logs might be stored similarly, or just using actuals_count as a proxy 
         # until full explicit intention collection is built out. Let's return the real matched actuals.
-        intentions_count = mongo.db["unified_events"].count_documents({"user_id": username, "actual.status": "Verified Log"})
+        intentions_count = mongo.db["unified_events"].count_documents({"user_id": user_email, "actual.status": "Verified Log"})
 
         analysis = {
             "intentions": intentions_count,

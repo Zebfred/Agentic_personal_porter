@@ -79,7 +79,7 @@ graph TB
 
 ## 4. API Surface (Flask Routes)
 
-All protected routes use the `@require_api_key` decorator, which accepts **either** a raw `PORTER_API_KEY` or a valid **JWT** (issued at `/api/login`).
+All protected routes use the `@require_api_key` decorator, which accepts **either** a raw `PORTER_ADMIN_KEY` or a valid **JWT** (issued at `/api/login`).
 
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
@@ -292,7 +292,7 @@ The [SovereignContextEngine](file:///home/bizon/Programming/Agentic_workflows/Ag
 ```mermaid
 graph LR
     subgraph "Authentication Flow"
-        PW["Password"] -->|"POST /api/login"| VER["Verify vs PORTER_API_KEY"]
+        PW["Password"] -->|"POST /api/login"| VER["Verify vs PORTER_ADMIN_KEY"]
         VER -->|"Match"| JWT["Issue JWT<br/>(HS256, 24h TTL)"]
         JWT --> FE["Frontend stores token"]
         FE -->|"Authorization: Bearer <token>"| API["Protected Routes"]
@@ -303,7 +303,7 @@ graph LR
     end
 ```
 
-- **`PORTER_API_KEY`** — Raw key for backend scripts and admin endpoints
+- **`PORTER_ADMIN_KEY`** — Raw key for backend scripts and admin endpoints
 - **`JWT_SECRET`** — HS256 signing key for frontend session tokens
 - **CORS** — Restricted to configured origins (default: `localhost:5000`, `localhost:5090`)
 - **`.auth/` directory** — All secrets, OAuth tokens, and category mappings. Strictly `.gitignore`d.

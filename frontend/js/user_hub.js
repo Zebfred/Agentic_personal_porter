@@ -209,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Unverified queue
-            const unvRes = await fetchFn('/api/admin/unverified_audits');
+            const unvRes = await fetchFn('/api/calendar/unverified_audits');
             if (unvRes.ok) {
                 const data = await unvRes.json();
                 unvContainer.innerHTML = '';
@@ -235,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Verified history
-            const verRes = await fetchFn('/api/admin/verified_history');
+            const verRes = await fetchFn('/api/calendar/verified_history');
             if (verRes.ok) {
                 const data = await verRes.json();
                 verContainer.innerHTML = '';
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  btnApprove.addEventListener('click', async () => {
                      btnApprove.innerText = "Approving...";
                      try {
-                         const response = await fetchFn('/api/admin/approve_audits', {
+                         const response = await fetchFn('/api/calendar/approve_audits', {
                              method: 'POST',
                              headers: { 'Content-Type': 'application/json' },
                              body: JSON.stringify({ gcal_ids: batchGcalIds })
