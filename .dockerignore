@@ -37,7 +37,7 @@ htmlcov/
 !README.md
 
 # Environment
-# .env
+.env
 .env.local
 
 # Build artifacts

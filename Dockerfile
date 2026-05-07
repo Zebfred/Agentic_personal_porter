@@ -36,6 +36,7 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Copy application files (ignoring items in .dockerignore)
 COPY src/ ./src/
 COPY frontend/ ./frontend/
+COPY data/category_mapping.example.json ./data/
 
 # Create data directory structure for CrewAI artifacts and logs
 RUN mkdir -p /app/data/reflections
@@ -53,7 +54,7 @@ EXPOSE 6030
 
 # Health check to ensure the server is responsive
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:6030/ || exit 1
+    CMD curl -f http://localhost:6010/ || exit 1
 
 # Start the application using Gunicorn (WSGI)
-CMD exec gunicorn --bind 0.0.0.0:${PORT:-6030} --workers 1 --threads 4 --timeout 300 src.app:app
+CMD exec gunicorn --bind 0.0.0.0:${PORT:-6010} --workers 1 --threads 4 --timeout 300 src.app:app
