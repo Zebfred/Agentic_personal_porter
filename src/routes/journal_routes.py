@@ -86,10 +86,6 @@ def save_log():
         
         # 3. Mach 3 Rework: Write strictly to event_actuals and unified_events as ground truth
         try:
-            from src.database.mongo_client.connection import MongoConnectionManager
-            from src.config import MongoConfig
-            from src.database.mongo_client.uuid_manager import UUIDGenerator
-            
             db = MongoConnectionManager.get_db()
             actual_col = db[MongoConfig.ACTUAL_COLLECTION]
             unified_col = db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
