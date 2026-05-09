@@ -54,6 +54,17 @@ trigger: always_on
 
 ## Code Style
 
+## Building and Running
+
+## Environment manager use conda
+
+### Package Dependencies
+- **uv:** Python package manager (using workspaces)
+- **Google Cloud SDK:** For interacting with GCP services
+- **make:** For running common development tasks
+
+Project dependencies are managed via `uv` in the `pyproject.toml` workspace.
+
 ### Python:
 - Use type hints where appropriate
 - Follow PEP 8 style guidelines

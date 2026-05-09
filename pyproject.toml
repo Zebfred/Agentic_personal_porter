@@ -64,3 +64,8 @@ typeCheckingMode = "basic"
 
 [tool.ruff]
 src = ["."]
+
+[tool.uv.workspace]
+members = [
+    "src/infrastructure/billing_killswitch/",
+]
