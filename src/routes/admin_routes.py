@@ -129,7 +129,7 @@ def impersonate_user():
             return jsonify({"error": f"User {target_email} not found in database"}), 404
             
         profile_data = user_doc.get("profile", {})
-        jwt_secret = os.environ.get("JWT_SECRET", "default_dev_secret")
+        jwt_secret = os.environ.get("JWT_SECRET")
         
         # Generate an impersonation JWT
         expiration = datetime.now(timezone.utc) + timedelta(hours=2) # Shorter duration for impersonation

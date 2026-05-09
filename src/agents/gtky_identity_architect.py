@@ -1,3 +1,4 @@
+from PIL.Image import logger
 import os
 import sys
 import json
@@ -42,7 +43,8 @@ class GTKYIdentityArchitect:
                 # Seed mongo if missing
                 try:
                     SovereignMongoStorage().save_hero_artifact(filename, data, self.username)
-                except: pass
+                except Exception as e:
+                    logger.warning(f"Non-critical error during identity processing: {e}")
                 return data
         except Exception as e:
             print(f"Error parsing {filepath}: {e}")
