@@ -28,7 +28,7 @@ def get_calendar_service_instance():
     return _calendar_service
 
 
-def fetch_calendar_events_for_date(target_date_str: str, email: str = None):
+def fetch_calendar_events_for_date(target_date_str: str, email: str | None = None):
     """
     Helper function to fetch calendar events for a date.
     Uses user-specific credentials if an email with a refresh token is provided.

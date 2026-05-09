@@ -4,8 +4,7 @@ import logging
 import re
 from typing import List, Dict, Any
 from pydantic import BaseModel, SecretStr
-from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
+from src.utils.llm_factory import AgentLLMConfig
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars
 
@@ -79,18 +78,12 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             logger.error("No GROQ_API_KEY found in environment.")
             return []
             
-        primary_llm = ChatGroq(
-            api_key=SecretStr(groq_api_key),
-            model="llama-3.3-70b-versatile",
-            temperature=0.0
-        )
+        primary_config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile", temperature=0.0)
+        primary_llm = primary_config.get_chat_model()
         
         if openai_api_key:
-            fallback_llm = ChatOpenAI(
-                api_key=SecretStr(openai_api_key),
-                model="gpt-5.4-mini",
-                temperature=0.0
-            )
+            fallback_config = AgentLLMConfig(provider="openai", model="gpt-5.4-mini", temperature=0.0)
+            fallback_llm = fallback_config.get_chat_model()
             llm_with_fallback = primary_llm.with_fallbacks([fallback_llm])
         else:
             logger.warning("No OPENAI_API_KEY found, fallback disabled.")

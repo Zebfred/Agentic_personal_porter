@@ -93,7 +93,7 @@ class SocraticMirrorEngine:
 
     def generate_socratic_prompt(self, analysis):
         """
-        Converts raw data into a Socratic Prompt for the CrewAI Agent.
+        Converts raw data into a Socratic Prompt for the Categorizer Agent.
         """
         observations_str = "\n".join([
             f"- {obs['title']} ({obs['duration']}m): {obs['status']} [{obs['pillar']}]"

@@ -4,14 +4,13 @@ from pathlib import Path
 from pydantic import SecretStr
 
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
+from src.utils.llm_factory import AgentLLMConfig
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.database.context_engine import SovereignContextEngine
 from src.config import NeoConfig
@@ -141,11 +140,8 @@ def consult_time_keeper(date_iso: str) -> str:
 
 # 3. Agent Setup
 def get_porter_agent(hero_name: str, intentions: str, principles: str, ambition_context: str, detriments_context: str):
-    llm = ChatGroq(
-        api_key=SecretStr(raw_api_key),
-        model="llama-3.3-70b-versatile",
-        verbose=True
-    )
+    config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile")
+    llm = config.get_chat_model(verbose=True)
     
     tools = [route_to_subagent, update_artifact, scan_origin_story, weaviate_hybrid_search, chroma_vibe_check, fetch_unverified_audits, consult_time_keeper]
     

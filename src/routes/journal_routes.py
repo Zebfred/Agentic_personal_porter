@@ -2,7 +2,8 @@
 Journal and daily log routes.
 
 Handles saving time-chunk logs, retrieving historical monthly data,
-and triggering the daily AI reflection via CrewAI.
+Handles saving time-chunk logs, retrieving historical monthly data,
+and triggering the daily AI reflection via LangGraph.
 """
 import os
 import logging
@@ -14,8 +15,11 @@ from src.routes.auth_middleware import require_api_key
 from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.schemas.api_models import JournalLogBase, DailyReflectionRequestSchema
-from src.agents.crew_manager import run_crew
+from src.agents.porter_manager import run_porter_reflection
 from src.routes.calendar_routes import fetch_calendar_events_for_date
+from src.database.mongo_client.connection import MongoConnectionManager
+from src.config import MongoConfig
+from src.database.mongo_client.uuid_manager import UUIDGenerator
 
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
@@ -62,8 +66,8 @@ def save_log():
 
         mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
         
-        day_str = log_data_dict.get("day")
-        time_chunk = log_data_dict.get("timeChunk")
+        day_str = str(log_data_dict.get("day", "unknown_date"))
+        time_chunk = str(log_data_dict.get("timeChunk", "unknown_time"))
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
         db_confirmation = "Failed"
@@ -90,8 +94,6 @@ def save_log():
             actual_col = db[MongoConfig.ACTUAL_COLLECTION]
             unified_col = db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
             
-            day_str = log_data_dict.get("day", "unknown_date")
-            time_chunk = log_data_dict.get("timeChunk", "unknown_time")
             synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
             event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, username)
             
@@ -257,8 +259,8 @@ def process_journal():
             except Exception as cal_err:
                 logger.warning(f"Calendar context failed: {cal_err}")
 
-            # Run CrewAI reflection
-            result_text = run_crew(enhanced_journal_entry, log_data)
+            # Run LangGraph reflection
+            result_text = run_porter_reflection(enhanced_journal_entry, log_data)
 
             # Save Reflection to dedicated collection
             mongo_storage = SovereignMongoStorage()
@@ -278,7 +280,7 @@ def process_journal():
             })
 
         except Exception as e:
-            logger.error(f"Backend Error during CrewAI execution: {e}", exc_info=True)
+            logger.error(f"Backend Error during LangGraph execution: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500
 
     except Exception as e:
