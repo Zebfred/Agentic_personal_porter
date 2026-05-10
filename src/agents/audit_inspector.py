@@ -71,7 +71,6 @@ class AuditInspector:
         actual_ops = []
         unified_ops = []
         daily_ops = []
-        user_id = os.environ.get("HERO_NAME", "Hero")
         
         for r in records:
             gcal_id = r.get("gcal_id")
@@ -128,6 +127,48 @@ class AuditInspector:
         modified_count = 0
         if daily_ops:
             res = self.daily_col.bulk_write(daily_ops)
+            actual_ops.append(
+                UpdateOne(
+                    {"_id": event_uuid},
+                    {"$set": {
+                        "user_id": os.environ.get("HERO_NAME", "Hero"),
+                        "gcal_id": gcal_id,
+                        "time_slot": time_slot,
+                        "actual": actual_payload,
+                        "metadata": {
+                            "source": "verification_dashboard",
+                            "last_sync": datetime.now(timezone.utc).isoformat()
+                        }
+                    }},
+                    upsert=True
+                )
+            )
+            
+            # Update Unified Collection
+            unified_ops.append(
+                UpdateOne(
+                    {"_id": event_uuid},
+                    {"$set": {
+                        "actual": actual_payload
+                    }}
+                )
+            )
+            
+            # Mark daily event as verified
+            daily_ops.append(
+                UpdateOne(
+                    {"_id": r["_id"]},
+                    {"$set": {"status": "Verified", "verification_time": datetime.now(timezone.utc)}}
+                )
+            )
+
+        modified_count = 0
+        if actual_ops:
+            self.actual_col.bulk_write(actual_ops, ordered=False)
+        if unified_ops:
+            self.unified_col.bulk_write(unified_ops, ordered=False)
+        if daily_ops:
+            res = self.daily_col.bulk_write(daily_ops, ordered=False)
             modified_count = res.modified_count
             
         return modified_count

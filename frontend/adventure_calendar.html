@@ -34,8 +34,8 @@
                 <!-- Controls -->
                 <div class="flex items-center gap-3">
                     <button id="today-btn" class="bg-primary hover:bg-primary-hover text-on-primary font-bold py-2 px-4 rounded transition-colors text-sm shadow-sm hidden md:block">Today</button>
-                    <button id="prev-month-btn" class="bg-surface hover:bg-surface-hover border border-border text-main font-bold py-2 px-4 rounded transition-colors text-sm shadow-sm">◀</button>
-                    <button id="next-month-btn" class="bg-surface hover:bg-surface-hover border border-border text-main font-bold py-2 px-4 rounded transition-colors text-sm shadow-sm">▶</button>
+                    <button id="prev-month-btn" aria-label="Previous month" class="bg-surface hover:bg-surface-hover border border-border text-main font-bold py-2 px-4 rounded transition-colors text-sm shadow-sm">◀</button>
+                    <button id="next-month-btn" aria-label="Next month" class="bg-surface hover:bg-surface-hover border border-border text-main font-bold py-2 px-4 rounded transition-colors text-sm shadow-sm">▶</button>
                 </div>
             </div>
 
@@ -64,7 +64,7 @@
         <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-lg w-full transform scale-95 transition-transform" id="day-modal-content">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h3 class="text-2xl font-bold text-gray-800" id="modal-date-title">Date</h3>
-                <button id="close-modal-btn" class="text-gray-400 hover:text-red-500 text-2xl font-bold">&times;</button>
+                <button id="close-modal-btn" aria-label="Close" class="text-gray-400 hover:text-red-500 text-2xl font-bold">&times;</button>
             </div>
             <div id="modal-body" class="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <!-- Day details dynamically injected here -->

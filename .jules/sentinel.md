@@ -30,3 +30,8 @@
 **Vulnerability:** The `/wake_infrastructure` endpoint in `src/routes/admin_routes.py` lacked the `@require_api_key` decorator, allowing unauthenticated attackers to wake up cloud compute instances, potentially leading to denial-of-wallet (cost-based DoS) attacks.
 **Learning:** Endpoints that trigger actions with real-world cost implications (like waking compute resources) must be treated as sensitive and always protected behind robust authentication, even if they seem innocuous or are meant for "stealth" frontend triggers.
 **Prevention:** Ensure all administrative or operational endpoints have the `@require_api_key` or equivalent authentication decorator applied. Additionally, always test frontend integration of new authenticated endpoints using the designated secure fetch wrappers (e.g., `window.Auth.fetchWithAuth`).
+
+## 2026-05-06 - Hardcoded Cryptographic Secrets
+**Vulnerability:** The application used a hardcoded fallback (`default_dev_secret`) for `JWT_SECRET` when the environment variable was missing. This allows an attacker who knows the codebase to forge valid JWTs and bypass authentication if the production server was misconfigured.
+**Learning:** Cryptographic secrets and API keys must never have hardcoded default fallbacks in source code. Misconfigurations in the production environment should result in a secure, loud failure rather than silently relying on a known, insecure fallback.
+**Prevention:** Implement fail-secure patterns: check for the existence of required secrets via environment variables and, if missing, throw a critical error (e.g., 500 response or fail to start) to alert administrators immediately.
