@@ -12,7 +12,7 @@
    - **`run_baseline.py`**: An executable entry point that orchestrates the test cases and writes the results to `data/evals/baseline_results.md`.
 
 3. **Dynamic Model Inspection**
-   - **`list_available_models.py`**: Created a helper script that dynamically queries Groq and Vertex AI endpoints (using environment variables `GCP_PROJECT_ID` and `GCP_LOCATION`) to fetch a real-time list of available models, ensuring we aren't relying on hardcoded assumptions.
+   - **`list_available_models.py`**: Created a helper script that dynamically queries Groq and Vertex AI endpoints (using environment variables `PROJECT_ID` and `GCP_LOCATION`) to fetch a real-time list of available models, ensuring we aren't relying on hardcoded assumptions.
 
 4. **Rate Limit Resilience**
    - Diagnosed immediate failures (`0.0s` latency) on Groq's `llama-3.3-70b-versatile` as `RateLimitError` hits. Added a `time.sleep(2.5)` delay loop to the evaluation harness to respect API tier limits.

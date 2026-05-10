@@ -9,10 +9,10 @@ if [ ! -f "$ENV_FILE" ]; then
     exit 1
 fi
 
-PROJECT_ID=$(grep -v '^#' "$ENV_FILE" | grep -e "GCP_PROJECT_ID" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+PROJECT_ID=$(grep -v '^#' "$ENV_FILE" | grep -e "PROJECT_ID" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 
 if [ -z "$PROJECT_ID" ]; then
-    echo "ERROR: GCP_PROJECT_ID is missing from $ENV_FILE."
+    echo "ERROR: PROJECT_ID is missing from $ENV_FILE."
     exit 1
 fi
 

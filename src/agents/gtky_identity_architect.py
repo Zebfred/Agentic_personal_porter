@@ -8,7 +8,6 @@ from pathlib import Path
 root = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(root))
 
-from src.utils.path_utils import load_env_vars
 from src.database.mongo_storage import SovereignMongoStorage
 
 class GTKYIdentityArchitect:

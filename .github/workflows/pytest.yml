@@ -18,19 +18,28 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v3
       with:
+        auto-activate-base: false
+        activate-environment: agentic_porter
         python-version: '3.11'
-        cache: 'pip' # cache pip dependencies
+        
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
         
     - name: Install Dependencies
+      shell: bash -el {0}
+      env:
+        UV_PROJECT_ENVIRONMENT: ${{ env.CONDA_PREFIX }}
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        uv sync --locked --dev
         
     - name: Run Pytest
+      shell: bash -el {0}
       run: |
         # Using the standard test suite execution
         # Environment variables are managed inside tests where applicable
-        pytest tests/ -v --tb=short
+        uv run pytest tests/ -v --tb=short

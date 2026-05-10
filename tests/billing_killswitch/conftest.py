@@ -19,7 +19,7 @@ def cleanup_logging(request):
 
     # We import here, within the teardown phase, to ensure that the application
     # module (src.main) has been fully loaded by the time we need to access it.
-    from src.main import logging_client
+    from src.infrastructure.billing_killswitch.main import logging_client
 
     if logging_client is not None:
         logging_client.close()

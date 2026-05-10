@@ -15,15 +15,15 @@ fi
 
 # Extract variables from .env
 export PORTER_ADMIN_KEY=$(grep -v '^#' $ENV_FILE | grep -e "PORTER_ADMIN_KEY" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
-export GCP_PROJECT_ID=$(grep -v '^#' $ENV_FILE | grep -e "GCP_PROJECT_ID" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+export PROJECT_ID=$(grep -v '^#' $ENV_FILE | grep -e "PROJECT_ID" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 export GCP_RUN_SERVICE_URL=$(grep -v '^#' $ENV_FILE | grep -e "GCP_RUN_SERVICE_URL" | cut -d '=' -f2 | tr -d '"' | tr -d "'")
 
-if [ -z "$PORTER_ADMIN_KEY" ] || [ -z "$GCP_PROJECT_ID" ] || [ -z "$GCP_RUN_SERVICE_URL" ]; then
-    echo "ERROR: Required variables (PORTER_ADMIN_KEY, GCP_PROJECT_ID, GCP_RUN_SERVICE_URL) missing in $ENV_FILE"
+if [ -z "$PORTER_ADMIN_KEY" ] || [ -z "$PROJECT_ID" ] || [ -z "$GCP_RUN_SERVICE_URL" ]; then
+    echo "ERROR: Required variables (PORTER_ADMIN_KEY, PROJECT_ID, GCP_RUN_SERVICE_URL) missing in $ENV_FILE"
     exit 1
 fi
 
-echo "Deploying to Project: $GCP_PROJECT_ID"
+echo "Deploying to Project: $PROJECT_ID"
 echo "Targeting Base URL: $GCP_RUN_SERVICE_URL"
 echo "--------------------------------------------------------"
 
@@ -35,7 +35,7 @@ gcloud scheduler jobs create http mach2-calendar-sync \
   --http-method=POST \
   --headers="Authorization=Bearer ${PORTER_ADMIN_KEY}" \
   --location="us-central1" \
-  --project="${GCP_PROJECT_ID}" || echo "Job 1 already exists or failed to update. Use 'update' to override."
+  --project="${PROJECT_ID}" || echo "Job 1 already exists or failed to update. Use 'update' to override."
 
 echo "--------------------------------------------------------"
 
@@ -47,9 +47,9 @@ gcloud scheduler jobs create http mach2-vector-sync \
   --http-method=POST \
   --headers="Authorization=Bearer ${PORTER_ADMIN_KEY}" \
   --location="us-central1" \
-  --project="${GCP_PROJECT_ID}" || echo "Job 2 already exists or failed to update. Use 'update' to override."
+  --project="${PROJECT_ID}" || echo "Job 2 already exists or failed to update. Use 'update' to override."
 
 echo "--------------------------------------------------------"
 echo "✅ Orchestration Configuration Complete."
 echo "You can manually test these jobs by running:"
-echo "gcloud scheduler jobs run mach2-calendar-sync --location us-central1 --project $GCP_PROJECT_ID"
+echo "gcloud scheduler jobs run mach2-calendar-sync --location us-central1 --project $PROJECT_ID"

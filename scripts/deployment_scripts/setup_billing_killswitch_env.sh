@@ -3,7 +3,7 @@
 # It configures gcloud, installs dependencies, and activates the virtualenv.
 #
 # Usage:
-#   source ./setup-env.sh [--noauth]
+#   source ./scripts/deployment_scripts/setup_billing_killswitch_env.sh [--noauth]
 #
 # Options:
 #   --noauth: Skip gcloud authentication.
@@ -37,7 +37,7 @@ done
 echo -e "${BLUE}${BOLD}--- ☁️  Configuring Google Cloud environment ---${RESET}"
 
 # 1. Check for .env file
-if [ ! -f .env ]; then
+if [ ! -f ../../../../.auth/.env ]; then
 	echo -e "${RED}❌ Error: .env file not found.${RESET}"
 	echo "Please create a .env file with your project variables and run this command again."
 	return 1
@@ -46,7 +46,7 @@ fi
 # 2. Source environment variables and export them
 echo -e "Sourcing variables from ${BLUE}.env${RESET} file..."
 set -a # automatically export all variables (allexport = on)
-source .env
+source ../../../../.auth/.env
 set +a # disable allexport mode
 
 # 3. Authenticate with gcloud and configure project
@@ -71,8 +71,8 @@ echo -e "${BOLD}PROJECT_NUMBER:${RESET} $PROJECT_NUMBER"
 echo -e "${BLUE}------------------------------------------${RESET}"
 
 # 6. Sync Python dependencies and activate venv
-echo "Activating Python virtual environment..."
-source .venv/bin/activate
+echo "Activating Conda agentic_porter environment..."
+source conda activate agentic_porter
 
 echo "Syncing python dependencies with uv..."
 uv sync --dev

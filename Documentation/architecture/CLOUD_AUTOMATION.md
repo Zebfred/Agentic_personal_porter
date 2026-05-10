@@ -24,7 +24,7 @@ We utilize an automated shell script to deploy multiple Cron Jobs simultaneously
    - **Function:** Selects the previous 12-hours of Mongo inputs and generates/syncs embeddings to Weaviate and ChromaDB.
 
 ### Deployment Instructions
-From the project root, simply run the setup orchestrator. Ensure that `GCP_PROJECT_ID` and `GCP_RUN_SERVICE_URL` are defined in your `.auth/.env`.
+From the project root, simply run the setup orchestrator. Ensure that `PROJECT_ID` and `GCP_RUN_SERVICE_URL` are defined in your `.auth/.env`.
 ```bash
 ./setup_gcp_scheduler.sh
 ```

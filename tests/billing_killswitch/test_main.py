@@ -23,8 +23,8 @@ def mock_clients():
     """Fixture to mock the Google Cloud clients."""
     # We mock the clients to prevent our tests from making real API calls,
     # ensuring they are fast, repeatable, and don't depend on external services.
-    with patch("src.main.billing_client", autospec=True) as mock_billing_client, \
-         patch("src.main.budget_client", autospec=True) as mock_budget_client:
+    with patch("src.infrastructure.billing_killswitch.main.billing_client", autospec=True) as mock_billing_client, \
+         patch("src.infrastructure.billing_killswitch.main.budget_client", autospec=True) as mock_budget_client:
         yield mock_billing_client, mock_budget_client
 
 

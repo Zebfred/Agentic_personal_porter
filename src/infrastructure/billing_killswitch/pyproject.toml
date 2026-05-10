@@ -10,7 +10,8 @@ dependencies = [
     "google-cloud-billing",
     "google-cloud-billing-budgets",
     "google-cloud-logging",
-    "google-api-python-client"
+    "google-api-python-client",
+    "cloudevents"
 ]
 
 requires-python = ">=3.11,<3.13"
@@ -18,11 +19,11 @@ requires-python = ">=3.11,<3.13"
 [dependency-groups]
 dev = [
     "pytest",
-    "uv", # Although uv is installed globally, it's good to list it for clarity
+    "uv", # uv is installed globally
     "codespell",
     "ruff",
     "mypy",
-    "jupyter", # From setup-env.sh
+    "jupyter", # From scripts/deployment_scripts/setup_billing_killswitch_env.sh
 ]
 
 [project.optional-dependencies]

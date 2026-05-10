@@ -6,11 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${SCRIPT_DIR}/../.auth/.env"
 
 if [ -f "$ENV_FILE" ]; then
-    PROJECT_ID=$(grep -v '^#' "$ENV_FILE" | grep 'GCP_PROJECT_ID' | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
+    PROJECT_ID=$(grep -v '^#' "$ENV_FILE" | grep 'PROJECT_ID' | cut -d '=' -f2 | tr -d '"' | tr -d "'" | xargs)
 fi
 
 if [ -z "${PROJECT_ID:-}" ]; then
-    echo "❌ ERROR: GCP_PROJECT_ID is not set. Add it to .auth/.env"
+    echo "❌ ERROR: PROJECT_ID is not set. Add it to .auth/.env"
     exit 1
 fi
 
