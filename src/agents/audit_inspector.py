@@ -64,6 +64,7 @@ class AuditInspector:
         Also writes them permanently to the event_actuals ground truth collection.
         """
         records = list(self.daily_col.find({"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification"}))
+
         if not records:
             return 0
 
@@ -73,7 +74,7 @@ class AuditInspector:
         
         for r in records:
             gcal_id = r.get("gcal_id")
-            event_uuid = UUIDGenerator.generate_for_event(gcal_id)
+            event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_id)
             duration_mins = r.get("duration_minutes", 60)
             
             actual_payload = {
@@ -89,6 +90,43 @@ class AuditInspector:
             }
             
             # Map into Actual collection
+            actual_ops.append(UpdateOne(
+                {"_id": event_uuid},
+                {"$set": {
+                    "user_id": user_id,
+                    "gcal_id": gcal_id,
+                    "time_slot": time_slot,
+                    "actual": actual_payload,
+                    "metadata": {
+                        "source": "verification_dashboard",
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                }},
+                upsert=True
+            ))
+            
+            # Update Unified Collection
+            unified_ops.append(UpdateOne(
+                {"_id": event_uuid},
+                {"$set": {
+                    "actual": actual_payload
+                }}
+            ))
+            
+            # Mark daily event as verified
+            daily_ops.append(UpdateOne(
+                {"_id": r["_id"]},
+                {"$set": {"status": "Verified", "verification_time": datetime.now(timezone.utc)}}
+            ))
+
+        if actual_ops:
+            self.actual_col.bulk_write(actual_ops)
+        if unified_ops:
+            self.unified_col.bulk_write(unified_ops)
+
+        modified_count = 0
+        if daily_ops:
+            res = self.daily_col.bulk_write(daily_ops)
             actual_ops.append(
                 UpdateOne(
                     {"_id": event_uuid},
