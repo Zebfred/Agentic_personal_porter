@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 import json
@@ -6,9 +9,6 @@ from datetime import datetime, timezone, UTC, timedelta
 from pathlib import Path
     
 # Ensure we can import from the src directory when running from helper_scripts
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.config import MongoConfig
 #from src.constants import ACTUAL_CATEGORY_MAPPING
@@ -52,7 +52,6 @@ class SovereignMongoStorage:
         self.db['calendar_intent_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_unified_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
-
 
     def save_journal_entry(self, log_data: dict, user_id: str = "Hero"):
         """
@@ -104,7 +103,7 @@ class SovereignMongoStorage:
                     {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
                 )
             except Exception as e:
-                print(f"Error updating flat journal entry status: {e}")
+                logger.info(f"Error updating flat journal entry status: {e}")
             return
 
         try:
@@ -130,7 +129,7 @@ class SovereignMongoStorage:
                     {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
                 )
             except Exception as e:
-                print(f"Error updating flat journal entry status: {e}")
+                logger.info(f"Error updating flat journal entry status: {e}")
 
     def get_monthly_log(self, year_month: str, user_id: str = "Hero") -> dict:
         """
@@ -344,7 +343,7 @@ class SovereignMongoStorage:
         # Find raw events not yet formatted
         raw_events = list(self.raw_col.find({"sync_status": "staged"}))
         
-        print("--- Processing Raw Events for Formatting ((bulk upsert) ---")
+        logger.info("--- Processing Raw Events for Formatting ((bulk upsert) ---")
         
         formatted_ops = []
         raw_ops = []
@@ -386,20 +385,18 @@ class SovereignMongoStorage:
                     # Clear the lists for the next batch
                     formatted_ops = []
                     raw_ops = []
-                    print(f"Beautifully processed batch... Total so far: {success_count}")
+                    logger.info(f"Beautifully processed batch... Total so far: {success_count}")
 
             except Exception as e:
-                print(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
+                logger.info(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
 
         if formatted_ops:
             self.formatted_col.bulk_write(formatted_ops, ordered=False)
         if raw_ops:
             self.raw_col.bulk_write(raw_ops, ordered=False)
                 
-        print(f"Successfully formatted {success_count} events.")
+        logger.info(f"Successfully formatted {success_count} events.")
         return success_count
-
-
 
     def get_formatted_for_neo4j(self):
         """
@@ -430,9 +427,9 @@ if __name__ == "__main__":
     
     storage = SovereignMongoStorage()
     
-    print(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
+    logger.info(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
     processed = storage.process_all_unstaged()
     
     # Final Verification
     if processed > 0:
-        print(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")
+        logger.info(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")

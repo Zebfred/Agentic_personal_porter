@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 from pathlib import Path
 
@@ -19,5 +22,5 @@ try:
         with open(example_file_path, 'r') as f:
             ACTUAL_CATEGORY_MAPPING = json.load(f)
 except Exception as e:
-    print(f"Warning: Could not load category mapping. {e}")
+    logger.info(f"Warning: Could not load category mapping. {e}")
     ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}

@@ -1,25 +1,26 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 from pathlib import Path
 
 # Setup path so we can import from src
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 from src.utils.path_utils import load_env_vars
 from src.database.mongo_storage import SovereignMongoStorage
 
 def main():
     load_env_vars()
-    print("--- MongoDB Collections Overview ---")
+    logger.info("--- MongoDB Collections Overview ---")
     
     try:
         storage = SovereignMongoStorage()
         db = storage.db
         
         collections = db.list_collection_names()
-        print(f"{'Collection Name':<35} | {'Document Count':<15} | {'Last Update / Record Time':<30}")
-        print("-" * 85)
+        logger.info(f"{'Collection Name':<35} | {'Document Count':<15} | {'Last Update / Record Time':<30}")
+        logger.info("-" * 85)
         
         for coll_name in sorted(collections):
             coll = db[coll_name]
@@ -49,10 +50,10 @@ def main():
                 if last_updated == "Unknown" and hasattr(latest_doc['_id'], 'generation_time'):
                     last_updated = str(latest_doc['_id'].generation_time)
                 
-            print(f"{coll_name:<35} | {count:<15} | {str(last_updated)[:30]:<30}")
+            logger.info(f"{coll_name:<35} | {count:<15} | {str(last_updated)[:30]:<30}")
             
     except Exception as e:
-        print(f"Error accessing MongoDB: {e}")
+        logger.info(f"Error accessing MongoDB: {e}")
 
 if __name__ == "__main__":
     main()

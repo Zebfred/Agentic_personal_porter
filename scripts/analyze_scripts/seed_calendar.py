@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, time
 import logging
 
 # Path setup to allow imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.integrations.google_calendar import get_calendar_service
 from src.database.mongo_storage import SovereignMongoStorage

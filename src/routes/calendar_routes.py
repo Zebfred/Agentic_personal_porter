@@ -19,14 +19,12 @@ logger = logging.getLogger("APP_ROUTER")
 # Lazy-initialized calendar service singleton
 _calendar_service = None
 
-
 def get_calendar_service_instance():
     """Get or create Google Calendar service instance."""
     global _calendar_service
     if _calendar_service is None:
         _calendar_service = get_calendar_service()
     return _calendar_service
-
 
 def fetch_calendar_events_for_date(target_date_str: str, email: str | None = None):
     """
@@ -77,7 +75,6 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str | None = Non
     except Exception as e:
         logger.error(f"Error fetching calendar events internally: {e}")
         return []
-
 
 @calendar_bp.route('/get_calendar_events', methods=['GET'])
 @require_api_key
@@ -212,7 +209,6 @@ def approve_audits():
         logger.error(f"Error approving audits: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
 @require_api_key
 def get_adventure_log():
@@ -269,7 +265,6 @@ def user_sync_calendar():
     except Exception as e:
         logger.error(f"Error syncing user calendar: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @calendar_bp.route('/api/calendar/push_to_gcal', methods=['POST', 'OPTIONS'])
 @require_api_key

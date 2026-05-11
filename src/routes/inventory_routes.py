@@ -17,8 +17,6 @@ inventory_bp = Blueprint('inventory', __name__)
 logger = logging.getLogger("APP_ROUTER")
 
 # Project root for filesystem artifact fallback
-project_root = Path(__file__).resolve().parent.parent.parent
-
 
 @inventory_bp.route('/graph_data', methods=['GET'])
 @require_api_key
@@ -34,7 +32,6 @@ def get_graph_data():
     except Exception as e:
         logger.error(f"Error fetching graph data: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @inventory_bp.route('/inventory', methods=['GET'])
 @require_api_key
@@ -69,7 +66,6 @@ def get_inventory():
         logger.error(f"Error fetching inventory: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @inventory_bp.route('/artifacts/scan', methods=['GET'])
 @require_api_key
 def scan_artifacts():
@@ -88,7 +84,6 @@ def scan_artifacts():
     except Exception as e:
         logger.error(f"Error scanning artifacts: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @inventory_bp.route('/artifacts/<artifact_name>', methods=['GET', 'POST', 'OPTIONS'])
 @require_api_key

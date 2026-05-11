@@ -10,11 +10,7 @@ from pydantic import SecretStr, BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, START, END
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
 from src.utils.llm_factory import AgentLLMConfig
-sys.path.append(str(root))
 
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.database.context_engine import SovereignContextEngine
@@ -204,9 +200,9 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
             }
         }
         storage.save_agent_reflection(reflection_data)
-        print(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
+        logger.info(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
     except Exception as e:
-        print(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
+        logger.info(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
         
     return {"final_output": final_output}
 
@@ -233,7 +229,7 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
     health_manager = AgentHeartbeatManager()
     run_id = health_manager.start_agent_run("mach_3_graph", {"journal_entry": journal_entry})
     
-    print("--- Starting Sovereign Daily Recon ---")
+    logger.info("--- Starting Sovereign Daily Recon ---")
     try:
         initial_state: ReflectionState = {
             "journal_entry": journal_entry,
@@ -249,15 +245,15 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
         health_manager.end_agent_run(run_id, status="success")
         return final_text
     except TokenLimitExceededError as e:
-        print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        logger.info(f"\n[CRITICAL RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return "ERROR: Socratic Categorizer experienced a logic loop and was forcefully halted by the Token Circuit Breaker to preserve API limits."
     except Exception as e:
-        print(f"\n[RUNTIME ERROR] {e}")
+        logger.info(f"\n[RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return f"ERROR: Unexpected Backend Error during Categorization: {e}"
 
 if __name__ == "__main__":
     # Test execution
     sample_journal = "Intention: Work deeply. Actual: Fell down a rabbit hole of tutorials and abstract thought."
-    print(run_porter_reflection(sample_journal))
+    logger.info(run_porter_reflection(sample_journal))

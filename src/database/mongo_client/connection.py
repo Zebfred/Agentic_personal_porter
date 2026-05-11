@@ -4,8 +4,6 @@ from pymongo import MongoClient
 # Attempt to load from src root
 import sys
 from pathlib import Path
-root = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(root))
 
 from src.config import MongoConfig
 

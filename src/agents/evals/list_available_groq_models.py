@@ -8,9 +8,6 @@ import requests
 from pathlib import Path
 from rich.console import Console
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(root))
-
 console = Console()
 
 def list_groq_models():

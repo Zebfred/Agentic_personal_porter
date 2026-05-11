@@ -15,9 +15,6 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(root))
-
 from src.utils.path_utils import load_env_vars
 from src.utils.llm_factory import AgentLLMConfig
 from src.agents.evals.orchestration_harness import run_orchestration_eval
@@ -25,7 +22,6 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
-
 
 def _build_model_list(
     include_gemini: bool = True,
@@ -44,7 +40,6 @@ def _build_model_list(
             AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile"),
         ])
     return models
-
 
 def _write_results_markdown(results: list[dict], output_path: Path) -> None:
     """Writes evaluation results to a markdown report."""
@@ -105,7 +100,6 @@ def _write_results_markdown(results: list[dict], output_path: Path) -> None:
         f.write("\n".join(lines))
 
     console.print(f"\n[green]Results written to {output_path}[/green]")
-
 
 def main():
     parser = argparse.ArgumentParser(
@@ -186,7 +180,6 @@ def main():
     # Write markdown report
     output_path = Path(args.output) if args.output else (root / "data" / "evals" / "orchestration_results.md")
     _write_results_markdown(results, output_path)
-
 
 if __name__ == "__main__":
     main()

@@ -1,11 +1,12 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 import json
 from pathlib import Path
 
 # Add project root to path
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 from src.database.neo4j_client import get_driver
 
@@ -16,14 +17,14 @@ def visualize_schema():
     """
     driver = get_driver()
     if not driver:
-        print("Could not connect to Neo4j. Check credentials in .env")
+        logger.info("Could not connect to Neo4j. Check credentials in .env")
         return
 
     try:
         with driver.session() as session:
             # Call the built-in Neo4j schema visualization procedure (Requires APOC usually, or built-in schema tools depending on version)
             # Alternative: use standard cypher to extract distinct labels and rels
-            print("Extracting current Graph Schema...")
+            logger.info("Extracting current Graph Schema...")
             
             nodes_query = "CALL db.labels() YIELD label RETURN collect(label) as labels"
             rels_query = "CALL db.relationshipTypes() YIELD relationshipType RETURN collect(relationshipType) as rels"
@@ -57,11 +58,11 @@ def visualize_schema():
                 "observed_patterns": patterns
             }
             
-            print(json.dumps(schema, indent=2))
+            logger.info(json.dumps(schema, indent=2))
             
     except Exception as e:
-        print(f"Error extracting schema: {e}")
-        print("Note: The db.labels() or db.relationshipTypes() procedures might not be available depending on your Neo4j version/plugins.")
+        logger.info(f"Error extracting schema: {e}")
+        logger.info("Note: The db.labels() or db.relationshipTypes() procedures might not be available depending on your Neo4j version/plugins.")
     finally:
         driver.close()
 

@@ -15,7 +15,6 @@ from src.routes.auth_middleware import require_api_key, require_role
 admin_bp = Blueprint('admin', __name__)
 logger = logging.getLogger("APP_ROUTER")
 
-
 @admin_bp.route('/admin/system_sync', methods=['POST'])
 @require_api_key
 @require_role('admin')
@@ -31,7 +30,6 @@ def admin_system_sync():
     except Exception as e:
         logger.error(f"Error syncing calendar: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @admin_bp.route('/wake_infrastructure', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -51,7 +49,6 @@ def wake_infrastructure():
         logger.error(f"Error executing wake pulse: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @admin_bp.route('/admin/vector_sync', methods=['POST'])
 @require_api_key
 @require_role('admin')
@@ -67,7 +64,6 @@ def admin_vector_sync():
         logger.error(f"Error during vector batch sync: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @admin_bp.route('/admin/inject_foundation', methods=['POST'])
 @require_api_key
 @require_role('admin')
@@ -82,8 +78,6 @@ def admin_inject_foundation():
     except Exception as e:
         logger.error(f"Error injecting foundation: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
-
 
 @admin_bp.route('/admin/pulse', methods=['GET'])
 @require_api_key

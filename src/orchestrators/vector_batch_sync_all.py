@@ -1,10 +1,9 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
-
-root = Path(__file__).resolve().parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
 
 from src.integrations.embeddings_client import BGEM3EmbeddingsClient
 from src.database.vector_database.chromadb_client import ChromaExperimentalClient
@@ -21,7 +20,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     - agent_reflections -> ChromaDB (Vibe check)
     - journal_entries -> Weaviate (Hybrid Search Intent/Actual tracking)
     """
-    print(f"[{datetime.now(timezone.utc).isoformat()}] Starting Isolated Vector Database Batch Sync: {sync_trigger_time}")
+    logger.info(f"[{datetime.now(timezone.utc).isoformat()}] Starting Isolated Vector Database Batch Sync: {sync_trigger_time}")
     
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
     health_manager = AgentHeartbeatManager()
@@ -30,7 +29,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     try:
         # 0. Wake up the massive BGE-M3 instance for vector generation
         cloud_client = GCPComputeClient()
-        print("Sending wake pulse to Ollama Vector Host...")
+        logger.info("Sending wake pulse to Ollama Vector Host...")
         cloud_client.wake_instance("ollama-vector-host", block_until_running=True)
 
         db = MongoConnectionManager.get_db()
@@ -40,7 +39,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
         raw_reflections = list(reflections_col.find().sort("created_at", -1).limit(limit))
         raw_journals = list(journal_col.find().sort("created_at", -1).limit(limit))
         
-        print(f"Fetched {len(raw_reflections)} reflections and {len(raw_journals)} journal entries from Mongo.")
+        logger.info(f"Fetched {len(raw_reflections)} reflections and {len(raw_journals)} journal entries from Mongo.")
         
         # 1. Processing and homogenizing the Mongo documents
         chroma_items = []
@@ -74,13 +73,13 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
             })
 
         if not chroma_items and not weaviate_items:
-            print("No processable text data found. Exiting.")
+            logger.info("No processable text data found. Exiting.")
             health_manager.end_agent_run(run_id, status="success", result_summary="No data to sync.")
             return
 
         embeddings_client = BGEM3EmbeddingsClient()
         
-        print("Beginning BGE-M3 target embedding generation...")
+        logger.info("Beginning BGE-M3 target embedding generation...")
         for item in chroma_items + weaviate_items:
             item["embedding"] = embeddings_client.get_embedding(item["text"])
         
@@ -93,16 +92,16 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
                 metadatas=[{"pillar": r["pillar"], "source": r["source"], "db_timestamp": r["db_timestamp"]} for r in chroma_items],
                 documents=[r["text"] for r in chroma_items]
             )
-            print(f"Pushed {len(chroma_items)} items to ChromaDB.")
+            logger.info(f"Pushed {len(chroma_items)} items to ChromaDB.")
             
         if weaviate_items:
             weaviate = WeaviateExperimentalClient()
             weaviate_vectors = [{"text": r["text"], "pillar": r["pillar"], "embedding": r["embedding"]} for r in weaviate_items]
             weaviate.insert_batch(weaviate_vectors)
-            print(f"Pushed {len(weaviate_items)} items to Weaviate.")
+            logger.info(f"Pushed {len(weaviate_items)} items to Weaviate.")
         
         # 5. Shut down the heavy ML infrastructure to conserve budget
-        print("Vector batch inserted! Stopping Ollama Vector Host to save costs.")
+        logger.info("Vector batch inserted! Stopping Ollama Vector Host to save costs.")
         cloud_client.sleep_instance("ollama-vector-host")
         
         # 6. Log Status
@@ -116,13 +115,13 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
                 "embedding_dimensions": len(chroma_items[0]["embedding"]) if chroma_items else (len(weaviate_items[0]["embedding"]) if weaviate_items else 0)
             })
         except Exception as log_e:
-            print(f"Failed to log vector sync status: {log_e}")
+            logger.info(f"Failed to log vector sync status: {log_e}")
 
-        print("Isolated batch synchronization completed successfully.")
+        logger.info("Isolated batch synchronization completed successfully.")
         health_manager.end_agent_run(run_id, status="success", result_summary=f"Synced {len(chroma_items)} to Chroma, {len(weaviate_items)} to Weaviate.")
         
     except Exception as e:
-        print(f"Error during vector sync: {e}")
+        logger.info(f"Error during vector sync: {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         raise e
 

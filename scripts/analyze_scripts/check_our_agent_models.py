@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import re
 import json
@@ -61,39 +64,39 @@ def get_available_groq_models(api_key):
         data = response.json()
         return [m.get("id") for m in data.get("data", [])]
     except Exception as e:
-        print(f"Error fetching models from Groq: {e}")
+        logger.info(f"Error fetching models from Groq: {e}")
         return []
 
 def main():
     api_key = get_groq_api_key()
     if not api_key:
-        print("Error: GROQ_API_KEY not found in environment or .auth/.env")
+        logger.info("Error: GROQ_API_KEY not found in environment or .auth/.env")
         sys.exit(1)
         
-    print("Fetching available models from Groq...")
+    logger.info("Fetching available models from Groq...")
     available_models = get_available_groq_models(api_key)
     
     if not available_models:
-        print("Could not retrieve models from Groq. Check your API key.")
+        logger.info("Could not retrieve models from Groq. Check your API key.")
         sys.exit(1)
         
-    print("Scanning src/agents/ for configured models...")
+    logger.info("Scanning src/agents/ for configured models...")
     configured_models = get_configured_models()
     
     if not configured_models:
-        print("No models found configured in src/agents/")
+        logger.info("No models found configured in src/agents/")
         sys.exit(0)
         
-    print("\n=== Agent Models Connectivity Check ===")
-    print(f"{'Status':<12} | {'Model Name':<30} | {'Used In'}")
-    print("-" * 75)
+    logger.info("\n=== Agent Models Connectivity Check ===")
+    logger.info(f"{'Status':<12} | {'Model Name':<30} | {'Used In'}")
+    logger.info("-" * 75)
     
     for model, files in sorted(configured_models.items()):
         status = "✅ OK" if model in available_models else "❌ NOT FOUND"
         files_str = ", ".join(files)
-        print(f"{status:<12} | {model:<30} | {files_str}")
+        logger.info(f"{status:<12} | {model:<30} | {files_str}")
         
-    print("-" * 75)
+    logger.info("-" * 75)
 
 if __name__ == "__main__":
     main()

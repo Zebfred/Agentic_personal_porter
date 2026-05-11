@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 import json
@@ -5,8 +8,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Setup path so we can import from src
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 from src.utils.path_utils import load_env_vars
 from src.database.mongo_storage import SovereignMongoStorage
@@ -16,7 +17,7 @@ def run_pulse_check():
     """
     Runs the system pulse check locally and writes the output to a log file.
     """
-    print("--- Starting Local Pulse Check ---")
+    logger.info("--- Starting Local Pulse Check ---")
     
     # Ensure environment variables are loaded
     load_env_vars()
@@ -40,11 +41,11 @@ def run_pulse_check():
         with open(log_filename, "w") as f:
             f.write(json.dumps(pulse_data, indent=4, cls=DateTimeEncoder))
             
-        print(f"Pulse Check Complete.")
-        print(f"Log saved to: {log_filename}")
+        logger.info(f"Pulse Check Complete.")
+        logger.info(f"Log saved to: {log_filename}")
         
     except Exception as e:
-        print(f"Error running pulse check: {e}")
+        logger.info(f"Error running pulse check: {e}")
 
 if __name__ == "__main__":
     run_pulse_check()

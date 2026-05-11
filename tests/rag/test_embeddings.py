@@ -6,20 +6,17 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
 import numpy as np
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 
-
 def test_scibert_embedder_initialization():
     """Test SciBERTEmbedder initialization."""
     embedder = SciBERTEmbedder()
     assert embedder.model is not None
     assert embedder.tokenizer is not None
-
 
 def test_embed_single_text():
     """Test embedding a single text."""
@@ -30,7 +27,6 @@ def test_embed_single_text():
     
     assert isinstance(embedding, np.ndarray)
     assert embedding.shape[0] == embedder.get_embedding_dim()
-
 
 def test_embed_batch():
     """Test embedding a batch of texts."""
@@ -47,7 +43,6 @@ def test_embed_batch():
     assert embeddings.shape[0] == len(texts)
     assert embeddings.shape[1] == embedder.get_embedding_dim()
 
-
 def test_embed_chunks():
     """Test embedding chunks."""
     embedder = SciBERTEmbedder()
@@ -62,7 +57,6 @@ def test_embed_chunks():
     
     assert len(chunks_with_embeddings) == len(chunks)
     assert all('embedding' in chunk for chunk in chunks_with_embeddings)
-
 
 def test_get_embedding_dim():
     """Test getting embedding dimension."""

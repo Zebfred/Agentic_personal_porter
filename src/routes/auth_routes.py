@@ -28,8 +28,6 @@ def get_config():
         "google_client_id": os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
     })
 
-
-
 @auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
     """
@@ -112,7 +110,6 @@ def login():
     except Exception as e:
         logger.error(f"Error during user login: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @auth_bp.route('/login/code', methods=['POST', 'OPTIONS'])
 def login_code():
@@ -212,7 +209,6 @@ def login_code():
     except Exception as e:
         logger.error(f"Error during user code login: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @auth_bp.route('/nexus/login', methods=['POST', 'OPTIONS'])
 def nexus_login():

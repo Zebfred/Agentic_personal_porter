@@ -3,7 +3,6 @@ Billing Killswitch Module
 Adapted from: https://github.com/derailed-dash/kill-project-billing
 Original Author: Darren Lester (@derailed-dash)
 
-
 This script contains a Google Cloud Function designed to automatically disable billing for 
 any Google Cloud projects associated with an exceeded budget.
 

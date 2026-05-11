@@ -16,7 +16,6 @@ import jwt
 from functools import wraps
 from flask import request, jsonify, make_response
 
-
 def require_role(*roles):
     """
     Decorator that enforces strict role-based access.
@@ -32,7 +31,6 @@ def require_role(*roles):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
-
 
 def require_api_key(f):
     """Decorator that enforces API key or JWT authentication on a route."""

@@ -4,35 +4,36 @@ Test RAG retrieval without LLM (no API key needed).
 This script tests the embedding and retrieval components.
 """
 
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 
-
 def test_retrieval(collection_name="rl_papers"):
     """Test retrieval with various queries."""
-    print("="*70)
-    print("RAG Retrieval Test (Embedding + Vector Search)")
-    print("="*70)
+    logger.info("="*70)
+    logger.info("RAG Retrieval Test (Embedding + Vector Search)")
+    logger.info("="*70)
     
     # Initialize components
-    print("\n1. Initializing components...")
+    logger.info("\n1. Initializing components...")
     embedder = SciBERTEmbedder()
     vector_store = VectorStore(collection_name=collection_name)
     
     collection_size = vector_store.get_collection_size()
     if collection_size == 0:
-        print(f"\n⚠️  Vector store '{collection_name}' is empty!")
-        print("   Run: python build_rag_index.py")
+        logger.info(f"\n⚠️  Vector store '{collection_name}' is empty!")
+        logger.info("   Run: python build_rag_index.py")
         return
     
-    print(f"   ✓ Vector store contains {collection_size} chunks")
+    logger.info(f"   ✓ Vector store contains {collection_size} chunks")
     
     # Test queries - Basic Theory
     basic_theory_queries = [
@@ -127,16 +128,16 @@ def test_retrieval(collection_name="rl_papers"):
         ("Teaching Theory to People of Any Level", adaptive_teaching_queries)
     ]
     
-    print("\n2. Testing retrieval...")
-    print("="*70)
+    logger.info("\n2. Testing retrieval...")
+    logger.info("="*70)
     
     total_tests = sum(len(queries) for _, queries in all_test_queries)
     test_counter = 0
     
     for section_name, test_queries in all_test_queries:
-        print(f"\n{'='*70}")
-        print(f"SECTION: {section_name.upper()}")
-        print('='*70)
+        logger.info(f"\n{'='*70}")
+        logger.info(f"SECTION: {section_name.upper()}")
+        logger.info('='*70)
         
         for test in test_queries:
             test_counter += 1
@@ -144,11 +145,11 @@ def test_retrieval(collection_name="rl_papers"):
             category = test.get("category", "Basic Theory")
             level = test.get("level", "")
             
-            print(f"\n[Test {test_counter}/{total_tests}] [{category}]")
+            logger.info(f"\n[Test {test_counter}/{total_tests}] [{category}]")
             if level:
-                print(f"Level: {level}")
-            print(f"Query: {query}")
-            print("-" * 70)
+                logger.info(f"Level: {level}")
+            logger.info(f"Query: {query}")
+            logger.info("-" * 70)
             
             # Generate query embedding
             query_embedding = embedder.embed(query)
@@ -156,7 +157,7 @@ def test_retrieval(collection_name="rl_papers"):
             # Search
             results = vector_store.search(query_embedding, top_k=5)
             
-            print(f"\nRetrieved {len(results)} chunks:\n")
+            logger.info(f"\nRetrieved {len(results)} chunks:\n")
             
             for j, result in enumerate(results, 1):
                 similarity = 1 - result['distance'] if result['distance'] is not None else 0
@@ -164,26 +165,25 @@ def test_retrieval(collection_name="rl_papers"):
                 section = result['metadata'].get('section_header', 'Unknown Section')
                 text = result['text']
                 
-                print(f"  [{j}] Similarity: {similarity:.4f}")
-                print(f"      Paper: {paper_title}")
-                print(f"      Section: {section}")
-                print(f"      Text preview: {text[:200]}...")
-                print()
+                logger.info(f"  [{j}] Similarity: {similarity:.4f}")
+                logger.info(f"      Paper: {paper_title}")
+                logger.info(f"      Section: {section}")
+                logger.info(f"      Text preview: {text[:200]}...")
+                logger.info()
             
             # Analysis for expected failures
             if category == "Theory to Code":
-                print("  ⚠️  EXPECTED LIMITATION: Current system retrieves theory but")
-                print("      doesn't generate code or provide implementation guidance.")
+                logger.info("  ⚠️  EXPECTED LIMITATION: Current system retrieves theory but")
+                logger.info("      doesn't generate code or provide implementation guidance.")
             elif category == "Adaptive Teaching":
-                print("  ⚠️  EXPECTED LIMITATION: Current system doesn't adapt explanation")
-                print(f"      complexity to {level} level - uses same retrieval for all levels.")
+                logger.info("  ⚠️  EXPECTED LIMITATION: Current system doesn't adapt explanation")
+                logger.info(f"      complexity to {level} level - uses same retrieval for all levels.")
             
-            print("="*70)
+            logger.info("="*70)
     
-    print("\n✓ Retrieval tests completed!")
-    print("\nNote: To test full RAG (with LLM answers), set GROQ_API_KEY and run:")
-    print("     python test_rag_manual.py")
-
+    logger.info("\n✓ Retrieval tests completed!")
+    logger.info("\nNote: To test full RAG (with LLM answers), set GROQ_API_KEY and run:")
+    logger.info("     python test_rag_manual.py")
 
 if __name__ == "__main__":
     test_retrieval()

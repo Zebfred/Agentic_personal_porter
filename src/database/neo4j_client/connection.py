@@ -3,10 +3,6 @@ import sys
 from pathlib import Path
 from neo4j import GraphDatabase
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
-
 from src.config import NeoConfig
 
 # --- Configuration ---

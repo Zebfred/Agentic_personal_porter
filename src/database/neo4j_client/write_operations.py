@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 from .connection import get_driver
 
@@ -15,7 +18,7 @@ def log_to_neo4j(log_data: dict, username: str) -> str:
         if result_node and 'activity' in result_node:
             return f"Successfully logged entry for '{result_node['activity']}'"
         else:
-            print("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
+            logger.info("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
 
 def _create_log_entry(tx, log_data: dict, username: str):
@@ -198,7 +201,7 @@ def create_identity_graph(username, origin_story, ambitions):
     with driver.session() as session:
         session.execute_write(lambda tx: tx.run(query, username=username, origin_story=origin_story, ambitions=ambitions))
     user_id_graph = f"Identity graph created/updated successfully for user {username}"
-    print(user_id_graph)
+    logger.info(user_id_graph)
     return user_id_graph
 
 def create_goal(username: str, description: str, category: str = "general", 

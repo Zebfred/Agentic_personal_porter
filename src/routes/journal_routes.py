@@ -24,7 +24,6 @@ from src.database.mongo_client.uuid_manager import UUIDGenerator
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
 
-
 @journal_bp.route('/api/save_log', methods=['POST', 'OPTIONS'])
 @require_api_key
 def save_log():
@@ -148,7 +147,6 @@ def save_log():
         logger.error(f"Error saving log: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
 @require_api_key
 def get_historical_logs():
@@ -202,7 +200,6 @@ def get_yearly_logs_route():
     except Exception as e:
         logger.error(f"Error fetching yearly logs: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @journal_bp.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key

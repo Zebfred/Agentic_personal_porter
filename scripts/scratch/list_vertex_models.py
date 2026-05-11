@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 from google.cloud.aiplatform_v1beta1 import ModelGardenServiceClient
 from google.api_core.exceptions import GoogleAPICallError
@@ -7,7 +10,7 @@ def list_vertex_models():
     Queries the Vertex AI Model Garden to list foundational models published by Google 
     (like Gemini, Claude on Vertex, etc.) and outputs them to the console.
     """
-    print("Authenticating via Application Default Credentials...")
+    logger.info("Authenticating via Application Default Credentials...")
     try:
         # Initialize the client
         client = ModelGardenServiceClient()
@@ -15,7 +18,7 @@ def list_vertex_models():
         # The parent is publishers/{publisher}
         parent = "publishers/google"
         
-        print(f"Querying Vertex AI Model Garden for {parent}...\n")
+        logger.info(f"Querying Vertex AI Model Garden for {parent}...\n")
         
         # We'll filter to just show the most relevant / popular ones to avoid terminal spam
         # Specifically highlighting Gemini, Llama, Claude, etc.
@@ -26,9 +29,9 @@ def list_vertex_models():
         # Call the API
         page_result = client.list_publisher_models(request=request)
         
-        print("========================================================")
-        print("    Available Google Vertex AI Foundational Models      ")
-        print("========================================================\n")
+        logger.info("========================================================")
+        logger.info("    Available Google Vertex AI Foundational Models      ")
+        logger.info("========================================================\n")
         
         for model in page_result:
             name = model.name
@@ -45,20 +48,20 @@ def list_vertex_models():
                 else:
                     description = "No description"
                 
-                print(f"Model ID: {name.split('/')[-1]}")
-                print(f"Display Name: {display_name}")
-                print(f"Description: {description}")
-                print("-" * 40)
+                logger.info(f"Model ID: {name.split('/')[-1]}")
+                logger.info(f"Display Name: {display_name}")
+                logger.info(f"Description: {description}")
+                logger.info("-" * 40)
                 count += 1
                 
-        print(f"\nFound {count} highly relevant generative models.")
-        print("For a full list of every single variant, see the GCP Vertex AI Model Garden Console.")
-        print("========================================================\n")
+        logger.info(f"\nFound {count} highly relevant generative models.")
+        logger.info("For a full list of every single variant, see the GCP Vertex AI Model Garden Console.")
+        logger.info("========================================================\n")
 
     except GoogleAPICallError as e:
-        print(f"GCP API Error: {e.message}")
+        logger.info(f"GCP API Error: {e.message}")
     except Exception as e:
-        print(f"Error fetching models: {e}")
+        logger.info(f"Error fetching models: {e}")
 
 if __name__ == "__main__":
     list_vertex_models()

@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 from pathlib import Path
@@ -5,8 +8,6 @@ from datetime import datetime, timezone, timedelta
 from dateutil import parser
 
 # Path resolution
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.database.mongo_storage import SovereignMongoStorage
 from src.database.inject_hero_calendar import SovereignGraphInjector
@@ -27,8 +28,8 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
     4. Injects Formatted Data into Neo4j.
     5. Finalizes the sync status in Mongo.
     """
-    print(f"--- Starting Sovereign Sync Pipeline ---")
-    print(f"Timestamp: {datetime.now().isoformat()}")
+    logger.info(f"--- Starting Sovereign Sync Pipeline ---")
+    logger.info(f"Timestamp: {datetime.now().isoformat()}")
 
     storage = SovereignMongoStorage()
     injector = SovereignGraphInjector()
@@ -47,7 +48,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
             users = [u for u in users if u.get("email") == target_user_email]
             
         if not users:
-            print("No users opted in for calendar sync or target user not found.")
+            logger.info("No users opted in for calendar sync or target user not found.")
             global_success = True
         
         from src.database.calendar_raw_sync_to_mongo import SovereignCalendarSync
@@ -58,7 +59,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
             refresh_token = user.get("google_refresh_token")
             username = user.get("username", "system")
             
-            print(f"--- Processing Sync for User: {user_email} ---")
+            logger.info(f"--- Processing Sync for User: {user_email} ---")
             
             # Step 0: Pull from GCal using their credentials
             if refresh_token:
@@ -75,11 +76,11 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                     )
                     storage.update_historical_sync_cursor(user_email, new_cursor)
                 except Exception as e:
-                    print(f"Failed to pull GCal events for {user_email}: {e}")
+                    logger.info(f"Failed to pull GCal events for {user_email}: {e}")
                     global_success = False
                     continue
             else:
-                print(f"No refresh token for {user_email}, skipping GCal fetch.")
+                logger.info(f"No refresh token for {user_email}, skipping GCal fetch.")
                 # We don't fail global success here, just skip
 
             # Phase 1/2: Gather Unstaged and Classify (Twin-Tracked)
@@ -118,24 +119,24 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                 username = user_doc.get("username", "unknown") if user_doc else "unknown"
                 
                 if is_historical:
-                    print(f"Historian found {len(raw_events)} historical events for {user_email}.")
+                    logger.info(f"Historian found {len(raw_events)} historical events for {user_email}.")
                     try:
                         golden_objects = historian.classify_historical_batch(raw_events, username=username)
                     except Exception as e:
-                        print(f"Agent failed: {e}")
+                        logger.info(f"Agent failed: {e}")
                         golden_objects = []
                 else:
-                    print(f"Librarian found {len(raw_events)} recent events for {user_email}.")
+                    logger.info(f"Librarian found {len(raw_events)} recent events for {user_email}.")
                     try:
                         golden_objects = librarian.classify_daily_batch(raw_events, username=username)
                     except Exception as e:
-                        print(f"Agent failed: {e}")
+                        logger.info(f"Agent failed: {e}")
                         golden_objects = []
                         
                 # DRY-RUN FALLBACK: If agents return nothing (which they currently do due to format issues), 
                 # we map raw events to golden objects to keep the pipeline moving.
                 if not golden_objects:
-                    print("Agents returned empty. Using DRY-RUN fallback to populate formatted collections.")
+                    logger.info("Agents returned empty. Using DRY-RUN fallback to populate formatted collections.")
                     golden_objects = []
                     for ev in raw_events:
                         golden_objects.append({
@@ -201,17 +202,17 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
             process_and_save_batch(historic_staged_list, is_historical=True)
             
             if not recent_staged_list and not historic_staged_list:
-                print(f"No new raw events in Timeseries Landing Zone for {user_email}.")
+                logger.info(f"No new raw events in Timeseries Landing Zone for {user_email}.")
                 
             # Phase 3: Identify events that haven't hit the Graph yet
             # Also filter by user_email in get_formatted_for_neo4j if possible, but let's just query direct
             formatted_events = list(storage.formatted_col.find({"neo4j_synced": {"$ne": True}, "user_email": user_email}))
             
             if not formatted_events:
-                print(f"No new formatted events ready for Neo4j for {user_email}.")
+                logger.info(f"No new formatted events ready for Neo4j for {user_email}.")
                 continue
                 
-            print(f"Attempting to inject {len(formatted_events)} events into the Identity Graph for {user_email}...")
+            logger.info(f"Attempting to inject {len(formatted_events)} events into the Identity Graph for {user_email}...")
 
             # Phase 4: Push to Neo4j
             injected_count = injector.inject_calendar_to_graph(formatted_events, user_email=user_email, username=username)
@@ -229,13 +230,13 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                             }
                         }
                     )
-                print(f"Successfully synchronized {injected_count} events to Neo4j.")
+                logger.info(f"Successfully synchronized {injected_count} events to Neo4j.")
             else:
-                print("Injection failed or no new nodes created. Check Neo4j logs.")
+                logger.info("Injection failed or no new nodes created. Check Neo4j logs.")
                 global_success = False
 
     except Exception as e:
-        print(f"Sync pipeline encountered an error: {e}")
+        logger.info(f"Sync pipeline encountered an error: {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         global_success = False
         raise e
@@ -251,9 +252,9 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                 "last_gcal_sync": datetime.now(timezone.utc).isoformat()
             })
         except Exception as log_e:
-            print(f"Failed to log sync status: {log_e}")
+            logger.info(f"Failed to log sync status: {log_e}")
             
-        print("--- Pipeline Execution Finished ---")
+        logger.info("--- Pipeline Execution Finished ---")
 
 if __name__ == "__main__":
     run_sync_pipeline()

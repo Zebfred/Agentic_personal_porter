@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 import json
@@ -5,14 +8,12 @@ from pathlib import Path
 from datetime import datetime
 
 # Path resolution
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 from src.database.calendar_raw_sync_to_mongo import SovereignCalendarSync
 from src.database.mongo_storage import SovereignMongoStorage
 
 def main():
-    print("=== Starting Calendar Pull Test ===")
+    logger.info("=== Starting Calendar Pull Test ===")
     
     storage = SovereignMongoStorage()
     cal_sync = SovereignCalendarSync()
@@ -20,7 +21,7 @@ def main():
     # Get the first opted-in user, preferring personal gmail
     users = storage.get_sync_opted_in_users()
     if not users:
-        print("No users opted in. Cannot test pull.")
+        logger.info("No users opted in. Cannot test pull.")
         return
         
     user = next((u for u in users if "gmail.com" in u.get("email", "")), users[0])
@@ -28,33 +29,33 @@ def main():
     refresh_token = user.get("google_refresh_token")
     
     if not refresh_token:
-        print(f"User {user_email} has no refresh token.")
+        logger.info(f"User {user_email} has no refresh token.")
         return
         
-    print(f"Testing pulls for user: {user_email}")
+    logger.info(f"Testing pulls for user: {user_email}")
     
     # Test 1: Sliding Window
-    print("\n--- Test 1: Sliding Window ---")
+    logger.info("\n--- Test 1: Sliding Window ---")
     try:
         ops_count_sliding = cal_sync.pull_sliding_window(user_email=user_email, refresh_token=refresh_token)
-        print(f"✅ Sliding window pulled {ops_count_sliding} events successfully.")
+        logger.info(f"✅ Sliding window pulled {ops_count_sliding} events successfully.")
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"❌ Sliding window pull failed: {e}")
+        logger.info(f"❌ Sliding window pull failed: {e}")
         
     # Test 2: Historical Backlog
-    print("\n--- Test 2: Historical Backlog ---")
+    logger.info("\n--- Test 2: Historical Backlog ---")
     try:
         oldest_cursor = storage.get_historical_sync_cursor(user_email)
-        print(f"Current oldest cursor: {oldest_cursor}")
+        logger.info(f"Current oldest cursor: {oldest_cursor}")
         ops_count_historic, new_cursor = cal_sync.pull_historical_backlog(
             user_email=user_email, 
             refresh_token=refresh_token, 
             oldest_cursor=oldest_cursor
         )
-        print(f"✅ Historical backlog pulled {ops_count_historic} events successfully.")
-        print(f"New cursor would be: {new_cursor}")
+        logger.info(f"✅ Historical backlog pulled {ops_count_historic} events successfully.")
+        logger.info(f"New cursor would be: {new_cursor}")
         
         # Don't necessarily update the cursor if this is just a dry test, 
         # but if the user wants it to be a real test we can.
@@ -62,10 +63,10 @@ def main():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        print(f"❌ Historical backlog pull failed: {e}")
+        logger.info(f"❌ Historical backlog pull failed: {e}")
 
     # Test 3: Export Sample Data
-    print("\n--- Test 3: Exporting Sample Data ---")
+    logger.info("\n--- Test 3: Exporting Sample Data ---")
     sample_dir = root / "data" / "google_calendar"
     sample_dir.mkdir(parents=True, exist_ok=True)
     sample_file = sample_dir / "Mongo_sample.json"
@@ -81,7 +82,7 @@ def main():
     with open(sample_file, "w") as f:
         json.dump(sample_events, f, indent=2)
         
-    print(f"✅ Exported {len(sample_events)} sample events to {sample_file}")
+    logger.info(f"✅ Exported {len(sample_events)} sample events to {sample_file}")
     
 if __name__ == "__main__":
     main()

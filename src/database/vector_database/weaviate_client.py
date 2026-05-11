@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 
 class WeaviateExperimentalClient:
@@ -18,7 +21,7 @@ class WeaviateExperimentalClient:
                 )
                 self._ensure_schema()
             except ImportError:
-                print("Warning: weaviate-client library not installed.")
+                logger.info("Warning: weaviate-client library not installed.")
 
     def _ensure_schema(self):
         schema = {
@@ -44,12 +47,12 @@ class WeaviateExperimentalClient:
                         vector=mem["embedding"]
                     )
             return True
-        print("Mock: Inserted batch to Weaviate.")
+        logger.info("Mock: Inserted batch to Weaviate.")
         return False
 
     def search_by_pillar(self, query_vector: list[float], pillar_name: str, limit: int = 5):
         if not hasattr(self, 'client'):
-            print(f"Mock Weaviate search by pillar: {pillar_name}")
+            logger.info(f"Mock Weaviate search by pillar: {pillar_name}")
             return []
             
         result = (

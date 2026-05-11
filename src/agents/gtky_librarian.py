@@ -90,11 +90,11 @@ class GTKYLibrarian(GTKYBaseClassifier):
 
     def run_full_sync(self, username: str):
         """The primary workflow for the Friday deadline."""
-        print("🚀 Librarian starting Identity Synchronization...")
+        logger.info("🚀 Librarian starting Identity Synchronization...")
         self.hard_reset_identity_graph()
         self.ingest_hero_origin(username)
         self.ingest_hero_intent(username)
-        print("✨ Synchronization Complete. Your Graph is now grounded in your Sovereign Context.")
+        logger.info("✨ Synchronization Complete. Your Graph is now grounded in your Sovereign Context.")
 
 if __name__ == "__main__":
     librarian = GTKYLibrarian()

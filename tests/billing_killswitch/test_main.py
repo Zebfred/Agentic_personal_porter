@@ -17,7 +17,6 @@ from google.cloud.billing.budgets_v1.types import Budget, Filter
 
 from src.infrastructure.billing_killswitch.main import disable_billing_for_projects
 
-
 @pytest.fixture
 def mock_clients():
     """Fixture to mock the Google Cloud clients."""
@@ -26,7 +25,6 @@ def mock_clients():
     with patch("src.infrastructure.billing_killswitch.main.billing_client", autospec=True) as mock_billing_client, \
          patch("src.infrastructure.billing_killswitch.main.budget_client", autospec=True) as mock_budget_client:
         yield mock_billing_client, mock_budget_client
-
 
 @pytest.fixture
 def cloud_event_factory():
@@ -44,7 +42,6 @@ def cloud_event_factory():
 
     return _create_cloud_event
 
-
 @pytest.fixture
 def non_simulation_env():
     """Fixture to ensure SIMULATE_DEACTIVATION is not set."""
@@ -56,7 +53,6 @@ def non_simulation_env():
     # After the test runs, restore the original environment variable if it existed.
     if original_value is not None:
         os.environ["SIMULATE_DEACTIVATION"] = original_value
-
 
 def test_cost_less_than_budget_no_action(mock_clients, cloud_event_factory, caplog):
     """Test that no action is taken if the cost is less than or equal to the budget."""
@@ -73,7 +69,6 @@ def test_cost_less_than_budget_no_action(mock_clients, cloud_event_factory, capl
     mock_budget_client.get_budget.assert_not_called()
     mock_billing_client.update_project_billing_info.assert_not_called()
 
-
 def test_no_billing_account_id(mock_clients, cloud_event_factory, caplog):
     """Test that the function exits if no billingAccountId is present in the message attributes."""
     mock_billing_client, mock_budget_client = mock_clients
@@ -88,7 +83,6 @@ def test_no_billing_account_id(mock_clients, cloud_event_factory, caplog):
     mock_budget_client.get_budget.assert_not_called()
     mock_billing_client.update_project_billing_info.assert_not_called()
 
-
 def test_no_budget_id(mock_clients, cloud_event_factory, caplog):
     """Test that the function exits if no budgetId is present in the message attributes."""
     mock_billing_client, mock_budget_client = mock_clients
@@ -102,7 +96,6 @@ def test_no_budget_id(mock_clients, cloud_event_factory, caplog):
     assert any("No budgetId found" in rec.message for rec in caplog.records)
     mock_budget_client.get_budget.assert_not_called()
     mock_billing_client.update_project_billing_info.assert_not_called()
-
 
 def test_get_budget_api_error(mock_clients, cloud_event_factory, caplog):
     """Test that an error is logged if the call to get the budget fails."""
@@ -119,7 +112,6 @@ def test_get_budget_api_error(mock_clients, cloud_event_factory, caplog):
     assert any("Error getting budget details" in rec.message for rec in caplog.records)
     mock_billing_client.update_project_billing_info.assert_not_called()
 
-
 def test_budget_not_scoped_to_projects(mock_clients, cloud_event_factory, caplog):
     """Test that a warning is logged if the budget is not scoped to any projects."""
     mock_billing_client, mock_budget_client = mock_clients
@@ -134,7 +126,6 @@ def test_budget_not_scoped_to_projects(mock_clients, cloud_event_factory, caplog
 
     assert any("is not scoped to any projects" in rec.message for rec in caplog.records)
     mock_billing_client.update_project_billing_info.assert_not_called()
-
 
 def test_disable_billing_for_single_project_success(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """Test that billing is successfully disabled for a single project."""
@@ -158,7 +149,6 @@ def test_disable_billing_for_single_project_success(mock_clients, cloud_event_fa
         project_billing_info=ANY
     )
 
-
 def test_disable_billing_for_multiple_projects_success(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """Test that billing is disabled for all projects associated with the budget."""
     mock_billing_client, mock_budget_client = mock_clients
@@ -177,7 +167,6 @@ def test_disable_billing_for_multiple_projects_success(mock_clients, cloud_event
     assert "Successfully disabled billing for project projects/test-project-1" in logs
     assert "Successfully disabled billing for project projects/test-project-2" in logs
     assert mock_billing_client.update_project_billing_info.call_count == 2
-
 
 def test_disable_billing_permission_denied_error(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """Test that a permission denied error is logged correctly when disabling billing."""
@@ -198,7 +187,6 @@ def test_disable_billing_permission_denied_error(mock_clients, cloud_event_facto
         and "Permission Denied" in rec.message
         for rec in caplog.records
     )
-
 
 def test_simulation_mode_enabled(mock_clients, cloud_event_factory, caplog):
     """Test that in simulation mode, the billing API is not actually called."""
@@ -221,7 +209,6 @@ def test_simulation_mode_enabled(mock_clients, cloud_event_factory, caplog):
     # Clean up the environment variable
     del os.environ["SIMULATE_DEACTIVATION"]
 
-
 def test_billing_already_disabled(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """Test that no action is taken if billing is already disabled for a project."""
     mock_billing_client, mock_budget_client = mock_clients
@@ -242,7 +229,6 @@ def test_billing_already_disabled(mock_clients, cloud_event_factory, caplog, non
 
     assert any("Billing is already disabled for project test-project-1" in rec.message for rec in caplog.records)
     mock_billing_client.update_project_billing_info.assert_not_called()
-
 
 def test_billing_enabled_and_disabled_successfully(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """Test that billing is disabled if it is currently enabled."""
@@ -268,7 +254,6 @@ def test_billing_enabled_and_disabled_successfully(mock_clients, cloud_event_fac
         name="projects/test-project-1",
         project_billing_info=ANY
     )
-
 
 def test_get_billing_info_generic_error_continues(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """
@@ -297,7 +282,6 @@ def test_get_billing_info_generic_error_continues(mock_clients, cloud_event_fact
     assert "Unable to get billing info for project" in logs
     assert "Successfully disabled billing for project projects/test-project-2" in logs
     mock_billing_client.update_project_billing_info.assert_called_once()
-
 
 def test_permission_denied_on_first_project_continues_to_second(mock_clients, cloud_event_factory, caplog, non_simulation_env):
     """

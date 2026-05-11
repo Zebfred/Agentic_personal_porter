@@ -9,10 +9,6 @@ from googleapiclient.discovery import build
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-root = Path(__file__).resolve().parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
-
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 
 # Load environment variables from the correct .env path

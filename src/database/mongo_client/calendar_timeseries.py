@@ -1,10 +1,9 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
-
-root = Path(__file__).resolve().parent.parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
 
 from src.config import MongoConfig
 from src.database.mongo_client.connection import MongoConnectionManager
@@ -30,9 +29,9 @@ class CalendarTimeseriesClient:
                         'granularity': 'minutes'
                     }
                 )
-                print(f"Created native Time-Series collection: {collection_name}")
+                logger.info(f"Created native Time-Series collection: {collection_name}")
             except Exception as e:
-                print(f"Ensuring Time-Series collection exist failed/skipped: {e}")
+                logger.info(f"Ensuring Time-Series collection exist failed/skipped: {e}")
                 
         self.timeseries_col = self.db[collection_name]
         self.processor = EventProcessorClient()
@@ -74,7 +73,7 @@ class CalendarTimeseriesClient:
         try:
             self.timeseries_col.insert_one(payload)
         except Exception as e:
-            print(f"Failed to insert timeseries event for gcal_id {gcal_id}: {e}")
+            logger.info(f"Failed to insert timeseries event for gcal_id {gcal_id}: {e}")
             return False
         
         # Trigger downstream processor to split into schemas
@@ -82,5 +81,5 @@ class CalendarTimeseriesClient:
            self.processor.process_and_route_event(gcal_event, user_email)
            return True
         except Exception as e:
-           print(f"Error processing event {gcal_id}: {e}")
+           logger.info(f"Error processing event {gcal_id}: {e}")
            return False

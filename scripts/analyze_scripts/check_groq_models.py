@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import requests
 import json
@@ -26,8 +29,8 @@ def main():
 
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        print("Error: GROQ_API_KEY environment variable is not set.")
-        print("Please set it using: export GROQ_API_KEY='your_api_key'")
+        logger.info("Error: GROQ_API_KEY environment variable is not set.")
+        logger.info("Please set it using: export GROQ_API_KEY='your_api_key'")
         sys.exit(1)
 
     url = "https://api.groq.com/openai/v1/models"
@@ -36,7 +39,7 @@ def main():
         "Content-Type": "application/json"
     }
 
-    print("Fetching available models from Groq API...")
+    logger.info("Fetching available models from Groq API...")
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
@@ -44,9 +47,9 @@ def main():
         data = response.json()
         models = data.get("data", [])
         
-        print("\n=== Available Groq Models ===")
-        print(f"{'Model ID':<35} | {'Owned By':<15} | {'Created'}")
-        print("-" * 75)
+        logger.info("\n=== Available Groq Models ===")
+        logger.info(f"{'Model ID':<35} | {'Owned By':<15} | {'Created'}")
+        logger.info("-" * 75)
         
         # Sort models alphabetically by ID
         models.sort(key=lambda x: x.get("id", ""))
@@ -62,20 +65,20 @@ def main():
             except (ValueError, TypeError):
                 created_date = str(created_ts)
                 
-            print(f"{model_id:<35} | {owned_by:<15} | {created_date}")
+            logger.info(f"{model_id:<35} | {owned_by:<15} | {created_date}")
             
-        print("-" * 75)
-        print(f"Total models found: {len(models)}")
+        logger.info("-" * 75)
+        logger.info(f"Total models found: {len(models)}")
             
     except requests.exceptions.RequestException as e:
-        print(f"Error connecting to Groq API: {e}")
+        logger.info(f"Error connecting to Groq API: {e}")
         if hasattr(e, 'response') and e.response is not None:
-            print(f"Status Code: {e.response.status_code}")
+            logger.info(f"Status Code: {e.response.status_code}")
             try:
                 error_data = e.response.json()
-                print(f"Response: {json.dumps(error_data, indent=2)}")
+                logger.info(f"Response: {json.dumps(error_data, indent=2)}")
             except json.JSONDecodeError:
-                print(f"Response: {e.response.text}")
+                logger.info(f"Response: {e.response.text}")
         sys.exit(1)
 
 if __name__ == "__main__":

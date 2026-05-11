@@ -1,10 +1,10 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import json
 import sys
 import os
 from pathlib import Path
-
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.database.mongo_storage import SovereignMongoStorage
 from src.database.neo4j_client.connection import get_driver
@@ -58,7 +58,7 @@ def get_or_create_time_chunk(driver, target_datetime, username="system"):
             record = result.single()
             return record["time_chunk_id"] if record else None
     except Exception as e:
-        print(f"Time Structure Generation Error: {e}")
+        logger.info(f"Time Structure Generation Error: {e}")
         return None
 
 def flatten_intents(raw_intents):
@@ -156,7 +156,7 @@ def inject_hero_data(username=None):
     
     ambition_data = mongo_storage.get_hero_artifact('hero_ambition', username)
     if not ambition_data:
-        print("Error: hero_ambition not found in MongoDB.")
+        logger.info("Error: hero_ambition not found in MongoDB.")
         return
     principles = ambition_data.get("Principles", [])
     raw_intents = ambition_data.get("Intent", [])
@@ -167,7 +167,7 @@ def inject_hero_data(username=None):
     
     origin_data = mongo_storage.get_hero_artifact('hero_origin', username)
     if not origin_data:
-        print("Error: hero_origin not found in MongoDB.")
+        logger.info("Error: hero_origin not found in MongoDB.")
         return
     raw_epochs = origin_data.get("origin_story", {}).get("epochs", [])
     epochs_data, experiences_data = process_epochs(raw_epochs)
@@ -258,20 +258,20 @@ def inject_hero_data(username=None):
     # --- 4. Execute in Neo4j ---
     with driver.session() as session:
         session.run(merge_hero_and_principles_query, username=username, principles=principles)
-        print(f"✨ Fabulously injected {len(principles)} Principles and Primary Branches!")
+        logger.info(f"✨ Fabulously injected {len(principles)} Principles and Primary Branches!")
 
         if pillars_list:
             session.run(merge_pillars_query, username=username, pillars=pillars_list)
-            print(f"✨ Dynamically injected {len(pillars_list)} Life Pillars!")
+            logger.info(f"✨ Dynamically injected {len(pillars_list)} Life Pillars!")
         
         session.run(merge_intents_query, username=username, intents=flat_intents)
-        print(f"✨ Gorgeously injected {len(flat_intents)} Intents!")
+        logger.info(f"✨ Gorgeously injected {len(flat_intents)} Intents!")
 
         session.run(merge_epochs_query, username=username, epochs=epochs_data)
-        print(f"✨ Mapped {len(epochs_data)} Life Epochs!")
+        logger.info(f"✨ Mapped {len(epochs_data)} Life Epochs!")
 
         session.run(merge_experiences_query, experiences=experiences_data)
-        print(f"✨ Planted {len(experiences_data)} Experiences and Candidates!")
+        logger.info(f"✨ Planted {len(experiences_data)} Experiences and Candidates!")
 
 if __name__ == "__main__":
     try:

@@ -12,9 +12,6 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(root))
-
 from src.utils.llm_factory import AgentLLMConfig
 from src.agents.porter_manager import CategorizationResult
 from src.agents.evals.trajectory_tests import get_categorization_test_cases
@@ -53,7 +50,6 @@ MODELS_BASELINE_GROQ: List[AgentLLMConfig] = [
     AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile"),
 ]
 
-
 def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
     """Load model list from verified_candidates.json if it exists.
 
@@ -87,7 +83,6 @@ def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
         console.print(f"[yellow]Warning: Could not load verified candidates: {e}[/yellow]")
         return None
 
-
 def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
     """Estimates the cost of a single invocation in USD."""
     rates = COST_PER_1M_TOKENS.get(model_name)
@@ -96,7 +91,6 @@ def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     input_cost = (input_tokens / 1_000_000) * rates["input"]
     output_cost = (output_tokens / 1_000_000) * rates["output"]
     return input_cost + output_cost
-
 
 def _get_rate_limit_sleep(provider: str) -> float:
     """Returns the sleep interval between calls to respect rate limits.
@@ -112,7 +106,6 @@ def _get_rate_limit_sleep(provider: str) -> float:
         return 2.5
     # Vertex AI — use 3s delay to avoid 429 RESOURCE_EXHAUSTED
     return 3.0
-
 
 def run_categorization_eval(
     include_gemini: bool = True,
@@ -275,7 +268,6 @@ def run_categorization_eval(
         })
 
     return results_summary
-
 
 if __name__ == "__main__":
     from src.utils.path_utils import load_env_vars

@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
@@ -15,7 +14,6 @@ from rag_system.rag_core.vector_store import VectorStore
 from pathlib import Path
 import tempfile
 import shutil
-
 
 @pytest.fixture
 def temp_vector_store():
@@ -29,12 +27,10 @@ def temp_vector_store():
     # Cleanup
     shutil.rmtree(temp_dir)
 
-
 def test_vector_store_initialization(temp_vector_store):
     """Test VectorStore initialization."""
     assert temp_vector_store.collection is not None
     assert temp_vector_store.get_collection_size() == 0
-
 
 def test_add_chunks(temp_vector_store):
     """Test adding chunks to vector store."""
@@ -58,7 +54,6 @@ def test_add_chunks(temp_vector_store):
     
     assert temp_vector_store.get_collection_size() == 2
 
-
 def test_search(temp_vector_store):
     """Test searching in vector store."""
     # Add some chunks first
@@ -79,7 +74,6 @@ def test_search(temp_vector_store):
     results = temp_vector_store.search(query_embedding, top_k=1)
     
     assert isinstance(results, list)
-
 
 def test_clear_collection(temp_vector_store):
     """Test clearing collection."""

@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 from pathlib import Path
@@ -7,8 +10,6 @@ from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.utils.llm_factory import AgentLLMConfig
 from src.utils.path_utils import load_env_vars, get_auth_file
@@ -44,7 +45,7 @@ def update_artifact(artifact_name: str, new_content_summary: str) -> str:
     """declares intent to update a json artifact (like hero_origin.json or hero_ambition.json) with new content.
     The GTKY Identity Architect will receive this ping to queue a permanent file modification.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect to update {artifact_name}.")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect to update {artifact_name}.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     result = architect.append_new_learnings(artifact_name, new_content_summary)
@@ -55,7 +56,7 @@ def scan_origin_story() -> str:
     """Use this to comprehensively scan the user's origin story for missing gaps (especially from their teenage and secondary education years).
     This tool returns 3 targeted interview questions you should ask the user to help fill in their timeline via the frontend UI.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     return architect.scan_for_missing_origin()
@@ -65,7 +66,7 @@ def weaviate_hybrid_search(query: str, pillar: str = "Daily Reflection") -> str:
     """Use this to fetch exact journal entries and calendar events mapped to the 9 life pillars.
     Pass in a robust query string and the specific pillar (e.g. 'Social Goal', 'Career Goal', 'Health Goal') to hybrid match.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Weaviate DB for query: '{query}' on pillar: '{pillar}'")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Weaviate DB for query: '{query}' on pillar: '{pillar}'")
     emb_client = BGEM3EmbeddingsClient()
     vector = emb_client.get_embedding(query)
     
@@ -90,7 +91,7 @@ def chroma_vibe_check(query: str) -> str:
     """Use this to conceptually verify large, philosophical trends or Origin Story metrics of the User.
     Pass in a natural language query exploring the overarching vibe/sentiment without strict keyword matching.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Chroma DB for conceptual Vibe Check: '{query}'")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Chroma DB for conceptual Vibe Check: '{query}'")
     emb_client = BGEM3EmbeddingsClient()
     vector = emb_client.get_embedding(query)
     
@@ -133,7 +134,7 @@ def consult_time_keeper(date_iso: str) -> str:
     """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
     Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
     from src.agents.time_keeper_agent import TimeKeeperAgent
     keeper = TimeKeeperAgent()
     return keeper.summarize_day(date_iso)
@@ -188,19 +189,19 @@ def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     monitor = FirstServingMonitoringHandler()
     config = {"callbacks": [breaker, monitor]}
     
-    print("\n--- Invoking First-Serving Porter ---\n")
+    logger.info("\n--- Invoking First-Serving Porter ---\n")
     try:
         result = agent.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
         health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:
-        print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        logger.info(f"\n[CRITICAL RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": "My apologies, Sir. I suffered a systemic logic loop and had to sever my own processing connection to protect our API limit. Please ask me again with different parameters.",
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Token Circuit Breaker Tripped."]
         }
     except Exception as e:
-        print(f"\n[RUNTIME ERROR] {e}")
+        logger.info(f"\n[RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": f"An unexpected error occurred during execution: {e}",
@@ -223,4 +224,4 @@ def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
 
 if __name__ == "__main__":
     res = run_first_serving_porter("Can you check my career vibe over the last month and see if I've been actively pursuing my goals on my calendar?")
-    print("\nFINAL RESPONSE:\n", res)
+    logger.info("\nFINAL RESPONSE:\n", res)

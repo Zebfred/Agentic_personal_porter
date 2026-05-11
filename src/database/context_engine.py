@@ -4,9 +4,6 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone, UTC
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
 load_dotenv()
 
 from src.config import NeoConfig

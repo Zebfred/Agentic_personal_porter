@@ -5,9 +5,6 @@ import sys
 import json
 from pathlib import Path
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
 from src.database.mongo_storage import SovereignMongoStorage
 
 class GTKYIdentityArchitect:
@@ -32,7 +29,7 @@ class GTKYIdentityArchitect:
             if data:
                 return data
         except Exception as e:
-            print(f"Failed to reach Mongo for {filename}: {e}")
+            logger.info(f"Failed to reach Mongo for {filename}: {e}")
 
         # 2. Fallback to Local Filesystem
         if not filepath.exists():
@@ -47,7 +44,7 @@ class GTKYIdentityArchitect:
                     logger.warning(f"Non-critical error during identity processing: {e}")
                 return data
         except Exception as e:
-            print(f"Error parsing {filepath}: {e}")
+            logger.info(f"Error parsing {filepath}: {e}")
             return {}
             
     def append_new_learnings(self, artifact_name: str, raw_update_summary: str) -> str:

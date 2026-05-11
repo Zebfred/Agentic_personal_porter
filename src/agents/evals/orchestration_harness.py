@@ -21,9 +21,6 @@ import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(root))
-
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
@@ -44,7 +41,6 @@ COST_PER_1M_TOKENS: Dict[str, Dict[str, float]] = {
     "llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
 }
 
-
 # ── Mock Tool Stubs ───────────────────────────────────────────────────
 # These mirror the real tools in first_serving_porter.py exactly —
 # same names, same docstrings — but return canned static responses.
@@ -57,14 +53,12 @@ def route_to_subagent(agent_name: str, task_description: str) -> str:
     """
     return f"[MOCK] Routed to {agent_name}: '{task_description}'"
 
-
 @tool
 def update_artifact(artifact_name: str, new_content_summary: str) -> str:
     """declares intent to update a json artifact (like hero_origin.json or hero_ambition.json) with new content.
     The GTKY Identity Architect will receive this ping to queue a permanent file modification.
     """
     return f"[MOCK] Queued update for {artifact_name}: '{new_content_summary}'"
-
 
 @tool
 def scan_origin_story() -> str:
@@ -73,14 +67,12 @@ def scan_origin_story() -> str:
     """
     return "[MOCK] Found 3 gaps: teenage years, college transition, first career move."
 
-
 @tool
 def weaviate_hybrid_search(query: str, pillar: str = "Daily Reflection") -> str:
     """Use this to fetch exact journal entries and calendar events mapped to the 9 life pillars.
     Pass in a robust query string and the specific pillar (e.g. 'Social Goal', 'Career Goal', 'Health Goal') to hybrid match.
     """
     return f"[MOCK] 5 results for '{query}' under pillar '{pillar}'."
-
 
 @tool
 def chroma_vibe_check(query: str) -> str:
@@ -89,7 +81,6 @@ def chroma_vibe_check(query: str) -> str:
     """
     return f"[MOCK] Vibe check for '{query}': overall positive trend, 3 conceptual matches."
 
-
 @tool
 def fetch_unverified_audits() -> str:
     """Use this to pull any categorized events that the human has not verified yet.
@@ -97,14 +88,12 @@ def fetch_unverified_audits() -> str:
     """
     return "[MOCK] Found 7 unverified events awaiting human review."
 
-
 @tool
 def consult_time_keeper(date_iso: str) -> str:
     """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
     Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
     """
     return f"[MOCK] Day summary for {date_iso}: 3 meetings, 2 focus blocks, 1 break."
-
 
 MOCK_TOOLS = [
     route_to_subagent,
@@ -139,7 +128,6 @@ Ambition Snapshot: Write a book by end of year, build Agentic Porter to producti
 Core Detriments: Analysis paralysis, over-engineering before baseline usability
 """
 
-
 def _get_rate_limit_sleep(provider: str) -> float:
     """Returns sleep duration between cases to respect rate limits.
 
@@ -151,7 +139,6 @@ def _get_rate_limit_sleep(provider: str) -> float:
     # Vertex AI / Google GenAI — ReAct agents are multi-call per case
     return 5.0
 
-
 def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
     """Estimates cost of a single invocation in USD."""
     rates = COST_PER_1M_TOKENS.get(model_name)
@@ -159,7 +146,6 @@ def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
         return 0.0
     return (input_tokens / 1_000_000) * rates["input"] + \
            (output_tokens / 1_000_000) * rates["output"]
-
 
 def _extract_tool_calls(messages: List[Any]) -> List[Dict[str, Any]]:
     """Extracts tool call information from the message sequence.
@@ -177,7 +163,6 @@ def _extract_tool_calls(messages: List[Any]) -> List[Dict[str, Any]]:
                 })
     return calls
 
-
 def _check_tool_selection(
     tool_calls: List[Dict[str, Any]],
     expected_tool: str,
@@ -190,7 +175,6 @@ def _check_tool_selection(
         return len(tool_calls) >= 2
 
     return any(tc["tool_name"] == expected_tool for tc in tool_calls)
-
 
 def _check_argument_accuracy(
     tool_calls: List[Dict[str, Any]],
@@ -216,7 +200,6 @@ def _check_argument_accuracy(
             return False
 
     return True
-
 
 def run_orchestration_eval(
     models: Optional[List[AgentLLMConfig]] = None,

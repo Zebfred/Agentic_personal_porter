@@ -21,7 +21,6 @@ os.environ.setdefault("HERO_NAME", "TestHero")
 
 from src.app import create_app
 
-
 @pytest.fixture
 def app():
     """Create a fresh app instance for each test."""
@@ -29,12 +28,10 @@ def app():
     app.config['TESTING'] = True
     return app
 
-
 @pytest.fixture
 def client(app):
     """Flask test client."""
     return app.test_client()
-
 
 # ======================================================================
 #  Route Existence Tests — verify 1:1 mapping after the Blueprint split
@@ -111,7 +108,6 @@ class TestRouteMapping:
         assert rule_count >= 30, f"Expected >=30 routes, got {rule_count}. Routes may be missing."
         assert rule_count <= 70, f"Expected <=70 routes, got {rule_count}. Possible duplicates."
 
-
 # ======================================================================
 #  Auth Middleware Tests
 # ======================================================================
@@ -175,7 +171,6 @@ class TestAuthMiddleware:
         """CORS preflight OPTIONS requests must pass without auth."""
         response = client.options('/api/inventory')
         assert response.status_code in (200, 204)
-
 
 # ======================================================================
 #  Login Endpoint Tests
@@ -258,7 +253,6 @@ class TestLogin:
             json={"username": "admin"}
         )
         assert response.status_code == 400
-
 
 # ======================================================================
 #  Blueprint Module Import Tests

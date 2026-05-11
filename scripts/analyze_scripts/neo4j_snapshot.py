@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 import os
 import json
@@ -6,8 +9,6 @@ from datetime import datetime
 from neo4j import GraphDatabase
 
 # Attempt to load path utils if script is run directly
-root = Path(__file__).resolve().parent.parent
-sys.path.append(str(root))
 
 from src.config import NeoConfig
 from src.utils.path_utils import load_env_vars
@@ -33,7 +34,7 @@ class Neo4jSnapshotHandler:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = self.backup_dir / f"neo4j_snapshot_{timestamp}.json"
         
-        print(f"Creating Neo4j Snapshot: {filename}")
+        logger.info(f"Creating Neo4j Snapshot: {filename}")
         
         # We query all nodes and relationships directly
         # For huge graphs, APOC export is better, but this works well for standard sizes
@@ -48,7 +49,7 @@ class Neo4jSnapshotHandler:
 
         try:
             with self.driver.session() as session:
-                print("Fetching Nodes...")
+                logger.info("Fetching Nodes...")
                 nodes_result = session.run(nodes_query)
                 for record in nodes_result:
                     snapshot["nodes"].append({
@@ -57,7 +58,7 @@ class Neo4jSnapshotHandler:
                         "properties": record["properties"]
                     })
                 
-                print("Fetching Relationships...")
+                logger.info("Fetching Relationships...")
                 rels_result = session.run(rels_query)
                 for record in rels_result:
                     snapshot["relationships"].append({
@@ -71,11 +72,11 @@ class Neo4jSnapshotHandler:
             with open(filename, 'w') as f:
                 json.dump(snapshot, f, indent=2, default=str)
                 
-            print(f"✅ Snapshot successful. Exported {len(snapshot['nodes'])} nodes and {len(snapshot['relationships'])} relationships.")
+            logger.info(f"✅ Snapshot successful. Exported {len(snapshot['nodes'])} nodes and {len(snapshot['relationships'])} relationships.")
             return str(filename)
             
         except Exception as e:
-            print(f"❌ Snapshot failed: {e}")
+            logger.info(f"❌ Snapshot failed: {e}")
             return None
 
 if __name__ == "__main__":

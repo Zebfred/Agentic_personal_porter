@@ -6,7 +6,6 @@ without needing to be imported.
 """
 import pytest
 
-
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_logging(request):
     """

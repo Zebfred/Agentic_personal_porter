@@ -1,11 +1,12 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 import json
 from pathlib import Path
 from collections import defaultdict
 
 # Path resolution to ensure we can reach database and integration modules
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.database.mongo_storage import SovereignMongoStorage
 
@@ -18,7 +19,7 @@ def verify_local_graph_structure(hero_name: str):
     Pulls formatted data from MongoDB and constructs a local representation 
     of the Neo4j Graph to verify relationships and classifications.
     """
-    print(f"--- 🔍 Simulating Identity Graph for: {hero_name} ---")
+    logger.info(f"--- 🔍 Simulating Identity Graph for: {hero_name} ---")
     
     storage = SovereignMongoStorage()
     
@@ -26,7 +27,7 @@ def verify_local_graph_structure(hero_name: str):
     events = storage.get_formatted_for_neo4j()
     
     if not events:
-        print("⚠️ No formatted events found in MongoDB. Run mongo_storage.py first.")
+        logger.info("⚠️ No formatted events found in MongoDB. Run mongo_storage.py first.")
         return
 
     # Phase 2: Construct the Local Hierarchy
@@ -40,7 +41,7 @@ def verify_local_graph_structure(hero_name: str):
         }
     }
 
-    print(f"Processing {len(events)} events into graph hierarchy...")
+    logger.info(f"Processing {len(events)} events into graph hierarchy...")
 
     for event in events:
         # Extract metadata for classification mapping
@@ -65,26 +66,26 @@ def verify_local_graph_structure(hero_name: str):
             local_graph["Structure"][record_type][pillar].append(event_node)
 
     # Phase 3: Reporting & Verification
-    print("\n--- ✅ Graph Verification Report ---")
+    logger.info("\n--- ✅ Graph Verification Report ---")
     
     for r_type, pillars in local_graph["Structure"].items():
         total_type = sum(len(evs) for evs in pillars.values())
-        print(f"\n[Record Type: {r_type}] - Total: {total_type}")
+        logger.info(f"\n[Record Type: {r_type}] - Total: {total_type}")
         
         for pillar, event_list in pillars.items():
-            print(f"  └── Intent: {pillar} ({len(event_list)} events)")
+            logger.info(f"  └── Intent: {pillar} ({len(event_list)} events)")
             # Show a sample of the first event in this pillar for verification
             if event_list:
                 sample = event_list[0]
-                print(f"      📍 Sample: \"{sample['title']}\" -> [{sample['classification']['goal_detail']}]")
+                logger.info(f"      📍 Sample: \"{sample['title']}\" -> [{sample['classification']['goal_detail']}]")
 
     # Optional: Save a snapshot for Vim review
     snapshot_path = root / "data" / "graph_structure_snapshot.json"
     with open(snapshot_path, 'w') as f:
         json.dump(local_graph, f, indent=4)
     
-    print(f"\nFull graph snapshot saved to: {snapshot_path}")
-    print("Use 'vi' to inspect the full mapping and verify Goal Classifications.")
+    logger.info(f"\nFull graph snapshot saved to: {snapshot_path}")
+    logger.info("Use 'vi' to inspect the full mapping and verify Goal Classifications.")
 
 if __name__ == "__main__":
     hero = sys.argv[1] if len(sys.argv) > 1 else "Hero"

@@ -1,12 +1,12 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 import os
 from pathlib import Path
 from datetime import datetime
     
 # Ensure we can import from the src directory when running from helper_scripts
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.constants import ACTUAL_CATEGORY_MAPPING
 from src.database.neo4j_client.connection import get_driver
@@ -56,7 +56,7 @@ class SovereignGraphInjector:
                     time_chunk_id = get_or_create_time_chunk(self.driver, dt, username)
                     event["time_chunk_id"] = time_chunk_id
                 except ValueError:
-                    print(f"Warning: Invalid start ISO format {start_iso}")
+                    logger.info(f"Warning: Invalid start ISO format {start_iso}")
                     event["time_chunk_id"] = None
             else:
                 event["time_chunk_id"] = None
@@ -159,7 +159,7 @@ class SovereignGraphInjector:
                     
             return injected_count
         except Exception as e:
-            print(f"![GRAPH ERROR]: Failed to inject events: {e}")
+            logger.info(f"![GRAPH ERROR]: Failed to inject events: {e}")
             return 0
 
 if __name__ == "__main__":
@@ -192,6 +192,6 @@ if __name__ == "__main__":
             }
         ]
         count = injector.inject_calendar_to_graph(sample_mongo_payload)
-        print(f"Injected {count} test events into Neo4j.")
+        logger.info(f"Injected {count} test events into Neo4j.")
     finally:
         injector.close()

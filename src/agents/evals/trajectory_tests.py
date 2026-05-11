@@ -9,7 +9,6 @@ Routing tests: evaluates whether the Porter selects the correct tool
 
 from typing import List, Dict, Any
 
-
 def get_categorization_test_cases() -> List[Dict[str, Any]]:
     """Returns test cases for the Categorizer node (pillar classification).
 
@@ -41,7 +40,6 @@ def get_categorization_test_cases() -> List[Dict[str, Any]]:
             "expected_pillar": "5. Wealth/Career"
         }
     ]
-
 
 def get_routing_test_cases() -> List[Dict[str, Any]]:
     """Returns test cases for the First-Serving Porter's tool routing.
