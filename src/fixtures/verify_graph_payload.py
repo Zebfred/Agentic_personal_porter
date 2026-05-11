@@ -11,9 +11,9 @@ from src.database.mongo_storage import SovereignMongoStorage
 
 import os
 
-def verify_local_graph_structure(hero_name=None):
-    if hero_name is None:
-        hero_name = os.environ.get("HERO_NAME", "Hero")
+def verify_local_graph_structure(hero_name: str):
+    if not hero_name:
+        raise ValueError("hero_name is required for graph verification")
     """
     Pulls formatted data from MongoDB and constructs a local representation 
     of the Neo4j Graph to verify relationships and classifications.
@@ -87,4 +87,5 @@ def verify_local_graph_structure(hero_name=None):
     print("Use 'vi' to inspect the full mapping and verify Goal Classifications.")
 
 if __name__ == "__main__":
-    verify_local_graph_structure()
+    hero = sys.argv[1] if len(sys.argv) > 1 else "Hero"
+    verify_local_graph_structure(hero)

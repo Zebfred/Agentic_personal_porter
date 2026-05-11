@@ -9,6 +9,7 @@ WHY lazy reads: Environment variables are read inside the decorator function
 dotenv has already been called by the app factory regardless of import
 ordering, and makes testing with monkeypatched env vars work correctly.
 """
+import re
 import os
 import hmac
 import jwt
@@ -66,8 +67,12 @@ def require_api_key(f):
         if jwt_secret:
             try:
                 decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
+                email_claim = decoded.get("email")
+                if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
+                    return jsonify({"error": "Invalid email format in token"}), 401
+                
                 # Inject identity into request context for downstream routes
-                request.user_email = decoded.get("email")
+                request.user_email = email_claim
                 request.user_role = decoded.get("role", "user")
                 request.user_account_type = decoded.get("account_type", "hero")
                 

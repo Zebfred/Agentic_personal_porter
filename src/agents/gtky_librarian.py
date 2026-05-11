@@ -25,7 +25,7 @@ class GTKYLibrarian(GTKYBaseClassifier):
             session.run("MATCH (n) WHERE n:Epoch OR n:Quest OR n:Intent OR n:Principle DETACH DELETE n")
         logger.info("♻️ Identity Graph nodes wiped for fresh ingestion.")
 
-    def ingest_hero_origin(self):
+    def ingest_hero_origin(self, username: str):
         """Maps hero_origin to (Hero)-[:LIVED_THROUGH]->(Epoch) structure."""
         data = self._load_artifact("hero_origin")
         if not data: return
@@ -45,10 +45,10 @@ class GTKYLibrarian(GTKYBaseClassifier):
                     MERGE (x:Experience {title: exp.title})
                     SET x.description = exp.description
                     MERGE (e)-[:CONTAINS]->(x)
-                """, name=epoch['name'], timeframe=epoch['timeframe'], experiences=epoch['experiences'], username=os.environ.get("HERO_NAME", "Hero"))
+                """, name=epoch['name'], timeframe=epoch['timeframe'], experiences=epoch['experiences'], username=username)
         logger.info("✅ Hero Origin artifacts archived in Graph.")
 
-    def ingest_hero_intent(self):
+    def ingest_hero_intent(self, username: str):
         """Maps hero_ambition principles and goals as graph anchors."""
         data = self._load_artifact("hero_ambition")
         if not data: return
@@ -60,7 +60,7 @@ class GTKYLibrarian(GTKYBaseClassifier):
                     MATCH (h:Hero {hero: $username})
                     MERGE (p:Principle {text: $text})
                     MERGE (h)-[:GUIDED_BY]->(p)
-                """, text=principle, username=os.environ.get("HERO_NAME", "Hero"))
+                """, text=principle, username=username)
 
             # Ingest Specific Intents (Social, Career, etc.)
             for item in data['Intent']:
@@ -72,7 +72,7 @@ class GTKYLibrarian(GTKYBaseClassifier):
                         MERGE (i:Intent {category: $category})
                         SET i.description = $description
                         MERGE (h)-[:ASPIRES_TO]->(i)
-                    """, category=category, description=description, username=os.environ.get("HERO_NAME", "Hero"))
+                    """, category=category, description=description, username=username)
         logger.info("🎯 Hero Intent anchors synchronized.")
 
     def classify_daily_batch(self, daily_events: List[Dict], username: str = "system") -> List[Dict]:
@@ -88,14 +88,15 @@ class GTKYLibrarian(GTKYBaseClassifier):
             log_emoji="🧠"
         )
 
-    def run_full_sync(self):
+    def run_full_sync(self, username: str):
         """The primary workflow for the Friday deadline."""
         print("🚀 Librarian starting Identity Synchronization...")
         self.hard_reset_identity_graph()
-        self.ingest_hero_origin()
-        self.ingest_hero_intent()
+        self.ingest_hero_origin(username)
+        self.ingest_hero_intent(username)
         print("✨ Synchronization Complete. Your Graph is now grounded in your Sovereign Context.")
 
 if __name__ == "__main__":
     librarian = GTKYLibrarian()
-    librarian.run_full_sync()
+    hero = os.environ.get("HERO_NAME", "Hero")
+    librarian.run_full_sync(hero)

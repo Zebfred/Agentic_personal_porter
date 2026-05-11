@@ -62,8 +62,7 @@ class PulseService:
                 "LANGCHAIN_API_KEY_CONFIGURED": bool(os.getenv("LANGCHAIN_API_KEY") and os.getenv("LANGCHAIN_API_KEY") != "YOUR_API_KEY_HERE"),
                 "LANGCHAIN_TRACING_V2": os.getenv("LANGCHAIN_TRACING_V2", "false"),
                 "LANGCHAIN_PROJECT": langchain_project,
-                "OPENAI_API_KEY_CONFIGURED": bool(os.getenv("OPENAI_API_KEY")),
-                "HERO_NAME": os.getenv("HERO_NAME", "Hero")
+                "OPENAI_API_KEY_CONFIGURED": bool(os.getenv("OPENAI_API_KEY"))
             }
             
             # Pull Last 5 Traces from LangSmith

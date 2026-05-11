@@ -59,6 +59,12 @@ def update_username():
 
     try:
         storage = SovereignMongoStorage()
+        
+        # Uniqueness check to prevent cross-tenant graph contamination
+        existing_user = storage.users_col.find_one({"username": new_username.strip()})
+        if existing_user and existing_user.get("email") != user_email:
+            return jsonify({"error": "Username already taken"}), 409
+            
         success = storage.update_username(user_email, new_username.strip())
         
         if success:

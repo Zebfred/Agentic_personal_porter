@@ -2,9 +2,9 @@ from .connection import get_driver
 
 import os
 
-def get_all_detours(username=None):
-    if username is None:
-        username = os.environ.get("HERO_NAME", "Hero")
+def get_all_detours(username: str):
+    if not username:
+        raise ValueError("Username is required to fetch detours.")
     """
     Retrieves all Detours logged for the given Hero.
     Returns a list of dictionaries with inventoryNote, original Activity title, type (valuable/detrimental), and timestamp.
