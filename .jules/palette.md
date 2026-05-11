@@ -4,3 +4,7 @@
 ## 2024-04-27 - Icon-only buttons lacking ARIA labels
 **Learning:** Found several icon-only buttons (like `&lt;` `&gt;` and `&times;` for calendar navigation and modal closing) that lacked accessibility context for screen readers.
 **Action:** Always verify that buttons containing only text-symbols or icons have a descriptive `aria-label` attribute so their function is clear to assistive technologies.
+## 2024-05-18 - Fix custom toggle inputs visually hidden
+
+**Learning:** Custom UI toggle checkboxes visually hide the actual `<input>` using classes like `.sr-only`, breaking default keyboard focus rings.
+**Action:** When working with hidden form elements, ensure keyboard accessibility by targeting focus on the hidden input using the `:focus-visible` pseudo-class and applying styles to its visible sibling element (e.g., `#input:focus-visible + #visible-bg { outline: 2px solid; }`), and add ARIA attributes to describe its state.

@@ -1,7 +1,7 @@
 <!-- Navbar -->
-<div id="impersonation-banner" class="bg-error text-on-primary text-center text-sm font-bold p-1 hidden cursor-pointer hover:opacity-90 transition" onclick="Auth.logout()">
+<button id="impersonation-banner" class="bg-error text-on-primary text-center text-sm font-bold p-1 hidden cursor-pointer hover:opacity-90 transition w-full block focus-visible:ring-2 focus-visible:outline-none" onclick="Auth.logout()" aria-label="Stop impersonating and return to Admin Hub">
     🛑 You are currently Impersonating a User (Shadow State). Click here to return to Admin Hub.
-</div>
+</button>
 <nav class="bg-nav p-4 text-surface shadow-md z-10 sticky top-0">
     <div class="container mx-auto flex justify-between items-center">
         <h1 class="text-2xl font-bold tracking-tight">Agentic Personal Porter</h1>
