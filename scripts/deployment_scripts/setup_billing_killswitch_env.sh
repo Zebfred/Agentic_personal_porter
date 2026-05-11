@@ -51,13 +51,13 @@ set +a # disable allexport mode
 
 # 3. Authenticate with gcloud and configure project
 if [ "$AUTH_ENABLED" = true ]; then
-    echo -e "\n🔐 Authenticating with gcloud and setting project to ${BOLD}$GOOGLE_CLOUD_PROJECT...${RESET}"
+    echo -e "\n🔐 Authenticating with gcloud and setting project to ${BOLD}$PROJECT_ID...${RESET}"
     gcloud auth login --update-adc 2>&1 | grep -v -e '^$' -e 'WSL' -e 'xdg-open' # Suppress any annoying WSL messages
-    gcloud config set project "$GOOGLE_CLOUD_PROJECT"
-    gcloud auth application-default set-quota-project "$GOOGLE_CLOUD_PROJECT"
+    gcloud config set project "$PROJECT_ID"
+    gcloud auth application-default set-quota-project "$PROJECT_ID"
 else
     echo -e "\n${YELLOW}Skipping gcloud authentication as requested.${RESET}"
-    gcloud config set project "$GOOGLE_CLOUD_PROJECT"
+    gcloud config set project "$PROJECT_ID"
 fi
 
 echo -e "\n${BLUE}--- Current gcloud project configuration ---${RESET}"
@@ -66,7 +66,7 @@ echo -e "${BLUE}------------------------------------------${RESET}"
 
 # 5. Get project numbers
 echo "Getting project number..."
-export PROJECT_NUMBER=$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format="value(projectNumber)")
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 echo -e "${BOLD}PROJECT_NUMBER:${RESET} $PROJECT_NUMBER"
 echo -e "${BLUE}------------------------------------------${RESET}"
 
@@ -77,5 +77,5 @@ source conda activate agentic_porter
 echo "Syncing python dependencies with uv..."
 uv sync --dev
 
-echo -e "\n${GREEN}✅ Environment setup complete with project ${BOLD}$GOOGLE_CLOUD_PROJECT${RESET}${GREEN}. Your shell is now configured.${RESET}"
-echo -e "\n${YELLOW}❓ If you're working with your DEV or STAGING project, now run \"export GOOGLE_CLOUD_PROJECT=$DEV_GOOGLE_CLOUD_PROJECT\"${RESET}"
+echo -e "\n${GREEN}✅ Environment setup complete with project ${BOLD}$PROJECT_ID${RESET}${GREEN}. Your shell is now configured.${RESET}"
+echo -e "\n${YELLOW}❓ If you're working with your DEV or STAGING project, now run \"export PROJECT_ID=$DEV_PROJECT_ID\"${RESET}"

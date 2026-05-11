@@ -184,12 +184,16 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                 # Mark raw timeseries as formatted
                 timeseries_ops = []
                 for e in staged_list:
-                    timeseries_ops.append(
-                        UpdateMany(
-                            {"_id": e["_id"]},
-                            {"$set": {"metadata.sync_status": "formatted"}}
+                    # In MongoDB Time-Series collections, updates must query on the metaField (metadata)
+                    gcal_id = e.get("metadata", {}).get("gcal_id")
+                    email = e.get("metadata", {}).get("user_email")
+                    if gcal_id and email:
+                        timeseries_ops.append(
+                            UpdateMany(
+                                {"metadata.gcal_id": gcal_id, "metadata.user_email": email},
+                                {"$set": {"metadata.sync_status": "formatted"}}
+                            )
                         )
-                    )
                 if timeseries_ops:
                     timeseries_col.bulk_write(timeseries_ops, ordered=False)
 

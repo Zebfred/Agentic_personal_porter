@@ -39,7 +39,7 @@ run: build-css ## Start the backend in production mode (Gunicorn)
 	conda run -n $(CONDA_ENV) gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
-	@test -n "$(GOOGLE_CLOUD_PROJECT)" || (echo "Error: GOOGLE_CLOUD_PROJECT is not set. Setup environment before running tests" && exit 1)
+	@test -n "$(PROJECT_ID)" || (echo "Error: PROJECT_ID is not set. Setup environment before running tests" && exit 1)
 	DISABLE_CLOUD_LOGGING=true conda run -n $(CONDA_ENV) pytest tests/
 # Run code quality checks (codespell, ruff, mypy)
 lint:
@@ -75,10 +75,10 @@ deploy:
 	@if [ ! -f .auth/.env ]; then echo "Error: .env file not found."; exit 1; fi
 	@source .auth/.env && \
 	export SERVICE_ACCOUNT_NAME="$$FUNCTION_NAME-sa" && \
-	export SERVICE_ACCOUNT_EMAIL="$$SERVICE_ACCOUNT_NAME@$$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com" && \
+	export SERVICE_ACCOUNT_EMAIL="$$SERVICE_ACCOUNT_NAME@$$PROJECT_ID.iam.gserviceaccount.com" && \
 	gcloud run deploy $$FUNCTION_NAME \
 	  --base-image=python312 \
-	  --project=$$GOOGLE_CLOUD_PROJECT \
+	  --project=$$PROJECT_ID \
 	  --region=$$GOOGLE_CLOUD_REGION \
 	  --source=./src/infrastructure/billing_killswitch/ \
 	  --function=disable_billing_for_projects \

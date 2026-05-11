@@ -364,12 +364,16 @@ class SovereignMongoStorage:
                         )
                     )
 
-                raw_ops.append(
-                    UpdateOne(
-                        {"_id": raw["_id"]},
-                        {"$set": {"sync_status": "formatted"}}
+                # Time-Series collections require querying by metaField (metadata)
+                gcal_id = raw.get("metadata", {}).get("gcal_id")
+                email = raw.get("metadata", {}).get("user_email")
+                if gcal_id and email:
+                    raw_ops.append(
+                        UpdateOne(
+                            {"metadata.gcal_id": gcal_id, "metadata.user_email": email},
+                            {"$set": {"metadata.sync_status": "formatted"}}
+                        )
                     )
-                )
                 
                 success_count += 1
         

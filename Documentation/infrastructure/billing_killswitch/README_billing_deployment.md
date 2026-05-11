@@ -26,10 +26,10 @@ This project uses `gcloud` commands and shell scripts for provisioning and deplo
 source scripts/setup-env.sh
 
 # ONLY if we're working with DEV project
-export GOOGLE_CLOUD_PROJECT=$DEV_GOOGLE_CLOUD_PROJECT
+export PROJECT_ID=$DEV_PROJECT_ID
 
 export SERVICE_ACCOUNT_NAME="${FUNCTION_NAME}-sa"
-export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com"
+export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 #####################################################
 ```
 
@@ -37,7 +37,7 @@ export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${GOOGLE_CLOUD_PROJECT}.ia
 
 ```bash
 # Enable APIs
-gcloud services enable --project=$GOOGLE_CLOUD_PROJECT \
+gcloud services enable --project=$PROJECT_ID \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
   pubsub.googleapis.com \
@@ -54,17 +54,17 @@ gcloud services enable --project=$GOOGLE_CLOUD_PROJECT \
 
 ```bash
 # Create the Pub/Sub topic.
-gcloud pubsub topics create $BILLING_ALERT_TOPIC --project=$GOOGLE_CLOUD_PROJECT
+gcloud pubsub topics create $BILLING_ALERT_TOPIC --project=$PROJECT_ID
 ```
 
 ### 4. Create Service Account
 
 ```bash
 # Create service account if it doesn't exist
-if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT_EMAIL}" --project="${GOOGLE_CLOUD_PROJECT}" &> /dev/null; then
+if ! gcloud iam service-accounts describe "${SERVICE_ACCOUNT_EMAIL}" --project="${PROJECT_ID}" &> /dev/null; then
     gcloud iam service-accounts create "${SERVICE_ACCOUNT_NAME}" \
         --display-name="Service Account for ${FUNCTION_NAME}" \
-        --project="${GOOGLE_CLOUD_PROJECT}"
+        --project="${PROJECT_ID}"
     echo "Service account ${SERVICE_ACCOUNT_EMAIL} created."
 else
     echo "Service account ${SERVICE_ACCOUNT_EMAIL} already exists."
@@ -91,7 +91,7 @@ Bind roles as follows:
 gcloud billing accounts add-iam-policy-binding "${BILLING_ACCOUNT_ID}" \
   --member="serviceAccount:${SERVICE_ACCOUNT_EMAIL}" \
   --role="roles/billing.admin" \
-  --project="${GOOGLE_CLOUD_PROJECT}"
+  --project="${PROJECT_ID}"
 
 # (RECOMMENDED) Service Account IAM for Organization
 # This ensures the killswitch works for ALL current and future projects.
@@ -103,23 +103,23 @@ gcloud organizations add-iam-policy-binding "${ORG_ID}" \
 
 # Service Account IAM for Function-Hosting Project
 
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
   --role="roles/viewer"
 
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
   --role="roles/logging.logWriter"
 
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
   --role="roles/billing.projectManager"
 
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
   --role="roles/run.invoker"
 
-gcloud projects add-iam-policy-binding $GOOGLE_CLOUD_PROJECT \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:$SERVICE_ACCOUNT_EMAIL" \
   --role="roles/pubsub.subscriber"
 ```
@@ -130,7 +130,7 @@ You can now create a budget for a billing account using the `gcloud alpha billin
 
 ```bash
 # Create a budget in Cloud Billing, and obtain its ID:
-gcloud billing budgets list --billing-account=$BILLING_ACCOUNT_ID --project=$GOOGLE_CLOUD_PROJECT
+gcloud billing budgets list --billing-account=$BILLING_ACCOUNT_ID --project=$PROJECT_ID
 ```
 
 ## Deploy
@@ -145,7 +145,7 @@ Run whenever you update the function and need to deploy.
 gcloud functions deploy $FUNCTION_NAME \
   --gen2 \
   --runtime=python312 \
-  --project="$GOOGLE_CLOUD_PROJECT" \
+  --project="$PROJECT_ID" \
   --region="$GOOGLE_CLOUD_REGION" \
   --source=./src \
   --entry-point=disable_billing_for_projects \
@@ -165,7 +165,7 @@ However, this command does not create the Eventarc trigger for us, so we must cr
 
 ```bash
 export SERVICE_ACCOUNT_NAME="${FUNCTION_NAME}-sa"
-export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${GOOGLE_CLOUD_PROJECT}.iam.gserviceaccount.com"
+export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
 # Create the Cloud Run Function
 # Notes:
@@ -174,7 +174,7 @@ export SERVICE_ACCOUNT_EMAIL="${SERVICE_ACCOUNT_NAME}@${GOOGLE_CLOUD_PROJECT}.ia
 # - <512MB is possible with gen1
 gcloud run deploy $FUNCTION_NAME \
   --base-image=python312 \
-  --project=$GOOGLE_CLOUD_PROJECT \
+  --project=$PROJECT_ID \
   --region=$GOOGLE_CLOUD_REGION \
   --source=./src \
   --function=disable_billing_for_projects \
@@ -193,12 +193,12 @@ gcloud eventarc triggers list --location=$GOOGLE_CLOUD_REGION
 
 # If not, create the Eventarc Trigger, wiring our topic to the function
 gcloud eventarc triggers create ${FUNCTION_NAME}-trigger \
-    --project=$GOOGLE_CLOUD_PROJECT \
+    --project=$PROJECT_ID \
     --location=$GOOGLE_CLOUD_REGION \
     --destination-run-service=$FUNCTION_NAME \
     --destination-run-region=$GOOGLE_CLOUD_REGION \
     --event-filters="type=google.cloud.pubsub.topic.v1.messagePublished" \
-    --transport-topic=projects/$GOOGLE_CLOUD_PROJECT/topics/$BILLING_ALERT_TOPIC \
+    --transport-topic=projects/$PROJECT_ID/topics/$BILLING_ALERT_TOPIC \
     --service-account=$SERVICE_ACCOUNT_EMAIL
 ```
 

@@ -63,29 +63,59 @@ def setup_node(state: ReflectionState) -> ReflectionState:
     return {"actuals_str": actuals_str}
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
-    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    config = AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant")
-    llm = config.get_chat_model(
-        verbose=True,
-        callbacks=[breaker]
-    ).with_structured_output(CategorizationResult)
+    import json
+    import asyncio
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.runners import InMemoryRunner
+    from google.adk.models.lite_llm import LiteLlm
+    from google.genai import types
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars."),
-        ("user", "1. Analyze the following FRONTEND PAYLOAD quickly submitted by {username}:\n'{journal_entry}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents: (1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, 6. Community, 7. Leisure, 8. Spirit, 9. Duty).\nExpected output: A single structured JSON block.")
-    ])
+    logger.info("Categorizer Node: Using ADK LlmAgent (Llama 3.3 70b)")
     
-    chain = prompt | llm
-    result = chain.invoke({
-        "username": state["username"],
-        "journal_entry": state["journal_entry"],
-        "actuals_str": state["actuals_str"]
-    })
+    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
+    agent = Agent(
+        name="The_Categorizer",
+        model=adk_model,
+        instruction="You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
+    )
     
-    assert isinstance(result, CategorizationResult)
-    # Format the result to match the old crew output roughly
-    recon_str = f"```json\n{{\n  \"Pillar\": \"{result.Pillar}\",\n  \"Reason\": \"{result.Reason}\",\n  \"Confidence_Score\": {result.Confidence_Score}\n}}\n```"
+    query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{state['actuals_str']}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
     
+    runner = InMemoryRunner(agent=agent, app_name="porter")
+    
+    async def run_adk():
+        session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
+        user_msg = types.Content(role="user", parts=[types.Part(text=query)])
+        
+        final_text = ""
+        total_tokens = 0
+        from src.utils.token_circuit_breaker import TokenLimitExceededError
+        
+        for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
+            # ADK Token Circuit Breaker Logic
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
+                if total_tokens > 25000:
+                    logger.error(f"[CIRCUIT BROKEN] Categorizer exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
+                    raise TokenLimitExceededError(f"Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+            
+            if hasattr(response, 'content') and response.content and response.content.parts:
+                for part in response.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        if getattr(response, 'author', '') == agent.name:
+                            final_text = part.text
+        return final_text
+    
+    result_text = asyncio.run(run_adk())
+    
+    # Parse the returned JSON
+    result_text = result_text.replace('```json', '').replace('```', '').strip()
+    try:
+        data = json.loads(result_text)
+        recon_str = f"```json\n{{\n  \"Pillar\": \"{data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{data.get('Reason', '')}\",\n  \"Confidence_Score\": {data.get('Confidence_Score', 0)}\n}}\n```"
+    except Exception as e:
+        recon_str = f"```json\n{{\n  \"Pillar\": \"Parse Error\",\n  \"Reason\": \"Failed to parse ADK Categorizer response: {str(e)}\",\n  \"Confidence_Score\": 0\n}}\n```"
+        
     return {"recon_result": recon_str}
 
 def should_curate(state: ReflectionState) -> str:
@@ -95,28 +125,54 @@ def should_curate(state: ReflectionState) -> str:
     return "save_results_node"
 
 def curator_node(state: ReflectionState) -> ReflectionState:
-    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    config = AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant")
-    llm = config.get_chat_model(
-        verbose=True,
-        callbacks=[breaker]
+    import asyncio
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.runners import InMemoryRunner
+    from google.adk.models.lite_llm import LiteLlm
+    from google.genai import types
+    
+    logger.info("Curator Node: Using ADK LlmAgent (Llama 3.3 70b)")
+    
+    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
+    agent = Agent(
+        name="GTKY_Librarian",
+        model=adk_model,
+        instruction="You are 'GTKY Librarian (The Curator of Truth)'. Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide The Categorizer with the most accurate 'Actuals' possible.\n\nGoal: Identify 'The Fog of War' in daily logs and log 'Valuable Detours' to the User Inventory."
     )
     
     log_data = state.get("log_data") or {}
     inventory_note = log_data.get('inventoryNote', 'Gained unforeseen experience.')
     
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are 'GTKY Librarian (The Curator of Truth)'. Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide The Categorizer with the most accurate 'Actuals' possible.\n\nGoal: Identify 'The Fog of War' in daily logs and log 'Valuable Detours' to the User Inventory."),
-        ("user", "{username} has declared the recent activity a 'Valuable Detour'.\nHis note: '{inventory_note}'\nEvaluate this new 'acquired skill' against his overall Origin Story.\nExpected output: A concise 2-sentence summary of the new skill appended to the end of the Recon Report under an 'Acquired Inventory' header.")
-    ])
+    query = f"{state['username']} has declared the recent activity a 'Valuable Detour'.\nHis note: '{inventory_note}'\nEvaluate this new 'acquired skill' against his overall Origin Story.\nExpected output: A concise 2-sentence summary of the new skill appended to the end of the Recon Report under an 'Acquired Inventory' header."
     
-    chain = prompt | llm
-    result = chain.invoke({
-        "username": state["username"],
-        "inventory_note": inventory_note
-    })
+    runner = InMemoryRunner(agent=agent, app_name="porter")
     
-    curator_str = f"### Acquired Inventory\n{result.content}"
+    async def run_adk():
+        session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
+        user_msg = types.Content(role="user", parts=[types.Part(text=query)])
+        
+        final_text = ""
+        total_tokens = 0
+        from src.utils.token_circuit_breaker import TokenLimitExceededError
+        
+        for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
+            # ADK Token Circuit Breaker Logic
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
+                if total_tokens > 25000:
+                    logger.error(f"[CIRCUIT BROKEN] Curator exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
+                    raise TokenLimitExceededError(f"Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+            
+            if hasattr(response, 'content') and response.content and response.content.parts:
+                for part in response.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        if getattr(response, 'author', '') == agent.name:
+                            final_text = part.text
+        return final_text
+    
+    result_text = asyncio.run(run_adk())
+    
+    curator_str = f"### Acquired Inventory\n{result_text}"
     return {"curator_result": curator_str}
 
 def save_results_node(state: ReflectionState) -> ReflectionState:

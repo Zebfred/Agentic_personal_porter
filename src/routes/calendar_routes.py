@@ -57,7 +57,7 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str | None = Non
             # Fall back to global credentials for system state
             creds = get_calendar_credentials()
             
-        service = build('calendar', 'v3', credentials=creds)
+        service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
 
         target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
 

@@ -1,9 +1,8 @@
-import os
 import json
 import logging
 import re
 from typing import List, Dict, Any
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel
 from src.utils.llm_factory import AgentLLMConfig
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars
@@ -72,22 +71,14 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             ("human", f"Here is the {time_context} batch of calendar events:\n{{events_batch}}")
         ])
         
-        groq_api_key = os.getenv("GROQ_API_KEY")
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if not groq_api_key:
-            logger.error("No GROQ_API_KEY found in environment.")
-            return []
-            
+        # Primary: Groq Llama 3.3 70b (Bypasses Gemini API limits, highly capable of JSON reasoning)
         primary_config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile", temperature=0.0)
         primary_llm = primary_config.get_chat_model()
         
-        if openai_api_key:
-            fallback_config = AgentLLMConfig(provider="openai", model="gpt-5.4-mini", temperature=0.0)
-            fallback_llm = fallback_config.get_chat_model()
-            llm_with_fallback = primary_llm.with_fallbacks([fallback_llm])
-        else:
-            logger.warning("No OPENAI_API_KEY found, fallback disabled.")
-            llm_with_fallback = primary_llm
+        # Fallback: Groq Llama 3.1 8b
+        fallback_config = AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant", temperature=0.0)
+        fallback_llm = fallback_config.get_chat_model()
+        llm_with_fallback = primary_llm.with_fallbacks([fallback_llm])
             
         chain = prompt | llm_with_fallback
         
@@ -132,8 +123,7 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             except Exception as e:
                 logger.error(f"❌ Failed to classify chunk {i}: {e}")
                 
-            # Rate limiting sleep to prevent 429 Too Many Requests from Groq
-            # Groq free tier often limits to 30 RPM, so ~2.5s per request is safe
-            time.sleep(2.5)
+            # Vertex AI has generous rate limits; light delay to be polite
+            time.sleep(0.5)
                 
         return golden_objects

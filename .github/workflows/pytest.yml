@@ -42,4 +42,4 @@ jobs:
       run: |
         # Using the standard test suite execution
         # Environment variables are managed inside tests where applicable
-        uv run pytest tests/ -v --tb=short
+        uv run pytest tests/ --ignore=tests/billing_killswitch/ -v --tb=short

@@ -46,7 +46,7 @@ class SovereignCalendarSync:
             creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
         else:
             creds = get_calendar_credentials(scopes=self.scopes)
-        return build('calendar', 'v3', credentials=creds)
+        return build('calendar', 'v3', credentials=creds, cache_discovery=False)
 
     def pull_sliding_window(self, user_email="Hero", refresh_token=None):
         """

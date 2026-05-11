@@ -14,6 +14,10 @@ Integration and End-to-End tests are performed in a dedicated Google Cloud stagi
 
 - **Mocking Strategy**: We mock the `google.cloud.billing` and `google.cloud.resourcemanager` clients to verify that the correct API calls are made with the expected project and billing account IDs.
 
+> [!NOTE]
+> **Git Workflow Testing Temporarily Disabled**
+> Automated CI testing (`pytest` in GitHub Actions) for this submodule is currently disabled. The tests require Google Application Default Credentials (ADC) to be present in the environment (`google.auth.exceptions.DefaultCredentialsError`), which are not currently configured in the CI pipeline. This will be addressed in a future git workflow update.
+
 ## Commands
 
 *   `make test`: Run all unit and integration tests.
@@ -47,7 +51,7 @@ A template for manual Pub/Sub message publishing is provided in `tests/budget_al
 You can use the following commands to manually trigger and test the function:
 
 ```bash
-export TEST_PROJECT_NUMBER=$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format="value(projectNumber)")
+export TEST_PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
 
 # CREATE TEST MSG by replacing placeholders in the template using values from env vars
 sed "s/TEST_PROJECT_NUMBER/${TEST_PROJECT_NUMBER}/g" tests/budget_alert.json.template > tests/budget_alert.json
@@ -57,7 +61,7 @@ msg=$(cat tests/budget_alert.json)
 # Ideally, create a budget alert for this test project, and store its ID in your .env
 # Then publish the test message
 gcloud pubsub topics publish $BILLING_ALERT_TOPIC \
-    --project="$GOOGLE_CLOUD_PROJECT" \
+    --project="$PROJECT_ID" \
     --message="$msg" \
     --attribute="budgetId=$SAMPLE_BUDGET_ID,billingAccountId=$BILLING_ACCOUNT_ID"
 ```

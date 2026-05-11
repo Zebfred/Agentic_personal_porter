@@ -11,7 +11,7 @@ class AgentLLMConfig(BaseModel):
     Decouples agent logic from model provider.
     Provides a plug-and-play interface for LLM instantiation.
     """
-    provider: Literal["groq", "openai", "vertex"]
+    provider: Literal["groq", "openai", "vertex", "google_genai"]
     model: str
     temperature: float = 0.0
     max_tokens: Optional[int] = 4096
@@ -46,13 +46,30 @@ class AgentLLMConfig(BaseModel):
             
         elif self.provider == "vertex":
             from langchain_google_vertexai import ChatVertexAI
-            project = os.getenv("GOOGLE_CLOUD_PROJECT")
+            project = os.getenv("PROJECT_ID")
             location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
             
             return ChatVertexAI(
                 model_name=self.model,
                 temperature=self.temperature,
                 max_output_tokens=self.max_tokens,
+                project=project,
+                location=location,
+                **kwargs
+            )
+            
+        elif self.provider == "google_genai":
+            # Newer unified SDK — handles both API key and Vertex AI auth.
+            # Recommended by LangChain for Gemini 3.x+ models.
+            from langchain_google_genai import ChatGoogleGenerativeAI
+            project = os.getenv("PROJECT_ID")
+            location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+            
+            return ChatGoogleGenerativeAI(
+                model=self.model,
+                temperature=self.temperature,
+                max_output_tokens=self.max_tokens,
+                max_retries=2,
                 project=project,
                 location=location,
                 **kwargs

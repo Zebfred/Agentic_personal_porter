@@ -167,7 +167,7 @@ Ambition Snapshot: {ambition_context}
 Core Detriments: {detriments_context}
 """
 
-    return create_react_agent(llm, tools=tools, state_modifier=system_prompt)
+    return create_react_agent(llm, tools=tools, prompt=system_prompt)
 
 def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
