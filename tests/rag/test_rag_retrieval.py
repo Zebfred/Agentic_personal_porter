@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-sys.path.insert(0, str(project_root))
+
 
 from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.embeddings import SciBERTEmbedder

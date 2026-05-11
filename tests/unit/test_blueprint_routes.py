@@ -143,7 +143,7 @@ class TestAuthMiddleware:
         """A valid JWT with admin role must be accepted."""
         jwt_secret = os.environ.get("JWT_SECRET")
         token = jwt.encode(
-            {"role": "admin", "exp": datetime.utcnow() + timedelta(hours=1)},
+            {"role": "admin", "email": "testadmin@example.com", "exp": datetime.utcnow() + timedelta(hours=1)},
             jwt_secret,
             algorithm="HS256"
         )
@@ -157,7 +157,7 @@ class TestAuthMiddleware:
         """An expired JWT must be rejected."""
         jwt_secret = os.environ.get("JWT_SECRET")
         token = jwt.encode(
-            {"role": "admin", "exp": datetime.utcnow() - timedelta(hours=1)},
+            {"role": "admin", "email": "testadmin@example.com", "exp": datetime.utcnow() - timedelta(hours=1)},
             jwt_secret,
             algorithm="HS256"
         )

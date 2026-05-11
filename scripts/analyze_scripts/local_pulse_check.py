@@ -32,8 +32,9 @@ def run_pulse_check():
                 return super().default(obj)
                 
         # Write to log file
-        log_dir = root / "analyze_scripts/logs"
-        log_dir.mkdir(exist_ok=True)
+        from src.utils.path_utils import get_project_root
+        log_dir = get_project_root() / "scripts/analyze_scripts/logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_filename = log_dir / f"pulse_status_{timestamp_str}.log"
