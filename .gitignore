@@ -14,6 +14,7 @@ __pycache__/
 *.backup
 .ipynb_checkpoints/
 .legacy_hr/*
+*.egg-info/
 
 # Ignore sensitive information (e.g., configuration files with credentials)
 .auth/
@@ -33,11 +34,15 @@ tailwindcss
 venv/
 node_modules/
 
+#Ignore Scratch work
+scratch/*
 #Potentially Sensitive documentation
-Documentation/audit_documentation/*
-Documentation/txt_notes/*
+Documentation/issues_and_audit/*
+Documentation/Outdated_Doc/*
+Documentation/notes/*
+Documentation/Completed_Tasks/*
 
 # Sensitive helper scripts removed from git history (2026-04-17).
 # These files read from .auth/.env and must never be re-committed.
 helper_scripts/check_status.py
-helper_scripts/sync_secrets_gcp.sh
+helper_scripts/sync_gcp_secrets.sh

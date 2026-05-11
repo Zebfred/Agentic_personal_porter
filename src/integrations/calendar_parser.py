@@ -1,13 +1,12 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import json
 import os
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
 from dateutil import parser # pip install python-dateutil
-
-root = Path(__file__).resolve().parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
 
 from src.constants import ACTUAL_CATEGORY_MAPPING
 
@@ -193,13 +192,13 @@ def save_debug_artifacts(raw_data, formatted_data):
     raw_path = os.path.join(DATA_DIR, f"cal_raw_{timestamp}.json")
     with open(raw_path, 'w') as f:
         json.dump(raw_data, f, indent=2)
-    print(f"✅ Saved RAW data to: {raw_path}")
+    logger.info(f"✅ Saved RAW data to: {raw_path}")
 
     # 2. Save FORMATTED (The Agentic View)
     fmt_path = os.path.join(DATA_DIR, f"cal_formatted_{timestamp}.json")
     with open(fmt_path, 'w') as f:
         json.dump(formatted_data, f, indent=2)
-    print(f"✅ Saved FORMATTED data to: {fmt_path}")
+    logger.info(f"✅ Saved FORMATTED data to: {fmt_path}")
 
 # --- USAGE EXAMPLE (Put this in your main execution flow) ---
 # events = service.events().list(...).execute()

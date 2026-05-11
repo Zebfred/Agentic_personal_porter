@@ -2,45 +2,55 @@ from .connection import get_driver
 
 import os
 
-def get_valuable_detours(user_name=None):
-    if user_name is None:
-        user_name = os.environ.get("HERO_NAME", "Hero")
+def get_all_detours(username: str):
+    if not username:
+        raise ValueError("Username is required to fetch detours.")
     """
-    Retrieves all 'Valuable Detours' (Achievements) logged for the given Hero.
-    Returns a list of dictionaries with inventoryNote and the original Activity title.
+    Retrieves all Detours logged for the given Hero.
+    Returns a list of dictionaries with inventoryNote, original Activity title, type (valuable/detrimental), and timestamp.
     """
     driver = get_driver()
     query = """
-    MATCH (u:Hero {name: $userName})-[:HAS_ACHIEVEMENT]->(ach:Achievement)
-    MATCH (a:Actual)-[:ACHIEVED]->(ach)
-    RETURN ach.description AS inventoryNote, a.activity AS title, ach.timestamp AS timestamp
-    ORDER BY ach.timestamp DESC
+    MATCH (u:Hero {hero: $username})-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)-[:RECORDED]->(a:Actual)-[:IS_DETOUR]-(dt:Detour)
+    RETURN dt.description AS inventoryNote, a.activity AS title, labels(dt) AS labels, dt.timestamp AS timestamp
+    ORDER BY dt.timestamp DESC
     """
     with driver.session() as session:
-        result = session.execute_read(lambda tx: list(tx.run(query, userName=user_name)))
-        detours = [{"inventoryNote": record["inventoryNote"], "title": record["title"], "timestamp": str(record["timestamp"])} for record in result]
+        result = session.execute_read(lambda tx: list(tx.run(query, username=username)))
+        
+        detours = []
+        for record in result:
+            labels = record["labels"]
+            detour_type = "valuable" if "ValuableDetour" in labels else "detrimental" if "DetrimentalDetour" in labels else "unknown"
+            
+            detours.append({
+                "inventoryNote": record["inventoryNote"], 
+                "title": record["title"], 
+                "type": detour_type,
+                "timestamp": str(record["timestamp"])
+            })
     return detours
 
-def get_user_patterns(user_id: str) -> list:
+def get_user_patterns(username: str) -> list:
     """
     Find patterns in user's intentions vs actuals.
     
     Args:
-        user_id: User identifier
+        username: User identifier
         
     Returns:
         List of pattern dictionaries
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.execute_read(_get_patterns_tx, user_id)
+        result = session.execute_read(_get_patterns_tx, username)
     return result
 
-def _get_patterns_tx(tx, user_id: str):
+def _get_patterns_tx(tx, username: str):
     """Transaction to find patterns."""
     query = (
         """
-        MATCH (u:User {id: $userId})-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)
+        MATCH (u:Hero {hero: $username})-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)
         MATCH (tc)-[:INTENDED]->(int:Intention)-[:BECAME]->(a:Actual)
         WITH int.description as intention, a.activity as actual, count(*) as frequency
         WHERE frequency > 1
@@ -49,18 +59,18 @@ def _get_patterns_tx(tx, user_id: str):
         LIMIT 10
         """
     )
-    result = tx.run(query, userId=user_id)
+    result = tx.run(query, username=username)
     return [{"intention": record["intention"], 
              "actual": record["actual"], 
              "frequency": record["frequency"]} 
             for record in result]
 
-def get_goal_progress(user_id: str, goal_id: str = None) -> dict:
+def get_goal_progress(username: str, goal_id: str = None) -> dict:
     """
     Track progress toward goals.
     
     Args:
-        user_id: User identifier
+        username: User identifier
         goal_id: Optional specific goal ID
         
     Returns:
@@ -69,16 +79,16 @@ def get_goal_progress(user_id: str, goal_id: str = None) -> dict:
     driver = get_driver()
     with driver.session() as session:
         if goal_id:
-            result = session.execute_read(_get_specific_goal_progress_tx, user_id, goal_id)
+            result = session.execute_read(_get_specific_goal_progress_tx, username, goal_id)
         else:
-            result = session.execute_read(_get_all_goals_progress_tx, user_id)
+            result = session.execute_read(_get_all_goals_progress_tx, username)
     return result
 
-def _get_specific_goal_progress_tx(tx, user_id: str, goal_id: str):
+def _get_specific_goal_progress_tx(tx, username: str, goal_id: str):
     """Get progress for a specific goal."""
     query = (
         """
-        MATCH (u:User {id: $userId})-[:HAS_GOAL]->(g:Goal {id: $goalId})
+        MATCH (u:Hero {hero: $username})-[:HAS_GOAL]->(g:Goal {id: $goalId})
         OPTIONAL MATCH (int:Intention)-[:TARGETS]->(g)
         OPTIONAL MATCH (int)-[:BECAME]->(a:Actual)-[:ALIGNED_WITH]->(g)
         RETURN g.description as goal,
@@ -86,15 +96,15 @@ def _get_specific_goal_progress_tx(tx, user_id: str, goal_id: str):
                count(DISTINCT a) as aligned_actions_count
         """
     )
-    result = tx.run(query, userId=user_id, goalId=goal_id)
+    result = tx.run(query, username=username, goalId=goal_id)
     record = result.single()
     return dict(record) if record else {}
 
-def _get_all_goals_progress_tx(tx, user_id: str):
+def _get_all_goals_progress_tx(tx, username: str):
     """Get progress for all goals."""
     query = (
         """
-        MATCH (u:User {id: $userId})-[:HAS_GOAL]->(g:Goal)
+        MATCH (u:Hero {hero: $username})-[:HAS_GOAL]->(g:Goal)
         OPTIONAL MATCH (int:Intention)-[:TARGETS]->(g)
         OPTIONAL MATCH (int)-[:BECAME]->(a:Actual)-[:ALIGNED_WITH]->(g)
         RETURN g.description as goal,
@@ -104,29 +114,29 @@ def _get_all_goals_progress_tx(tx, user_id: str):
         ORDER BY aligned_actions_count DESC
         """
     )
-    result = tx.run(query, userId=user_id)
+    result = tx.run(query, username=username)
     return [dict(record) for record in result]
 
-def get_state_correlations(user_id: str) -> list:
+def get_state_correlations(username: str) -> list:
     """
     Find correlations between states and actions.
     
     Args:
-        user_id: User identifier
+        username: User identifier
         
     Returns:
         List of correlation patterns
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.execute_read(_get_state_correlations_tx, user_id)
+        result = session.execute_read(_get_state_correlations_tx, username)
     return result
 
-def _get_state_correlations_tx(tx, user_id: str):
+def _get_state_correlations_tx(tx, username: str):
     """Get state correlations."""
     query = (
         """
-        MATCH (u:User {id: $userId})-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)
+        MATCH (u:Hero {hero: $username})-[:HAS_DAY]->(d:Day)-[:HAS_CHUNK]->(tc:TimeChunk)
         MATCH (tc)-[:RECORDED]->(a:Actual)-[:AFFECTED_BY]->(s:State)
         WITH s.type as stateType, s.value as stateValue, a.activity as activity, count(*) as frequency
         WHERE frequency > 1
@@ -135,7 +145,7 @@ def _get_state_correlations_tx(tx, user_id: str):
         LIMIT 20
         """
     )
-    result = tx.run(query, userId=user_id)
+    result = tx.run(query, username=username)
     return [dict(record) for record in result]
 
 def get_full_graph_topology(limit: int = 500) -> dict:

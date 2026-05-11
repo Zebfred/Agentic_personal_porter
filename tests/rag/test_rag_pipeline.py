@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
@@ -21,14 +20,12 @@ from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.query_engine import RAGQueryEngine
 import os
 
-
 @pytest.fixture
 def temp_data_dir():
     """Create temporary data directory."""
     temp_dir = tempfile.mkdtemp()
     yield temp_dir
     shutil.rmtree(temp_dir)
-
 
 @pytest.mark.integration
 def test_end_to_end_pipeline(temp_data_dir):

@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import requests
 
@@ -24,7 +27,7 @@ class BGEM3EmbeddingsClient:
             data = response.json()
             return data.get("embedding", [])
         except requests.exceptions.RequestException as e:
-            print(f"Failed to get BGE-M3 embedding... Returning mock vector of dim 1024 for testing. Error: {e}")
+            logger.info(f"Failed to get BGE-M3 embedding... Returning mock vector of dim 1024 for testing. Error: {e}")
             return [0.0] * 1024 
 
     def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:

@@ -10,13 +10,14 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
-COPY requirements.txt .
+# Copy uv from the official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install dependencies in the builder stage
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install gunicorn
+# Copy the dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies using uv (creates /app/.venv)
+RUN uv sync --frozen --no-cache --no-install-project
 
 # --- Production Stage ---
 FROM python:3.11-slim
@@ -29,15 +30,21 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy python packages from the builder stage
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy the virtual environment from the builder stage
+COPY --from=builder /app/.venv /app/.venv
+
+# Prepend the venv to PATH so Python uses the installed dependencies
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Run the ABI mismatch check using the venv's python
+RUN /app/.venv/bin/python -c "import torch; import onnxruntime" 
 
 # Copy application files (ignoring items in .dockerignore)
 COPY src/ ./src/
 COPY frontend/ ./frontend/
+COPY data/category_mapping.example.json ./data/
 
-# Create data directory structure for CrewAI artifacts and logs
+# Create data directory structure for Agent artifacts and logs
 RUN mkdir -p /app/data/reflections
 
 # Set environment variables
@@ -46,11 +53,11 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONPATH=/app
 
 # Expose the Flask Port
-EXPOSE 5090
+EXPOSE 6010
 
 # Health check to ensure the server is responsive
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:5090/ || exit 1
+    CMD curl -f http://localhost:6010/ || exit 1
 
 # Start the application using Gunicorn (WSGI)
-CMD ["gunicorn", "--bind", "0.0.0.0:5090", "--workers", "1", "--threads", "4", "--timeout", "300", "src.app:app"]
+CMD exec gunicorn --bind 0.0.0.0:${PORT:-6010} --workers 1 --threads 4 --timeout 300 src.app:app

@@ -9,12 +9,12 @@ WHY lazy reads: Environment variables are read inside the decorator function
 dotenv has already been called by the app factory regardless of import
 ordering, and makes testing with monkeypatched env vars work correctly.
 """
+import re
 import os
 import hmac
 import jwt
 from functools import wraps
 from flask import request, jsonify, make_response
-
 
 def require_role(*roles):
     """
@@ -32,7 +32,6 @@ def require_role(*roles):
         return decorated_function
     return decorator
 
-
 def require_api_key(f):
     """Decorator that enforces API key or JWT authentication on a route."""
     @wraps(f)
@@ -46,7 +45,7 @@ def require_api_key(f):
             return response, 204
 
         # Read secrets at request time, not import time
-        api_key = os.environ.get("PORTER_API_KEY", "")
+        api_key = os.environ.get("PORTER_ADMIN_KEY", "")
         jwt_secret = os.environ.get("JWT_SECRET", "")
 
         supplied_key = request.headers.get("Authorization")
@@ -66,8 +65,12 @@ def require_api_key(f):
         if jwt_secret:
             try:
                 decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
+                email_claim = decoded.get("email")
+                if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
+                    return jsonify({"error": "Invalid email format in token"}), 401
+                
                 # Inject identity into request context for downstream routes
-                request.user_email = decoded.get("email")
+                request.user_email = email_claim
                 request.user_role = decoded.get("role", "user")
                 request.user_account_type = decoded.get("account_type", "hero")
                 

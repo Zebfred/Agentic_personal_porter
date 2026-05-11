@@ -1,12 +1,10 @@
+import logging
+logger = logging.getLogger(__name__)
 import os
 import sys
 import json
 from pathlib import Path
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
-from src.utils.path_utils import load_env_vars
 from src.database.mongo_storage import SovereignMongoStorage
 
 class GTKYIdentityArchitect:
@@ -14,7 +12,8 @@ class GTKYIdentityArchitect:
     The Identity Architect handles reading, scanning, and improving the
     fundamental user JSON artifacts: Origin Story, Ambitions, and Detriments.
     """
-    def __init__(self):
+    def __init__(self, username: str = "system"):
+        self.username = username
         self.artifacts_dir = root / "data" / "hero_artifacts"
         self.origin_file = self.artifacts_dir / "hero_origin.json"
         self.ambition_file = self.artifacts_dir / "hero_ambition.json"
@@ -26,11 +25,11 @@ class GTKYIdentityArchitect:
         # 1. Mongo is Source of Truth
         try:
             mongo = SovereignMongoStorage()
-            data = mongo.get_hero_artifact(filename)
+            data = mongo.get_hero_artifact(filename, self.username)
             if data:
                 return data
         except Exception as e:
-            print(f"Failed to reach Mongo for {filename}: {e}")
+            logger.info(f"Failed to reach Mongo for {filename}: {e}")
 
         # 2. Fallback to Local Filesystem
         if not filepath.exists():
@@ -40,11 +39,12 @@ class GTKYIdentityArchitect:
                 data = json.load(f)
                 # Seed mongo if missing
                 try:
-                    SovereignMongoStorage().save_hero_artifact(filename, data)
-                except: pass
+                    SovereignMongoStorage().save_hero_artifact(filename, data, self.username)
+                except Exception as e:
+                    logger.warning(f"Non-critical error during identity processing: {e}")
                 return data
         except Exception as e:
-            print(f"Error parsing {filepath}: {e}")
+            logger.info(f"Error parsing {filepath}: {e}")
             return {}
             
     def append_new_learnings(self, artifact_name: str, raw_update_summary: str) -> str:
@@ -77,7 +77,7 @@ class GTKYIdentityArchitect:
         
         try:
              mongo = SovereignMongoStorage()
-             mongo.save_hero_artifact(active_name, data)
+             mongo.save_hero_artifact(active_name, data, self.username)
              return f"Successfully routed the update to {active_name} inside MongoDB."
         except Exception as e:
              return f"Failed to persist to MongoDB: {e}"

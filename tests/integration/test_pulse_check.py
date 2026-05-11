@@ -8,11 +8,11 @@ from pathlib import Path
 os.environ['LANGCHAIN_API_KEY'] = 'test_key'
 os.environ['OPENAI_API_KEY'] = 'test_key'
 
-from helper_scripts.local_pulse_check import run_pulse_check
+from scripts.analyze_scripts.local_pulse_check import run_pulse_check
 
-@patch('helper_scripts.local_pulse_check.load_env_vars')
-@patch('helper_scripts.local_pulse_check.SovereignMongoStorage')
-@patch('helper_scripts.local_pulse_check.get_driver')
+@patch('scripts.analyze_scripts.local_pulse_check.load_env_vars')
+@patch('scripts.analyze_scripts.local_pulse_check.SovereignMongoStorage')
+@patch('scripts.analyze_scripts.local_pulse_check.get_driver')
 @patch('langsmith.Client')
 def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_mongo, mock_load_env):
     """
@@ -54,7 +54,7 @@ def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_
     
     # Route all db['collection'] calls to our mock_collection
     mock_db.__getitem__.return_value = mock_collection
-    mock_mongo_instance.db = mock_db
+    # mock_mongo_instance.db = mock_db
     
     mock_mongo.return_value = mock_mongo_instance
 
@@ -63,7 +63,7 @@ def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_
 
     # Verify a log file was successfully written
     root_dir = Path(__file__).resolve().parent.parent.parent
-    log_dir = root_dir / "helper_scripts" / "logs"
+    log_dir = root_dir / "scripts/analyze_scripts/logs"
     
     log_files = glob.glob(str(log_dir / "pulse_status_*.log"))
     assert len(log_files) > 0, "Expected a pulse_status_*.log file to be generated, but found none."

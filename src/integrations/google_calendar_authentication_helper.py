@@ -9,10 +9,6 @@ from googleapiclient.discovery import build
 # This defines what our app is allowed to do. Defaulting to full calendar access for syncing.
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
-
 def get_auth_paths():
     """
     Dynamically finds the project root and returns paths for auth files.

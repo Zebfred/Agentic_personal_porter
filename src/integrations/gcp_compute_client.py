@@ -13,7 +13,7 @@ class GCPComputeClient:
     Uses Application Default Credentials (ADC) to authenticate seamlessly between local and Cloud Run.
     """
     def __init__(self, project_id: Optional[str] = None):
-        self.project_id = project_id or os.environ.get("GCP_PROJECT_ID", "")
+        self.project_id = project_id or os.environ.get("PROJECT_ID", "")
         try:
             self.credentials, self.default_project_id = google.auth.default()
             # Fall back to ADC-discovered project if neither arg nor env var provided
@@ -53,7 +53,7 @@ class GCPComputeClient:
 
         status = self.get_instance_status(instance, zone)
         if status == "RUNNING":
-            logger.info(f"Instance {instance} is already RUNNING.")
+            logger.debug(f"Instance {instance} is already RUNNING.")
             return True
 
         if status == "TERMINATED":

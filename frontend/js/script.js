@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Render Skills
         ui.skills.innerHTML = '';
         if (!data.skills || data.skills.length === 0) {
-            ui.skills.innerHTML = emptyState("Skill logs empty. Neo4j achievement integration pending.", "emerald");
+            ui.skills.innerHTML = emptyState("Skill logs empty. Neo4j Detour graph integration pending.", "emerald");
         }
 
         // Render Equipment

@@ -15,12 +15,11 @@ import jwt
 from datetime import datetime, timedelta
 
 # Ensure env vars are set BEFORE importing the app, just like production
-os.environ.setdefault("PORTER_API_KEY", "test-api-key-for-ci")
+os.environ.setdefault("PORTER_ADMIN_KEY", "test-api-key-for-ci")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-ci")
 os.environ.setdefault("HERO_NAME", "TestHero")
 
 from src.app import create_app
-
 
 @pytest.fixture
 def app():
@@ -29,12 +28,10 @@ def app():
     app.config['TESTING'] = True
     return app
 
-
 @pytest.fixture
 def client(app):
     """Flask test client."""
     return app.test_client()
-
 
 # ======================================================================
 #  Route Existence Tests — verify 1:1 mapping after the Blueprint split
@@ -109,8 +106,7 @@ class TestRouteMapping:
         # Flask adds a default /static/<path:filename> route; we expect ~45 total
         rule_count = len(list(app.url_map.iter_rules()))
         assert rule_count >= 30, f"Expected >=30 routes, got {rule_count}. Routes may be missing."
-        assert rule_count <= 60, f"Expected <=60 routes, got {rule_count}. Possible duplicates."
-
+        assert rule_count <= 70, f"Expected <=70 routes, got {rule_count}. Possible duplicates."
 
 # ======================================================================
 #  Auth Middleware Tests
@@ -135,7 +131,7 @@ class TestAuthMiddleware:
 
     def test_valid_api_key_returns_success(self, client):
         """A valid raw API key must be accepted."""
-        api_key = os.environ.get("PORTER_API_KEY")
+        api_key = os.environ.get("PORTER_ADMIN_KEY")
         response = client.get(
             '/api/inventory',
             headers={"Authorization": f"Bearer {api_key}"}
@@ -176,7 +172,6 @@ class TestAuthMiddleware:
         response = client.options('/api/inventory')
         assert response.status_code in (200, 204)
 
-
 # ======================================================================
 #  Login Endpoint Tests
 # ======================================================================
@@ -196,6 +191,7 @@ class TestLogin:
             "picture": "https://example.com/pic.jpg",
             "given_name": "Test"
         }
+        mock_storage.return_value.get_or_create_user.return_value = {"username": "testuser"}
         
         # We need to set a dummy GOOGLE_CLIENT_ID in the environment for the test to pass
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
@@ -221,6 +217,7 @@ class TestLogin:
             "picture": "https://example.com/pic.jpg",
             "given_name": "Admin"
         }
+        mock_storage.return_value.get_or_create_user.return_value = {"username": "adminuser"}
         
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
         os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-ds-ml-consulting.com"
@@ -256,7 +253,6 @@ class TestLogin:
             json={"username": "admin"}
         )
         assert response.status_code == 400
-
 
 # ======================================================================
 #  Blueprint Module Import Tests

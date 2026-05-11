@@ -15,21 +15,18 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Add project root to Python path so imports work when run directly
-project_root = Path(__file__).parent.parent
-if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from src.database.neo4j_client import close_driver
 
 # Load auth env vars BEFORE anything else reads them
-root = Path(__file__).resolve().parent.parent
 load_dotenv(root / ".auth" / ".env")
 
 # --- Critical security checks ---
-API_KEY = os.environ.get("PORTER_API_KEY")
+API_KEY = os.environ.get("PORTER_ADMIN_KEY")
 if not API_KEY:
     raise ValueError(
-        "CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. "
+        "CRITICAL SECURITY ERROR: PORTER_ADMIN_KEY environment variable is missing. "
         "It must be set in .auth/.env for secure authentication."
     )
 
@@ -39,7 +36,6 @@ if not JWT_SECRET:
         "CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. "
         "It must be set in .auth/.env for secure token generation."
     )
-
 
 def _configure_logging():
     """Set up the APP_ROUTER logger with file and console handlers."""
@@ -64,7 +60,6 @@ def _configure_logging():
     logger.addHandler(console_handler)
 
     return logger
-
 
 def create_app():
     """Application factory — creates, configures, and returns the Flask app."""
@@ -123,7 +118,6 @@ def create_app():
 
     logger.info(f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 8 blueprints.")
     return app
-
 
 # --- Entrypoint ---
 app = create_app()

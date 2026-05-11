@@ -2,7 +2,8 @@
 Journal and daily log routes.
 
 Handles saving time-chunk logs, retrieving historical monthly data,
-and triggering the daily AI reflection via CrewAI.
+Handles saving time-chunk logs, retrieving historical monthly data,
+and triggering the daily AI reflection via LangGraph.
 """
 import os
 import logging
@@ -14,12 +15,14 @@ from src.routes.auth_middleware import require_api_key
 from src.database.neo4j_client import log_to_neo4j
 from src.database.mongo_storage import SovereignMongoStorage
 from src.schemas.api_models import JournalLogBase, DailyReflectionRequestSchema
-from src.agents.crew_manager_mach3 import run_crew
+from src.agents.porter_manager import run_porter_reflection
 from src.routes.calendar_routes import fetch_calendar_events_for_date
+from src.database.mongo_client.connection import MongoConnectionManager
+from src.config import MongoConfig
+from src.database.mongo_client.uuid_manager import UUIDGenerator
 
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
-
 
 @journal_bp.route('/api/save_log', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -53,22 +56,28 @@ def save_log():
 
         # 1. Save pristine Frontend log to MongoDB Landing Zone
         mongo_storage = SovereignMongoStorage()
+        
+        user_email = getattr(request, 'user_email', 'Hero')
+        username = 'Hero'
+        if user_email != 'Hero':
+            user_doc = mongo_storage.get_user_by_email(user_email)
+            username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
         mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
         
-        day_str = log_data_dict.get("day")
-        time_chunk = log_data_dict.get("timeChunk")
-        user_id = getattr(request, 'user_email', 'Hero')
+        day_str = str(log_data_dict.get("day", "unknown_date"))
+        time_chunk = str(log_data_dict.get("timeChunk", "unknown_time"))
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
         db_confirmation = "Failed"
         try:
-            db_confirmation = log_to_neo4j(log_data_dict, user_id)
+            db_confirmation = log_to_neo4j(log_data_dict, username)
             mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
                 "neo4j": True,
                 "saga_status.status": "GRAPH_INJECTED",
                 "saga_status.timestamp": datetime.now(timezone.utc).isoformat(),
                 "saga_status.details": f"Injected to Neo4j successfully: {db_confirmation}"
-            }, user_id=user_id)
+            }, user_id=username)
         except Exception as e_neo:
             logger.warning(f"Failed to write to Neo4j: {e_neo}")
             mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
@@ -76,22 +85,16 @@ def save_log():
                 "neo4j_error": str(e_neo),
                 "saga_status.status": "FAILED",
                 "saga_status.details": f"Neo4j Injection Failed: {e_neo}"
-            }, user_id=user_id)
+            }, user_id=username)
         
         # 3. Mach 3 Rework: Write strictly to event_actuals and unified_events as ground truth
         try:
-            from src.database.mongo_client.connection import MongoConnectionManager
-            from src.config import MongoConfig
-            from src.database.mongo_client.uuid_manager import UUIDGenerator
-            
             db = MongoConnectionManager.get_db()
             actual_col = db[MongoConfig.ACTUAL_COLLECTION]
             unified_col = db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
             
-            day_str = log_data_dict.get("day", "unknown_date")
-            time_chunk = log_data_dict.get("timeChunk", "unknown_time")
             synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
-            event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, user_id)
+            event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, username)
             
             actual_payload = {
                 "title": log_data_dict.get("title", "Adventure Log Entry"),
@@ -109,7 +112,7 @@ def save_log():
             actual_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": user_id,
+                    "user_id": username,
                     "gcal_id": synthetic_gcal_id,
                     "time_slot": time_slot,
                     "actual": actual_payload,
@@ -124,16 +127,16 @@ def save_log():
             unified_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
-                    "user_id": user_id,
+                    "user_id": username,
                     "time_slot": time_slot,
                     "actual": actual_payload
                 }},
                 upsert=True
             )
-            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": True, "unified": True}, user_id=user_id)
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": True, "unified": True}, user_id=username)
         except Exception as e_actual:
             logger.warning(f"Failed to write to actuals/unified: {e_actual}")
-            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": False, "unified": False, "mongo_error": str(e_actual)}, user_id=user_id)
+            mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": False, "unified": False, "mongo_error": str(e_actual)}, user_id=username)
 
         return jsonify({
             "status": "success",
@@ -143,7 +146,6 @@ def save_log():
     except Exception as e:
         logger.error(f"Error saving log: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
 @require_api_key
@@ -198,7 +200,6 @@ def get_yearly_logs_route():
     except Exception as e:
         logger.error(f"Error fetching yearly logs: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @journal_bp.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -255,8 +256,8 @@ def process_journal():
             except Exception as cal_err:
                 logger.warning(f"Calendar context failed: {cal_err}")
 
-            # Run CrewAI reflection
-            result_text = run_crew(enhanced_journal_entry, log_data)
+            # Run LangGraph reflection
+            result_text = run_porter_reflection(enhanced_journal_entry, log_data)
 
             # Save Reflection to dedicated collection
             mongo_storage = SovereignMongoStorage()
@@ -276,7 +277,7 @@ def process_journal():
             })
 
         except Exception as e:
-            logger.error(f"Backend Error during CrewAI execution: {e}", exc_info=True)
+            logger.error(f"Backend Error during LangGraph execution: {e}", exc_info=True)
             return jsonify({"error": str(e)}), 500
 
     except Exception as e:
@@ -321,7 +322,7 @@ def edit_journal_event():
             )
 
             # 2. Append to Knowledge Base (category_mapping.json -> MongoDB)
-            cat_map = mongo.get_hero_artifact('category_mapping.json')
+            cat_map = mongo.get_hero_artifact('category_mapping.json', "system")
             if cat_map:
                 intent_map = cat_map.get('intent_to_actual_mapping', {})
                 actual_target = intent_map.get(new_pillar)
@@ -336,7 +337,7 @@ def edit_journal_event():
                         # Append the raw event title dynamically to train the system
                         if event_title not in target_bucket['General']:
                             target_bucket['General'].append(event_title.lower())
-                            mongo.save_hero_artifact('category_mapping.json', cat_map)
+                            mongo.save_hero_artifact('category_mapping.json', cat_map, "system")
                             logger.info(f"Appended '{event_title}' to {actual_target} General Bucket.")
 
             return jsonify({"status": "success", "message": f"Successfully mapped '{event_title}' to {new_pillar}."})

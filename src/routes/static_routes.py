@@ -7,7 +7,6 @@ from flask import Blueprint, send_from_directory, render_template
 
 static_bp = Blueprint('static', __name__, template_folder='../../frontend')
 
-
 # --- HTML Page Routes ---
 
 @static_bp.route('/')

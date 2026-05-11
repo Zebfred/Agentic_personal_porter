@@ -1,19 +1,17 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 from pathlib import Path
 from pydantic import SecretStr
 
 from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from langchain.agents import initialize_agent, AgentType
-from langchain.tools import Tool
-from langchain.prompts import PromptTemplate
-from langchain.agents import tool, AgentExecutor, create_tool_calling_agent
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.tools import tool
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import HumanMessage, ToolMessage
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
+from src.utils.llm_factory import AgentLLMConfig
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.database.context_engine import SovereignContextEngine
 from src.config import NeoConfig
@@ -31,24 +29,7 @@ raw_api_key = os.getenv("GROQ_API_KEY")
 env_path = get_auth_file('.env')
 load_dotenv(dotenv_path=env_path)
 
-# 1. Provide Context
-def get_mach2_context():
-    engine = SovereignContextEngine(
-        NEO4J_URI=NeoConfig.NEO4J_URI,
-        NEO4J_USER=NeoConfig.NEO4J_USER,
-        NEO4J_PASS=NeoConfig.NEO4J_PASS
-    )
-    hero_name = os.environ.get("HERO_NAME", "Hero")
-    hero_context = engine.get_hero_snapshot(user_name=hero_name)
-    engine.close()
-    
-    # Also load the JSON Artifacts
-    from src.agents.gtky_identity_architect import GTKYIdentityArchitect
-    architect = GTKYIdentityArchitect()
-    hero_context['ambition'] = architect.get_ambition()
-    hero_context['detriments'] = architect.get_detriments()
-    
-    return hero_context
+from src.agents.context_loader import get_context
 
 # 2. Defines Tools
 @tool
@@ -64,7 +45,7 @@ def update_artifact(artifact_name: str, new_content_summary: str) -> str:
     """declares intent to update a json artifact (like hero_origin.json or hero_ambition.json) with new content.
     The GTKY Identity Architect will receive this ping to queue a permanent file modification.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect to update {artifact_name}.")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect to update {artifact_name}.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     result = architect.append_new_learnings(artifact_name, new_content_summary)
@@ -75,7 +56,7 @@ def scan_origin_story() -> str:
     """Use this to comprehensively scan the user's origin story for missing gaps (especially from their teenage and secondary education years).
     This tool returns 3 targeted interview questions you should ask the user to help fill in their timeline via the frontend UI.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     return architect.scan_for_missing_origin()
@@ -85,7 +66,7 @@ def weaviate_hybrid_search(query: str, pillar: str = "Daily Reflection") -> str:
     """Use this to fetch exact journal entries and calendar events mapped to the 9 life pillars.
     Pass in a robust query string and the specific pillar (e.g. 'Social Goal', 'Career Goal', 'Health Goal') to hybrid match.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Weaviate DB for query: '{query}' on pillar: '{pillar}'")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Weaviate DB for query: '{query}' on pillar: '{pillar}'")
     emb_client = BGEM3EmbeddingsClient()
     vector = emb_client.get_embedding(query)
     
@@ -110,7 +91,7 @@ def chroma_vibe_check(query: str) -> str:
     """Use this to conceptually verify large, philosophical trends or Origin Story metrics of the User.
     Pass in a natural language query exploring the overarching vibe/sentiment without strict keyword matching.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Chroma DB for conceptual Vibe Check: '{query}'")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Chroma DB for conceptual Vibe Check: '{query}'")
     emb_client = BGEM3EmbeddingsClient()
     vector = emb_client.get_embedding(query)
     
@@ -153,22 +134,19 @@ def consult_time_keeper(date_iso: str) -> str:
     """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
     Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
     """
-    print(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
     from src.agents.time_keeper_agent import TimeKeeperAgent
     keeper = TimeKeeperAgent()
     return keeper.summarize_day(date_iso)
 
 # 3. Agent Setup
-def get_porter_agent_executor():
-    llm = ChatGroq(
-        api_key=SecretStr(raw_api_key),
-        model="llama-3.3-70b-versatile",
-        verbose=True
-    )
+def get_porter_agent(hero_name: str, intentions: str, principles: str, ambition_context: str, detriments_context: str):
+    config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile")
+    llm = config.get_chat_model(verbose=True)
     
     tools = [route_to_subagent, update_artifact, scan_origin_story, weaviate_hybrid_search, chroma_vibe_check, fetch_unverified_audits, consult_time_keeper]
     
-    system_prompt = """I. Role Identity
+    system_prompt = f"""I. Role Identity
 You are the First_Serving Porter, the Chief of Staff and primary orchestrator of the Agentic Porter Ecosystem. Your sole mission is to serve as the bridge between the User's Hero Intent (stored in the Neo4j Identity Graph) and the Ground Truth (actual time and action data).
 
 II. Operational Context
@@ -190,65 +168,60 @@ Ambition Snapshot: {ambition_context}
 Core Detriments: {detriments_context}
 """
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        ("human", "{input}"),
-        ("placeholder", "{agent_scratchpad}"),
-    ])
-    
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    
-    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
-    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    monitor = FirstServingMonitoringHandler()
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, return_intermediate_steps=True, callbacks=[breaker, monitor])
-    return agent_executor
+    return create_react_agent(llm, tools=tools, prompt=system_prompt)
 
-def run_first_serving_porter(user_input: str) -> dict:
+def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
     health_manager = AgentHeartbeatManager()
     run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input})
     
-    context = get_mach2_context()
-    executor = get_porter_agent_executor()
+    context = get_context(username=username)
+    agent = get_porter_agent(
+        hero_name=username,
+        intentions=context.get("intentions", "Unknown"),
+        principles=context.get("principles", "Unknown"),
+        ambition_context=str(context.get("ambition", "Unknown")),
+        detriments_context=str(context.get("detriments", "Unknown"))
+    )
     
-    print("\n--- Invoking First-Serving Porter ---\n")
+    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
+    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
+    monitor = FirstServingMonitoringHandler()
+    config = {"callbacks": [breaker, monitor]}
+    
+    logger.info("\n--- Invoking First-Serving Porter ---\n")
     try:
-        result = executor.invoke({
-            "input": user_input,
-            "hero_name": os.environ.get("HERO_NAME", "Hero"),
-            "intentions": context.get("intentions", "Unknown"),
-            "principles": context.get("principles", "Unknown"),
-            "ambition_context": str(context.get("ambition", "Unknown")),
-            "detriments_context": str(context.get("detriments", "Unknown"))
-        })
+        result = agent.invoke({"messages": [HumanMessage(content=user_input)]}, config=config)
         health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:
-        print(f"\n[CRITICAL RUNTIME ERROR] {e}")
+        logger.info(f"\n[CRITICAL RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": "My apologies, Sir. I suffered a systemic logic loop and had to sever my own processing connection to protect our API limit. Please ask me again with different parameters.",
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Token Circuit Breaker Tripped."]
         }
     except Exception as e:
-        print(f"\n[RUNTIME ERROR] {e}")
+        logger.info(f"\n[RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return {
             "response": f"An unexpected error occurred during execution: {e}",
             "transparency_logs": ["[TRANSPARENCY HANDOFF] System Halted: Unexpected Backend Error."]
         }
     
-    intermediate_steps = result.get("intermediate_steps", [])
+    messages = result.get("messages", [])
     transparency_logs = []
-    for action, observation in intermediate_steps:
-        if isinstance(observation, str) and "[TRANSPARENCY HANDOFF]" in observation:
-            transparency_logs.append(observation)
+    
+    for msg in messages:
+        if isinstance(msg, ToolMessage) and isinstance(msg.content, str) and "[TRANSPARENCY HANDOFF]" in msg.content:
+            transparency_logs.append(msg.content)
+            
+    final_response = messages[-1].content if messages else "No response generated."
             
     return {
-        "response": result.get("output", "No response generated."),
+        "response": final_response,
         "transparency_logs": transparency_logs
     }
 
 if __name__ == "__main__":
     res = run_first_serving_porter("Can you check my career vibe over the last month and see if I've been actively pursuing my goals on my calendar?")
-    print("\nFINAL RESPONSE:\n", res)
+    logger.info("\nFINAL RESPONSE:\n", res)

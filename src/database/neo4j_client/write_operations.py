@@ -1,24 +1,27 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 from .connection import get_driver
 
-def log_to_neo4j(log_data: dict, user_email: str) -> str:
+def log_to_neo4j(log_data: dict, username: str) -> str:
     """
     Logs a complete journal entry to the Neo4j database.
     Returns a confirmation message.
     """
     driver = get_driver()
     with driver.session() as session:
-        result_node = session.execute_write(_create_log_entry, log_data, user_email)
+        result_node = session.execute_write(_create_log_entry, log_data, username)
         
         # another potential fix
         # We must check if result_node is not None before trying to access it.
         if result_node and 'activity' in result_node:
             return f"Successfully logged entry for '{result_node['activity']}'"
         else:
-            print("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
+            logger.info("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
 
-def _create_log_entry(tx, log_data: dict, user_email: str):
+def _create_log_entry(tx, log_data: dict, username: str):
     """
     Enhanced function that creates nodes and relationships with meaningful connections.
     """
@@ -37,7 +40,7 @@ def _create_log_entry(tx, log_data: dict, user_email: str):
     query = (
         """
         // Find or create Hero
-        MERGE (u:Hero {name: $userName})
+        MERGE (u:Hero {hero: $username})
         
         // Create journal and link to hero
         MERGE (j:Journal {name: 'Daily Log'})
@@ -70,8 +73,31 @@ def _create_log_entry(tx, log_data: dict, user_email: str):
         })
         MERGE (tc)-[:RECORDED]->(a)
         
-        // Link Actual to Intention
-        MERGE (int)-[:BECAME]->(a)
+        // Link Actual to Intention dynamically based on Match or Detour
+        WITH a, u, int, $matchesIntent as isMatch, $isValuableDetour as isDetour, $inventoryNote as note
+        
+        // If it matches, simply create a MATCH relationship
+        FOREACH (x IN CASE WHEN isMatch = true THEN [1] ELSE [] END |
+            MERGE (int)-[:MATCH]->(a)
+        )
+        
+        // If it does NOT match, create a Detour
+        FOREACH (x IN CASE WHEN isMatch = false THEN [1] ELSE [] END |
+            MERGE (dt:Detour {id: elementId(a) + '_detour'})
+            SET dt.description = note,
+                dt.timestamp = datetime()
+            
+            // Add specific labels based on value
+            FOREACH (y IN CASE WHEN isDetour = true THEN [1] ELSE [] END |
+                SET dt:ValuableDetour
+            )
+            FOREACH (y IN CASE WHEN isDetour = false THEN [1] ELSE [] END |
+                SET dt:DetrimentalDetour
+            )
+            
+            MERGE (int)-[:NOT_MATCH]->(dt)
+            MERGE (dt)-[:IS_DETOUR]->(a)
+        )
         
         // Create Reflection
         CREATE (r:Reflection {
@@ -79,18 +105,6 @@ def _create_log_entry(tx, log_data: dict, user_email: str):
             timestamp: datetime()
         })
         MERGE (a)-[:HAS_REFLECTION]->(r)
-        
-        // Create Achievement if valuable detour
-        WITH a, u, int, r, $isValuableDetour as isDetour, $inventoryNote as note
-        FOREACH (x IN CASE WHEN isDetour = true AND note IS NOT NULL AND note <> '' THEN [1] ELSE [] END |
-            CREATE (ach:Achievement {
-                description: note,
-                value: 'positive',
-                timestamp: datetime()
-            })
-            MERGE (a)-[:ACHIEVED]->(ach)
-            MERGE (u)-[:HAS_ACHIEVEMENT]->(ach)
-        )
         
         // Create Affected States
         WITH a, u, int, r, $feeling as feeling, $brainFog as fog, $timeOfDay as tod
@@ -133,7 +147,7 @@ def _create_log_entry(tx, log_data: dict, user_email: str):
     )
     
     result = tx.run(query,
-                    userName=user_email,
+                    username=username,
                     day=log_data.get('day'),
                     timeChunkId=log_data.get('timeChunk'),
                     intention=intention_text,
@@ -152,14 +166,14 @@ def _create_log_entry(tx, log_data: dict, user_email: str):
         return record.get('a')
     return None
 
-def create_identity_graph(user_id, origin_story, ambitions):
+def create_identity_graph(username, origin_story, ambitions):
     """
     Parses the GTKY Agent's output to build the Identity Graph.
     Uses MERGE to ensure idempotency.
     """
     driver = get_driver()
     query = """
-    MATCH (u:Hero {id: $user_id})
+    MATCH (u:Hero {hero: $username})
     
     // 1. Map the Origin Story (Who you are)
     FOREACH (trait IN $origin_story.traits |
@@ -185,28 +199,28 @@ def create_identity_graph(user_id, origin_story, ambitions):
 
     # Execute query with parameters using execute_write for robust transaction handling
     with driver.session() as session:
-        session.execute_write(lambda tx: tx.run(query, user_id=user_id, origin_story=origin_story, ambitions=ambitions))
-    user_id_graph = f"Identity graph created/updated successfully for user {user_id}"
-    print(user_id_graph)
+        session.execute_write(lambda tx: tx.run(query, username=username, origin_story=origin_story, ambitions=ambitions))
+    user_id_graph = f"Identity graph created/updated successfully for user {username}"
+    logger.info(user_id_graph)
     return user_id_graph
 
-def create_goal(user_id: str, description: str, category: str = "general", 
+def create_goal(username: str, description: str, category: str = "general", 
                 priority: str = "medium", timeframe: str = "ongoing") -> dict:
     """
     Create a Goal node in Neo4j.
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.execute_write(_create_goal_tx, user_id, description, 
+        result = session.execute_write(_create_goal_tx, username, description, 
                                       category, priority, timeframe)
     return result
 
-def _create_goal_tx(tx, user_id: str, description: str, category: str, 
+def _create_goal_tx(tx, username: str, description: str, category: str, 
                    priority: str, timeframe: str):
     """Transaction function to create a goal."""
     query = (
         """
-        MATCH (u:Hero {id: $userId})
+        MATCH (u:Hero {hero: $username})
         CREATE (g:Goal {
             description: $description,
             category: $category,
@@ -219,7 +233,7 @@ def _create_goal_tx(tx, user_id: str, description: str, category: str,
         RETURN g
         """
     )
-    result = tx.run(query, userId=user_id, description=description, 
+    result = tx.run(query, username=username, description=description, 
                    category=category, priority=priority, timeframe=timeframe)
     record = result.single()
     return record.get('g') if record else None

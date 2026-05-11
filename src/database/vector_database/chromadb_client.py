@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 
 class ChromaExperimentalClient:
@@ -20,7 +23,7 @@ class ChromaExperimentalClient:
                 metadata={"hnsw:space": "cosine"}
             )
         except ImportError:
-            print("Warning: chromadb library not installed.")
+            logger.info("Warning: chromadb library not installed.")
 
     def insert_batch(self, ids: list[str], vectors: list[list[float]], metadatas: list[dict], documents: list[str]):
         """
@@ -34,7 +37,7 @@ class ChromaExperimentalClient:
                 documents=documents
             )
             return True
-        print("Mock: Inserted batch to ChromaDB.")
+        logger.info("Mock: Inserted batch to ChromaDB.")
         return False
 
     def search_by_pillar(self, query_vector: list[float], pillar_name: str, n_results: int = 5):
@@ -42,7 +45,7 @@ class ChromaExperimentalClient:
         Hybrid search utilizing sparse metadata filtering for specific quality pillars.
         """
         if not hasattr(self, 'collection'):
-            print(f"Mock Chroma search by pillar: {pillar_name}")
+            logger.info(f"Mock Chroma search by pillar: {pillar_name}")
             return []
             
         return self.collection.query(

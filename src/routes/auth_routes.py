@@ -25,10 +25,8 @@ def get_config():
     Returns public configuration needed by the frontend.
     """
     return jsonify({
-        "google_client_id": os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        "google_client_id": os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
     })
-
-
 
 @auth_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
@@ -48,7 +46,7 @@ def login():
         token_credential = data['credential']
         
         # Read secrets
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET")
 
         if not jwt_secret:
@@ -79,9 +77,11 @@ def login():
         }
 
         # Provision/update user in Mongo to get latest status
+        username = "Hero"
         try:
             storage = SovereignMongoStorage()
             user_doc = storage.get_or_create_user(email, profile_data)
+            username = user_doc.get("username", "Hero")
         except Exception as db_err:
             logger.error(f"Failed to sync user {email} to MongoDB: {db_err}")
 
@@ -96,6 +96,7 @@ def login():
                 "role": role, 
                 "account_type": account_type,
                 "email": email,
+                "username": username,
                 "exp": expiration,
                 "profile": profile_data
             },
@@ -114,7 +115,6 @@ def login():
         logger.error(f"Error during user login: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @auth_bp.route('/login/code', methods=['POST', 'OPTIONS'])
 def login_code():
     """
@@ -132,11 +132,9 @@ def login_code():
             
         auth_code = data['code']
         jwt_secret = os.environ.get("JWT_SECRET")
-
         if not jwt_secret:
             logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
             return jsonify({"error": "Server configuration error"}), 500
-
         paths = get_auth_paths()
 
         if not os.path.exists(paths["credentials"]):
@@ -160,7 +158,7 @@ def login_code():
             return jsonify({"error": "Failed to exchange authorization code"}), 401
 
         # Verify Google Token to extract identity
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
                 credentials.id_token, 
@@ -179,9 +177,11 @@ def login_code():
         }
 
         # Provision/update user in Mongo
+        username = "Hero"
         try:
             storage = SovereignMongoStorage()
             user_doc = storage.get_or_create_user(email, profile_data)
+            username = user_doc.get("username", "Hero")
             # Save refresh token if available
             if credentials.refresh_token:
                 storage.update_user_sync_preferences(email, True, credentials.refresh_token)
@@ -198,6 +198,7 @@ def login_code():
                 "role": role, 
                 "account_type": account_type,
                 "email": email,
+                "username": username,
                 "exp": expiration,
                 "profile": profile_data
             },
@@ -216,7 +217,6 @@ def login_code():
         logger.error(f"Error during user code login: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
-
 @auth_bp.route('/nexus/login', methods=['POST', 'OPTIONS'])
 def nexus_login():
     """
@@ -234,7 +234,7 @@ def nexus_login():
             
         token_credential = data['credential']
         
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET")
 
         if not jwt_secret:
@@ -323,11 +323,9 @@ def nexus_login_code():
             
         auth_code = data['code']
         jwt_secret = os.environ.get("JWT_SECRET")
-
         if not jwt_secret:
             logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
             return jsonify({"error": "Server configuration error"}), 500
-
         paths = get_auth_paths()
 
         if not os.path.exists(paths["credentials"]):
@@ -347,7 +345,7 @@ def nexus_login_code():
             return jsonify({"error": "Failed to exchange authorization code"}), 401
 
         # Verify Google Token to extract identity
-        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "")
+        google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
                 credentials.id_token, 

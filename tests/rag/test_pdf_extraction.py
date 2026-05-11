@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
@@ -15,19 +14,16 @@ from rag_system.pipeline.data_pipeline.pdf_extractor import PDFExtractor
 import tempfile
 import os
 
-
 def test_pdf_extractor_initialization():
     """Test PDFExtractor initialization."""
     extractor = PDFExtractor()
     assert extractor.output_dir.exists()
-
 
 def test_extract_text_nonexistent_file():
     """Test extraction with non-existent file raises error."""
     extractor = PDFExtractor()
     with pytest.raises(FileNotFoundError):
         extractor.extract_text("nonexistent.pdf")
-
 
 def test_extract_title_from_metadata():
     """Test title extraction from PDF metadata."""
@@ -39,7 +35,6 @@ def test_extract_title_from_metadata():
     
     title = extractor._extract_title(text, metadata)
     assert title == 'Test Paper Title'
-
 
 def test_extract_abstract_pattern():
     """Test abstract extraction using regex patterns."""
@@ -56,7 +51,6 @@ The abstract should be long enough to pass the length check, which requires it t
     abstract = extractor._extract_abstract(text)
     assert abstract is not None
     assert len(abstract) > 50
-
 
 def test_extract_sections():
     """Test section extraction."""
@@ -75,7 +69,6 @@ This is methodology content. This final section must also be over 100 characters
     sections = extractor._extract_sections(text)
     assert len(sections) > 0
     assert any('Introduction' in s['header'] for s in sections)
-
 
 def test_extract_batch():
     """Test batch extraction."""

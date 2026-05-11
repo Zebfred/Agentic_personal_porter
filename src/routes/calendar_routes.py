@@ -19,7 +19,6 @@ logger = logging.getLogger("APP_ROUTER")
 # Lazy-initialized calendar service singleton
 _calendar_service = None
 
-
 def get_calendar_service_instance():
     """Get or create Google Calendar service instance."""
     global _calendar_service
@@ -27,8 +26,7 @@ def get_calendar_service_instance():
         _calendar_service = get_calendar_service()
     return _calendar_service
 
-
-def fetch_calendar_events_for_date(target_date_str: str, email: str = None):
+def fetch_calendar_events_for_date(target_date_str: str, email: str | None = None):
     """
     Helper function to fetch calendar events for a date.
     Uses user-specific credentials if an email with a refresh token is provided.
@@ -57,7 +55,7 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str = None):
             # Fall back to global credentials for system state
             creds = get_calendar_credentials()
             
-        service = build('calendar', 'v3', credentials=creds)
+        service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
 
         target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
 
@@ -77,7 +75,6 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str = None):
     except Exception as e:
         logger.error(f"Error fetching calendar events internally: {e}")
         return []
-
 
 @calendar_bp.route('/get_calendar_events', methods=['GET'])
 @require_api_key
@@ -150,6 +147,68 @@ def get_calendar_events():
         logger.error(f"Error fetching calendar events: {e}", exc_info=True)
         return jsonify({"error": f"An unexpected error occurred while fetching calendar events: {str(e)}"}), 500
 
+@calendar_bp.route('/api/calendar/unverified_audits', methods=['GET'])
+@require_api_key
+def get_unverified_audits():
+    """
+    Fetches the unverified records queue for the Verification Dashboard.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.batch_unverified_records(user_email=user_email)
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@calendar_bp.route('/api/calendar/verified_history', methods=['GET'])
+@require_api_key
+def get_verified_history():
+    """
+    Fetches the deeply confirmed historical audits for the Verification Dashboard.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        records = inspector.get_recently_verified_records(user_email=user_email, limit=10)
+        return jsonify({"status": "success", "records": records})
+    except Exception as e:
+        logger.error(f"Error fetching verified history: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@calendar_bp.route('/api/calendar/approve_audits', methods=['POST'])
+@require_api_key
+def approve_audits():
+    """
+    Batch approves a list of record gcal_ids.
+    """
+    try:
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        data = request.json
+        gcal_ids = data.get('gcal_ids', [])
+        if not gcal_ids:
+            return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
+            
+        from src.agents.audit_inspector import AuditInspector
+        inspector = AuditInspector()
+        modified = inspector.approve_batch(gcal_ids, user_email=user_email)
+        return jsonify({"status": "success", "modified_count": modified})
+    except Exception as e:
+        logger.error(f"Error approving audits: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 @calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
 @require_api_key
 def get_adventure_log():
@@ -159,20 +218,23 @@ def get_adventure_log():
     try:
         from src.database.mongo_storage import SovereignMongoStorage
         mongo = SovereignMongoStorage()
-        user_id = getattr(request, 'user_email', 'Hero')
+        
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
         
         # In a fully robust query we'd filter by date > (now - 30 days).
-        # For now, we do a basic count using the user_id scope.
+        # For now, we do a basic count using the user_email scope.
         
-        actuals_count = mongo.db["unified_events"].count_documents({"user_id": user_id})
+        actuals_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
         matched_count = mongo.db["event_actuals"].count_documents({
-            "user_id": user_id, 
+            "user_id": user_email, 
             "actual.matches_intent": True
         })
         
         # Assuming intention logs might be stored similarly, or just using actuals_count as a proxy 
         # until full explicit intention collection is built out. Let's return the real matched actuals.
-        intentions_count = mongo.db["unified_events"].count_documents({"user_id": user_id, "actual.status": "Verified Log"})
+        intentions_count = mongo.db["unified_events"].count_documents({"user_id": user_email, "actual.status": "Verified Log"})
 
         analysis = {
             "intentions": intentions_count,
@@ -203,7 +265,6 @@ def user_sync_calendar():
     except Exception as e:
         logger.error(f"Error syncing user calendar: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
-
 
 @calendar_bp.route('/api/calendar/push_to_gcal', methods=['POST', 'OPTIONS'])
 @require_api_key

@@ -8,11 +8,13 @@ Usage:
     python test_rag_manual.py
 """
 
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from rag_system.rag_core.query_engine import RAGQueryEngine
@@ -20,39 +22,38 @@ from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 import os
 
-
 def main():
     """Test RAG pipeline manually."""
-    print("="*60)
-    print("RAG Pipeline Manual Test")
-    print("="*60)
+    logger.info("="*60)
+    logger.info("RAG Pipeline Manual Test")
+    logger.info("="*60)
     
     # Check for GROQ API key
     if not os.getenv('GROQ_API_KEY'):
-        print("\n⚠️  Warning: GROQ_API_KEY not set in environment")
-        print("   Set it with: export GROQ_API_KEY='your-key'")
-        print("   Or create a .env file with GROQ_API_KEY=your-key")
+        logger.info("\n⚠️  Warning: GROQ_API_KEY not set in environment")
+        logger.info("   Set it with: export GROQ_API_KEY='your-key'")
+        logger.info("   Or create a .env file with GROQ_API_KEY=your-key")
         return
     
     # Initialize components
-    print("\n1. Initializing components...")
+    logger.info("\n1. Initializing components...")
     embedder = SciBERTEmbedder()
     vector_store = VectorStore()
     
     # Check if index exists
     collection_size = vector_store.get_collection_size()
     if collection_size == 0:
-        print("\n⚠️  Vector store is empty!")
-        print("   Run: python build_rag_index.py")
-        print("   to build the index first.")
+        logger.info("\n⚠️  Vector store is empty!")
+        logger.info("   Run: python build_rag_index.py")
+        logger.info("   to build the index first.")
         return
     
-    print(f"   ✓ Vector store contains {collection_size} chunks")
+    logger.info(f"   ✓ Vector store contains {collection_size} chunks")
     
     # Initialize query engine
-    print("\n2. Initializing query engine...")
+    logger.info("\n2. Initializing query engine...")
     engine = RAGQueryEngine(vector_store=vector_store, embedder=embedder)
-    print("   ✓ Query engine ready")
+    logger.info("   ✓ Query engine ready")
     
     # Test queries - Basic Theory
     basic_theory_queries = [
@@ -86,56 +87,55 @@ def main():
         ("Teaching Theory to People of Any Level", adaptive_teaching_queries)
     ]
     
-    print("\n3. Testing queries...")
-    print("="*60)
+    logger.info("\n3. Testing queries...")
+    logger.info("="*60)
     
     total_queries = sum(len(queries) for _, queries in all_test_queries)
     query_counter = 0
     
     for section_name, queries in all_test_queries:
-        print(f"\n{'='*60}")
-        print(f"SECTION: {section_name.upper()}")
-        print('='*60)
+        logger.info(f"\n{'='*60}")
+        logger.info(f"SECTION: {section_name.upper()}")
+        logger.info('='*60)
         
         for query in queries:
             query_counter += 1
-            print(f"\n[Query {query_counter}/{total_queries}]")
-            print(f"Question: {query}")
-            print("-" * 60)
+            logger.info(f"\n[Query {query_counter}/{total_queries}]")
+            logger.info(f"Question: {query}")
+            logger.info("-" * 60)
             
             try:
                 result = engine.answer_question(query, top_k=3)
                 
-                print(f"\nAnswer:\n{result['answer']}")
+                logger.info(f"\nAnswer:\n{result['answer']}")
                 
                 # Check if answer addresses the query type
                 if "code" in query.lower() or "implement" in query.lower() or "python" in query.lower():
                     if "def " not in result['answer'] and "class " not in result['answer']:
-                        print("\n  ⚠️  EXPECTED LIMITATION: Answer doesn't contain code.")
-                        print("      Current system retrieves theory but doesn't generate code.")
+                        logger.info("\n  ⚠️  EXPECTED LIMITATION: Answer doesn't contain code.")
+                        logger.info("      Current system retrieves theory but doesn't generate code.")
                 
                 if "beginner" in query.lower() or "10 years old" in query.lower() or "like i'm" in query.lower():
                     if any(word in result['answer'].lower() for word in ["bellman", "gradient", "stochastic", "optimization"]):
-                        print("\n  ⚠️  EXPECTED LIMITATION: Answer may be too technical for beginner level.")
-                        print("      Current system doesn't adapt complexity to audience level.")
+                        logger.info("\n  ⚠️  EXPECTED LIMITATION: Answer may be too technical for beginner level.")
+                        logger.info("      Current system doesn't adapt complexity to audience level.")
                 
-                print(f"\nSources ({len(result['sources'])}):")
+                logger.info(f"\nSources ({len(result['sources'])}):")
                 for j, source in enumerate(result['sources'], 1):
-                    print(f"  {j}. {source['paper_title']}")
-                    print(f"     Section: {source['section']}")
-                    print(f"     Similarity: {source['similarity_score']:.3f}")
+                    logger.info(f"  {j}. {source['paper_title']}")
+                    logger.info(f"     Section: {source['section']}")
+                    logger.info(f"     Similarity: {source['similarity_score']:.3f}")
                 
-                print("\n" + "="*60)
+                logger.info("\n" + "="*60)
                 
             except Exception as e:
-                print(f"❌ Error: {e}")
+                logger.info(f"❌ Error: {e}")
                 import traceback
                 traceback.print_exc()
     
-    print("\n✓ All tests completed!")
-    print("\nNote: The 'Theory to Code' and 'Adaptive Teaching' sections are expected")
-    print("      to show limitations - these require additional features beyond basic RAG.")
-
+    logger.info("\n✓ All tests completed!")
+    logger.info("\nNote: The 'Theory to Code' and 'Adaptive Teaching' sections are expected")
+    logger.info("      to show limitations - these require additional features beyond basic RAG.")
 
 if __name__ == "__main__":
     main()

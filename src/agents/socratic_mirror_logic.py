@@ -13,7 +13,7 @@ class SocraticMirrorEngine:
         self.context = SovereignContextEngine()
         self.storage = SovereignMongoStorage()
 
-    def calculate_daily_delta(self, days_back=1):
+    def calculate_daily_delta(self, days_back=1, username="Hero"):
         """
         Performs the Mach 2 Delta Calculation: Delta = Intent - Actual.
         Also detects "Fog of War" gaps between recorded events.
@@ -24,8 +24,7 @@ class SocraticMirrorEngine:
         
         try:
             # 1. Get Hero DNA (Principles/Active Intentions)
-            hero_name = os.environ.get("HERO_NAME", "Hero")
-            hero_dna = self.context.get_hero_snapshot(user_name=hero_name)
+            hero_dna = self.context.get_hero_snapshot(username=username)
             
             # 2. Get Formatted Events from the last 24 hours
             cutoff = datetime.now() - timedelta(days=days_back)
@@ -94,7 +93,7 @@ class SocraticMirrorEngine:
 
     def generate_socratic_prompt(self, analysis):
         """
-        Converts raw data into a Socratic Prompt for the CrewAI Agent.
+        Converts raw data into a Socratic Prompt for the Categorizer Agent.
         """
         observations_str = "\n".join([
             f"- {obs['title']} ({obs['duration']}m): {obs['status']} [{obs['pillar']}]"

@@ -16,7 +16,7 @@ This document provides a comprehensive checklist for releasing the Agentic Perso
   - `MONGO_URI`
   - `NEO4J_URI` (Must use the `neo4j+s://` scheme)
   - `NEO4J_USERNAME` / `NEO4J_PASSWORD`
-  - `PORTER_API_KEY` (The master key required for endpoint authorization via `Bearer` tokens).
+  - `PORTER_ADMIN_KEY` (The master key required for endpoint authorization via `Bearer` tokens).
 - [ ] **Endpoint Protection:** Verify that `@require_api_key` decorators are applied to sensitive routes like `/process_journal`, `/api/inventory`, and `/get_calendar_events`.
 - [ ] **Google Calendar Authorized:** Ensure `credentials.json` and the corresponding `token.json` are properly mounted or accessible through the environment parameters.
 

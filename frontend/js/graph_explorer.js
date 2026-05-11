@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
         'Day': { color: { background: '#F3E8FF', border: '#9333EA' }, shape: 'circle' },
         'Hero': { color: { background: '#FCA5A5', border: '#DC2626' }, shape: 'star', size: 30 },
         'Goal': { color: { background: '#FDA4AF', border: '#E11D48' }, shape: 'diamond' },
+        'Detour': { color: { background: '#FDBA74', border: '#EA580C' }, shape: 'hexagon' },
     };
 
     const options = {
@@ -71,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(cb => cb.value);
             
         // Always include Hero/Goal if they exist even if no filter matches exactly (or add implicit filters)
-        allowedGroups.push('Hero', 'Goal', 'Achievement', 'State', 'Context');
+        allowedGroups.push('Hero', 'Goal', 'Detour', 'State', 'Context');
         
         const filteredNodesArray = fullNodes.get().filter(n => allowedGroups.includes(n.group) || allowedGroups.includes(n.label));
         const filteredNodeIds = new Set(filteredNodesArray.map(n => n.id));

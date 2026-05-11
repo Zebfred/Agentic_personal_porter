@@ -12,7 +12,6 @@ from src.agents.first_serving_porter import run_first_serving_porter
 chat_bp = Blueprint('chat', __name__)
 logger = logging.getLogger("APP_ROUTER")
 
-
 @chat_bp.route('/chat/porter', methods=['POST', 'OPTIONS'])
 @require_api_key
 def chat_porter():

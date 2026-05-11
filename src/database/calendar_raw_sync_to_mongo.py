@@ -1,5 +1,10 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
+import json
+import logging
 from pathlib import Path
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,14 +13,10 @@ from googleapiclient.discovery import build
 from pymongo import MongoClient
 from datetime import datetime, timedelta, timezone, UTC
 
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
-
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 from src.config import MongoConfig
 
 # Ensure we can import from the src directory
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # --- SECURITY WARNING ---
 # Ensure .auth/credentials.json and .auth/token.json are in your .gitignore.
 # ------------------------
@@ -26,7 +27,7 @@ class SovereignCalendarSync:
     This creates a raw audit trail before processing into Neo4j.
     """
     def __init__(self):
-        self.scopes = ['https://www.googleapis.com/auth/calendar.readonly']
+        self.scopes = ['https://www.googleapis.com/auth/calendar']
         # Prioritize ENV for security, fallback for local dev
         self.mongo_uri = MongoConfig.MONGO_URI
         self.client = MongoClient(self.mongo_uri)
@@ -44,54 +45,68 @@ class SovereignCalendarSync:
             creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
         else:
             creds = get_calendar_credentials(scopes=self.scopes)
-        return build('calendar', 'v3', credentials=creds)
+        return build('calendar', 'v3', credentials=creds, cache_discovery=False)
 
-    def pull_recent_events(self, days=7, user_email="Hero", refresh_token=None):
+    def pull_sliding_window(self, user_email="Hero", refresh_token=None):
         """
-        Standard sync for cron jobs. Defaults to 7 days of data.
+        Standard sync for cron jobs. Fetches a rolling window (now - 7 days to now + 30 days)
+        to ensure current events, modifications, and near-future events are constantly updated.
         """
-        return self._execute_pull(days, user_email, refresh_token)
+        now = datetime.now(timezone.utc)
+        start_time = now - timedelta(days=7)
+        end_time = now + timedelta(days=30)
+        return self._execute_pull(start_time, end_time, user_email, refresh_token)
 
-    def pull_large_batch(self, days=90, user_email="Hero", refresh_token=None):
+    def pull_historical_backlog(self, user_email="Hero", refresh_token=None, oldest_cursor=None):
         """
-        Perform a one-time historical pull to populate the Landing Zone.
+        Fetches 30 days of history prior to the oldest_cursor.
+        Returns the number of operations and the new cursor date.
         """
-        print(f"!!! Initiating Large Batch Pull: {days} days of history for {user_email} !!!")
-        return self._execute_pull(days, user_email, refresh_token)
+        if not oldest_cursor:
+            oldest_cursor = datetime.now(timezone.utc)
+            
+        start_time = oldest_cursor - timedelta(days=30)
+        end_time = oldest_cursor
+        
+        logger.info(f"!!! Initiating Historical Pull from {start_time} to {end_time} for {user_email} !!!")
+        ops_count = self._execute_pull(start_time, end_time, user_email, refresh_token)
+        return ops_count, start_time
 
-    def _execute_pull(self, days, user_email, refresh_token):
+    def _execute_pull(self, start_time, end_time, user_email, refresh_token):
         """
         Internal execution logic for GCal -> MongoDB.
         """
         service = self.get_gcal_service(refresh_token)
         
-        now = datetime.now(timezone.utc)
-        delta = timedelta(days=days)
         # Ensure RFC3339 compliance for GCal API
-        start_time = (now - delta).strftime('%Y-%m-%dT%H:%M:%SZ')
+        start_rfc3339 = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_rfc3339 = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         
-        print(f"--- Accessing GCal: Fetching events since {start_time} ---")
+        logger.info(f"--- Accessing GCal: Fetching events from {start_rfc3339} to {end_rfc3339} ---")
 
         ops_count = 0
+        api_calls = 0
         page_token = None
 
         while True:
             try:
+                api_calls += 1
                 events_result = service.events().list(
                     calendarId='primary', 
-                    timeMin=start_time,
+                    timeMin=start_rfc3339,
+                    timeMax=end_rfc3339,
                     singleEvents=True,
                     orderBy='startTime',
                     pageToken=page_token
                 ).execute()
             except Exception as e:
-                print(f"Error accessing Google Calendar API: {e}")
+                logger.info(f"Error accessing Google Calendar API: {e}")
                 break
             
             events = events_result.get('items', [])
             
             if not events:
-                print("No new events found.")
+                logger.info("No new events found.")
                 break
 
             for event in events:
@@ -127,7 +142,8 @@ class SovereignCalendarSync:
             if not page_token:
                 break
 
-        print(f"Successfully synced {ops_count} events to MongoDB Landing Zone.")
+        logger.info(f"API Rate Info: Made {api_calls} request(s) to Google Calendar API.")
+        logger.info(f"Successfully synced {ops_count} events to MongoDB Landing Zone.")
         return ops_count
 
     def verify_landing_zone(self):
@@ -139,14 +155,14 @@ class SovereignCalendarSync:
         
         ts_total = self.ts_client.timeseries_col.count_documents({})
         
-        print("\n--- Dual-Track Landing Zone Status ---")
-        print(f"Total Standard Events Stored: {total}")
-        print(f"Events Pending Neo4j Sync: {staged}")
-        print(f"Total Native TS Events Stored: {ts_total}")
+        logger.info("\n--- Dual-Track Landing Zone Status ---")
+        logger.info(f"Total Standard Events Stored: {total}")
+        logger.info(f"Events Pending Neo4j Sync: {staged}")
+        logger.info(f"Total Native TS Events Stored: {ts_total}")
         
         if total > 0:
             latest = self.raw_collection.find_one(sort=[("start", -1)])
-            print(f"Most Recent Event: {latest.get('summary')} ({latest.get('start')})")
+            logger.info(f"Most Recent Event: {latest.get('summary')} ({latest.get('start')})")
 
 if __name__ == "__main__":
     sync = SovereignCalendarSync()

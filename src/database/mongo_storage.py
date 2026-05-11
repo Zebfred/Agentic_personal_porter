@@ -1,14 +1,14 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 import json
 from pymongo import MongoClient, UpdateOne
-from datetime import datetime, timezone, UTC
+from datetime import datetime, timezone, UTC, timedelta
 from pathlib import Path
     
 # Ensure we can import from the src directory when running from helper_scripts
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-root = Path(__file__).resolve().parent.parent.parent
-sys.path.append(str(root))
 
 from src.config import MongoConfig
 #from src.constants import ACTUAL_CATEGORY_MAPPING
@@ -52,7 +52,6 @@ class SovereignMongoStorage:
         self.db['calendar_intent_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_unified_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
-
 
     def save_journal_entry(self, log_data: dict, user_id: str = "Hero"):
         """
@@ -104,7 +103,7 @@ class SovereignMongoStorage:
                     {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
                 )
             except Exception as e:
-                print(f"Error updating flat journal entry status: {e}")
+                logger.info(f"Error updating flat journal entry status: {e}")
             return
 
         try:
@@ -130,7 +129,7 @@ class SovereignMongoStorage:
                     {"$set": {f"sync_status.{k}": v for k, v in status_updates.items()}}
                 )
             except Exception as e:
-                print(f"Error updating flat journal entry status: {e}")
+                logger.info(f"Error updating flat journal entry status: {e}")
 
     def get_monthly_log(self, year_month: str, user_id: str = "Hero") -> dict:
         """
@@ -159,19 +158,27 @@ class SovereignMongoStorage:
         result = self.reflections_col.insert_one(reflection_data)
         return str(result.inserted_id)
 
-    def get_hero_artifact(self, artifact_name: str) -> dict:
+    def get_hero_artifact(self, artifact_name: str, username: str = "system") -> dict:
         """
-        Retrieves a JSON artifact from MongoDB. Returns None if not found.
+        Retrieves a JSON artifact from MongoDB scoped by username. Returns None if not found.
+        Strips .json extension for cleaner database storage.
         """
-        doc = self.artifacts_col.find_one({"artifact_name": artifact_name}, {"_id": 0})
+        if artifact_name.endswith('.json'):
+            artifact_name = artifact_name[:-5]
+            
+        doc = self.artifacts_col.find_one({"artifact_name": artifact_name, "username": username}, {"_id": 0})
         return doc.get("data") if doc else None
         
-    def save_hero_artifact(self, artifact_name: str, data: dict):
+    def save_hero_artifact(self, artifact_name: str, data: dict, username: str = "system"):
         """
-        Saves or updates a JSON artifact in MongoDB.
+        Saves or updates a JSON artifact in MongoDB scoped by username.
+        Strips .json extension for cleaner database storage.
         """
+        if artifact_name.endswith('.json'):
+            artifact_name = artifact_name[:-5]
+            
         self.artifacts_col.update_one(
-            {"artifact_name": artifact_name},
+            {"artifact_name": artifact_name, "username": username},
             {"$set": {"data": data, "updated_at": datetime.now(timezone.utc)}},
             upsert=True
         )
@@ -201,9 +208,12 @@ class SovereignMongoStorage:
         user = self.users_col.find_one({"email": email}, {"_id": 0})
         now = datetime.now(timezone.utc)
         
+        default_username = email.split('@')[0] if email else "unknown"
+
         if not user:
             user = {
                 "email": email,
+                "username": default_username,
                 "profile": profile_data,
                 "created_at": now,
                 "last_login": now,
@@ -220,18 +230,35 @@ class SovereignMongoStorage:
                 
             self.users_col.insert_one(user)
         else:
+            # Migration check: if existing user doesn't have a username, generate one
+            username = user.get("username")
+            if not username:
+                username = default_username
+                
             self.users_col.update_one(
                 {"email": email},
                 {"$set": {
                     "last_login": now,
+                    "username": username,
                     "profile.name": profile_data.get("name", user.get("profile", {}).get("name")),
                     "profile.picture": profile_data.get("picture", user.get("profile", {}).get("picture"))
                 }}
             )
             user["last_login"] = now
+            user["username"] = username
             user["profile"] = profile_data
             
         return user
+
+    def update_username(self, email: str, new_username: str) -> bool:
+        """
+        Updates the user's display username.
+        """
+        result = self.users_col.update_one(
+            {"email": email},
+            {"$set": {"username": new_username, "updated_at": datetime.now(timezone.utc)}}
+        )
+        return result.modified_count > 0
 
     def update_user_sync_preferences(self, email: str, opt_in: bool, refresh_token: str = None):
         """
@@ -244,6 +271,36 @@ class SovereignMongoStorage:
         self.users_col.update_one(
             {"email": email},
             {"$set": update_doc}
+        )
+
+    def get_historical_sync_cursor(self, email: str) -> datetime:
+        """
+        Retrieves the oldest historical sync date for the given user.
+        Defaults to 7 days ago if no cursor is found.
+        """
+        user = self.users_col.find_one({"email": email}, {"oldest_historical_sync_date": 1})
+        if user and "oldest_historical_sync_date" in user:
+            return user["oldest_historical_sync_date"]
+        # Default starting point if none exists
+        return datetime.now(timezone.utc) - timedelta(days=7)
+
+    def update_historical_sync_cursor(self, email: str, oldest_date: datetime):
+        """
+        Updates the oldest historical sync date for the given user to track backlog progress.
+        """
+        self.users_col.update_one(
+            {"email": email},
+            {"$set": {"oldest_historical_sync_date": oldest_date}}
+        )
+
+    def update_ghost_calendars(self, email: str, ghost_calendars: dict[str, str]):
+        """
+        Stores the newly generated Google calendarId strings for the three Ghost Calendars.
+        ghost_calendars should be a dict with keys: 'intent_id', 'actual_id', 'unified_id'
+        """
+        self.users_col.update_one(
+            {"email": email},
+            {"$set": {"ghost_calendars": ghost_calendars}}
         )
 
     def toggle_privacy_opt_in(self, email: str, opt_in: bool) -> bool:
@@ -286,7 +343,7 @@ class SovereignMongoStorage:
         # Find raw events not yet formatted
         raw_events = list(self.raw_col.find({"sync_status": "staged"}))
         
-        print("--- Processing Raw Events for Formatting ((bulk upsert) ---")
+        logger.info("--- Processing Raw Events for Formatting ((bulk upsert) ---")
         
         formatted_ops = []
         raw_ops = []
@@ -306,12 +363,16 @@ class SovereignMongoStorage:
                         )
                     )
 
-                raw_ops.append(
-                    UpdateOne(
-                        {"_id": raw["_id"]},
-                        {"$set": {"sync_status": "formatted"}}
+                # Time-Series collections require querying by metaField (metadata)
+                gcal_id = raw.get("metadata", {}).get("gcal_id")
+                email = raw.get("metadata", {}).get("user_email")
+                if gcal_id and email:
+                    raw_ops.append(
+                        UpdateOne(
+                            {"metadata.gcal_id": gcal_id, "metadata.user_email": email},
+                            {"$set": {"metadata.sync_status": "formatted"}}
+                        )
                     )
-                )
                 
                 success_count += 1
         
@@ -324,20 +385,18 @@ class SovereignMongoStorage:
                     # Clear the lists for the next batch
                     formatted_ops = []
                     raw_ops = []
-                    print(f"Beautifully processed batch... Total so far: {success_count}")
+                    logger.info(f"Beautifully processed batch... Total so far: {success_count}")
 
             except Exception as e:
-                print(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
+                logger.info(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
 
         if formatted_ops:
             self.formatted_col.bulk_write(formatted_ops, ordered=False)
         if raw_ops:
             self.raw_col.bulk_write(raw_ops, ordered=False)
                 
-        print(f"Successfully formatted {success_count} events.")
+        logger.info(f"Successfully formatted {success_count} events.")
         return success_count
-
-
 
     def get_formatted_for_neo4j(self):
         """
@@ -368,9 +427,9 @@ if __name__ == "__main__":
     
     storage = SovereignMongoStorage()
     
-    print(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
+    logger.info(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
     processed = storage.process_all_unstaged()
     
     # Final Verification
     if processed > 0:
-        print(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")
+        logger.info(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")

@@ -1,3 +1,6 @@
+import logging
+from src.utils.logging_config import setup_logger
+logger = setup_logger(__name__)
 import os
 import sys
 from pathlib import Path
@@ -25,7 +28,7 @@ class TimeKeeperAgent:
             start_dt = parser.parse(start_date_iso)
             end_dt = parser.parse(end_date_iso)
         except Exception as e:
-            print(f"TimeKeeper Date Parsing Error: {e}")
+            logger.info(f"TimeKeeper Date Parsing Error: {e}")
             return []
             
         pipeline = [

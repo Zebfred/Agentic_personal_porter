@@ -3,10 +3,6 @@ from pathlib import Path
 from datetime import datetime, timezone
 import os
 
-root = Path(__file__).resolve().parent.parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
-
 from src.config import MongoConfig
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.database.mongo_client.uuid_manager import UUIDGenerator

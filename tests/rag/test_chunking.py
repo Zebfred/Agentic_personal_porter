@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import pytest
@@ -17,13 +16,11 @@ from rag_system.pipeline.data_pipeline.chunking import (
     DocumentChunker
 )
 
-
 def test_fixed_size_chunking_initialization():
     """Test FixedSizeChunking initialization."""
     chunker = FixedSizeChunking(chunk_size=1000, overlap=200)
     assert chunker.chunk_size == 1000
     assert chunker.overlap == 200
-
 
 def test_fixed_size_chunking_basic():
     """Test basic fixed-size chunking."""
@@ -35,7 +32,6 @@ def test_fixed_size_chunking_basic():
     assert len(chunks) > 0
     assert all('text' in chunk for chunk in chunks)
     assert all('chunk_index' in chunk for chunk in chunks)
-
 
 def test_fixed_size_chunking_with_metadata():
     """Test fixed-size chunking with metadata."""
@@ -50,7 +46,6 @@ def test_fixed_size_chunking_with_metadata():
     assert all('metadata' in chunk for chunk in chunks)
     assert all(chunk['metadata']['title'] == 'Test Paper' for chunk in chunks)
 
-
 def test_fast_semantic_chunking_initialization():
     """Test FastSemanticChunking initialization."""
     chunker = FastSemanticChunking(
@@ -61,7 +56,6 @@ def test_fast_semantic_chunking_initialization():
     assert chunker.model_name == "all-MiniLM-L6-v2"
     assert chunker.chunk_size == 1000
     assert chunker.similarity_threshold == 0.5
-
 
 def test_fast_semantic_chunking_basic():
     """Test basic fast semantic chunking."""
@@ -83,7 +77,6 @@ def test_fast_semantic_chunking_basic():
     assert all('text' in chunk for chunk in chunks)
     assert all('num_sentences' in chunk for chunk in chunks)
 
-
 def test_science_detail_semantic_chunking_initialization():
     """Test ScienceDetailSemanticChunking initialization."""
     chunker = ScienceDetailSemanticChunking(
@@ -94,7 +87,6 @@ def test_science_detail_semantic_chunking_initialization():
     assert chunker.model_name == "allenai/scibert_scivocab_uncased"
     assert chunker.chunk_size == 1000
     assert chunker.similarity_threshold == 0.5
-
 
 def test_science_detail_semantic_chunking_basic():
     """Test basic science detail semantic chunking."""
@@ -117,13 +109,11 @@ def test_science_detail_semantic_chunking_basic():
     assert all('text' in chunk for chunk in chunks)
     assert all('num_sentences' in chunk for chunk in chunks)
 
-
 def test_document_chunker_initialization():
     """Test DocumentChunker initialization."""
     strategy = FixedSizeChunking()
     chunker = DocumentChunker(strategy)
     assert chunker.strategy == strategy
-
 
 def test_document_chunker_with_sections():
     """Test DocumentChunker with section structure."""
@@ -144,7 +134,6 @@ def test_document_chunker_with_sections():
     assert len(chunks) > 0
     # Check that section headers are preserved
     assert any('Introduction' in chunk.get('text', '') for chunk in chunks)
-
 
 if __name__ == "__main__":
     # Run tests when executed directly

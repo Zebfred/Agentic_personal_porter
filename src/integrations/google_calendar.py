@@ -9,10 +9,6 @@ from googleapiclient.discovery import build
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-root = Path(__file__).resolve().parent.parent.parent
-if str(root) not in sys.path:
-    sys.path.append(str(root))
-
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 
 # Load environment variables from the correct .env path
@@ -40,7 +36,7 @@ def get_calendar_service():
     """
     try:
         creds = get_calendar_credentials(scopes=SCOPES)
-        service = build('calendar', 'v3', credentials=creds)
+        service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
         logger.info("Calendar service initialized successfully via helper.")
         return service
     except Exception as e:

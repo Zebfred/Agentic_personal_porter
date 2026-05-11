@@ -31,6 +31,7 @@ def get_profile():
         # Don't return sensitive stuff if any
         return jsonify({
             "email": user_doc.get("email"),
+            "username": user_doc.get("username"),
             "profile": user_doc.get("profile"),
             "guild_invite_status": user_doc.get("guild_invite_status", "pending"),
             "role": user_doc.get("role", "user"),
@@ -38,6 +39,44 @@ def get_profile():
         })
     except Exception as e:
         logger.error(f"Error fetching profile for {user_email}: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@user_bp.route('/profile/username', methods=['PUT'])
+@require_api_key
+def update_username():
+    """
+    Updates the user's custom username.
+    """
+    user_email = request.user_email
+    if not user_email:
+        return jsonify({"error": "No email associated with token"}), 400
+
+    data = request.get_json()
+    new_username = data.get("username")
+    
+    if not new_username or len(new_username.strip()) < 3:
+        return jsonify({"error": "Username must be at least 3 characters"}), 400
+
+    try:
+        storage = SovereignMongoStorage()
+        
+        # Uniqueness check to prevent cross-tenant graph contamination
+        existing_user = storage.users_col.find_one({"username": new_username.strip()})
+        if existing_user and existing_user.get("email") != user_email:
+            return jsonify({"error": "Username already taken"}), 409
+            
+        success = storage.update_username(user_email, new_username.strip())
+        
+        if success:
+            return jsonify({
+                "message": "Username updated successfully.",
+                "username": new_username.strip()
+            })
+        else:
+            return jsonify({"error": "Failed to update username"}), 500
+            
+    except Exception as e:
+        logger.error(f"Error updating username for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @user_bp.route('/invite', methods=['POST'])
