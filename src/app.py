@@ -12,21 +12,14 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 from flask_cors import CORS
-from dotenv import load_dotenv
-
-# Add project root to Python path so imports work when run directly
-    sys.path.insert(0, str(project_root))
-
+from src.config import NeoConfig, MongoConfig
 from src.database.neo4j_client import close_driver
 
-# Load auth env vars BEFORE anything else reads them
-load_dotenv(root / ".auth" / ".env")
-
 # --- Critical security checks ---
-API_KEY = os.environ.get("PORTER_ADMIN_KEY")
-if not API_KEY:
+PORTER_API_KEY = os.environ.get("PORTER_API_KEY")
+if not PORTER_API_KEY:
     raise ValueError(
-        "CRITICAL SECURITY ERROR: PORTER_ADMIN_KEY environment variable is missing. "
+        "CRITICAL SECURITY ERROR: PORTER_API_KEY environment variable is missing. "
         "It must be set in .auth/.env for secure authentication."
     )
 
@@ -39,7 +32,8 @@ if not JWT_SECRET:
 
 def _configure_logging():
     """Set up the APP_ROUTER logger with file and console handlers."""
-    log_dir = root / "logs"
+    from src.utils.path_utils import get_project_root
+    log_dir = get_project_root() / "logs"
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / "app.log"
 
@@ -76,7 +70,7 @@ def create_app():
     # --- CORS ---
     allowed_origins_str = os.environ.get(
         "CORS_ORIGINS",
-        "http://localhost:5000,http://127.0.0.1:5000,http://localhost:5090,http://127.0.0.1:5090"
+        "http://localhost:5000,http://127.0.0.1:5000,http://localhost:6010,http://127.0.0.1:6010"
     )
     cors_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
     CORS(app, resources={r"/*": {"origins": cors_origins}})

@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-sys.path.insert(0, str(project_root))
+
 
 import pytest
 from rag_system.pipeline.data_pipeline.chunking import (

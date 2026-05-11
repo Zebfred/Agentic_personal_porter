@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 
-# Load environment variables from the correct .env path
-load_dotenv(root / ".auth" / ".env")
+from src.utils.path_utils import load_env_vars
+load_env_vars()
 
 # This defines what our app is allowed to do. 
 # Using read-write access to enable syncing actual activities back to calendar

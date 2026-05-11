@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "scripts*"]
+include = ["src*", "scripts*", "rag_system*"]
 
 [project]
 name = "agentic-personal-porter"

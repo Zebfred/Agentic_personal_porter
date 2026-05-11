@@ -11,10 +11,10 @@ import os
 from pathlib import Path
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
-from dotenv import load_dotenv
+from src.utils.path_utils import load_env_vars
 
 # Load environment from .auth/.env using python-dotenv (consistent with rest of project)
-load_dotenv(root / ".auth" / ".env")
+load_env_vars()
 
 MONGO_URI = os.getenv("MONGO_URI")
 

@@ -10,8 +10,8 @@ import logging
 # Ensure concise logging for the test
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-from dotenv import load_dotenv
-load_dotenv(root / ".auth" / ".env")
+from src.utils.path_utils import load_env_vars
+load_env_vars()
 
 from src.integrations.gcp_compute_client import GCPComputeClient
 
