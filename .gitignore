@@ -44,5 +44,5 @@ Documentation/Completed_Tasks/*
 
 # Sensitive helper scripts removed from git history (2026-04-17).
 # These files read from .auth/.env and must never be re-committed.
-helper_scripts/check_status.py
-*/sync_gcp_secrets.sh
+**/check_status.py
+**/sync_gcp_secrets.sh
