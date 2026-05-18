@@ -8,3 +8,7 @@
 
 **Learning:** Custom UI toggle checkboxes visually hide the actual `<input>` using classes like `.sr-only`, breaking default keyboard focus rings.
 **Action:** When working with hidden form elements, ensure keyboard accessibility by targeting focus on the hidden input using the `:focus-visible` pseudo-class and applying styles to its visible sibling element (e.g., `#input:focus-visible + #visible-bg { outline: 2px solid; }`), and add ARIA attributes to describe its state.
+## 2024-05-18 - Missing label tags on UI inputs
+
+**Learning:** Found `<input>` elements (checkboxes, text inputs, date pickers) that were missing an explicit `<label>` tag with a matching `for` attribute, causing issues for screen readers and reducing the clickable area for users.
+**Action:** Always ensure that every `<input>` has a properly associated `<label>` element. Use visually hidden (`.sr-only`) labels when visual layout doesn't require text, and link text using `for="inputId"` to increase the click area.
