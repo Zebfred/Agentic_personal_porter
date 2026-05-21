@@ -10,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 from datetime import datetime, timedelta, timezone, UTC
 
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
@@ -109,6 +109,10 @@ class SovereignCalendarSync:
                 logger.info("No new events found.")
                 break
 
+            # Bolt Optimization: Replaced iterative `update_one` with `bulk_write` to minimize network roundtrips.
+            # This significantly reduces latency when ingesting large numbers of raw events from the Google Calendar API.
+            bulk_ops = []
+
             for event in events:
                 event_id = event.get('id')
                 
@@ -125,11 +129,13 @@ class SovereignCalendarSync:
                     "classification_verified": False
                 }
 
-                # Upsert into MongoDB based on GCal Unique ID and user_email
-                self.raw_collection.update_one(
-                    {"gcal_id": event_id},
-                    {"$set": payload},
-                    upsert=True
+                # Queue upsert into MongoDB based on GCal Unique ID and user_email
+                bulk_ops.append(
+                    UpdateOne(
+                        {"gcal_id": event_id},
+                        {"$set": payload},
+                        upsert=True
+                    )
                 )
                 
                 # 2. Native Time-Series Dual-Write
@@ -137,6 +143,9 @@ class SovereignCalendarSync:
                 
                 # Increment operation count
                 ops_count += 1
+
+            if bulk_ops:
+                self.raw_collection.bulk_write(bulk_ops)
 
             page_token = events_result.get('nextPageToken')
             if not page_token:
