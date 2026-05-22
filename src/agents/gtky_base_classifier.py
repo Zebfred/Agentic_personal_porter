@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from src.utils.llm_factory import AgentLLMConfig
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,20 @@ class GTKYBaseClassifier:
             logger.error(f"❌ Artifact missing in DB: {artifact_name} for {username}")
             return {}
         return data
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def _invoke_chain(self, chain: Any, params: Dict[str, Any]) -> Any:
+        """
+        Invokes an LLM chain with exponential backoff retry logic.
+
+        Args:
+            chain: The LangChain runnable sequence to invoke.
+            params: A dictionary of parameters to pass to the chain.
+
+        Returns:
+            The raw response object from the LLM.
+        """
+        return chain.invoke(params)
 
     def _classify_batch(self, events: List[Dict], username: str, agent_role: str, time_context: str, log_emoji: str) -> List[Dict]:
         """
@@ -82,7 +97,6 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             
         chain = prompt | llm_with_fallback
         
-        import time
         golden_objects = []
         chunk_size = 25  # Increased to reduce total API calls
         
@@ -101,7 +115,7 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             logger.info(f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}...")
             
             try:
-                response = chain.invoke({
+                response = self._invoke_chain(chain, {
                     "origin": json.dumps(origin_ctx),
                     "ambition": json.dumps(ambition_ctx),
                     "category_mapping": json.dumps(mapping_ctx) if mapping_ctx else "{}",
@@ -121,9 +135,6 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                         if "gcal_id" in obj:
                             golden_objects.append(obj)
             except Exception as e:
-                logger.error(f"❌ Failed to classify chunk {i}: {e}")
-                
-            # Vertex AI has generous rate limits; light delay to be polite
-            time.sleep(0.5)
+                logger.error(f"❌ Failed to classify chunk {i} after retries: {e}")
                 
         return golden_objects

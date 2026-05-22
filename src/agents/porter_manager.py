@@ -1,12 +1,19 @@
 import os
 import sys
 import logging
+import json
+import asyncio
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, TypedDict, Dict, Any
 
 from dotenv import load_dotenv
 from pydantic import SecretStr, BaseModel, Field
+
+from google.adk.agents.llm_agent import Agent
+from google.adk.runners import InMemoryRunner
+from google.adk.models.lite_llm import LiteLlm
+from google.genai import types
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph, START, END
 
@@ -59,13 +66,6 @@ def setup_node(state: ReflectionState) -> ReflectionState:
     return {"actuals_str": actuals_str}
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
-    import json
-    import asyncio
-    from google.adk.agents.llm_agent import Agent
-    from google.adk.runners import InMemoryRunner
-    from google.adk.models.lite_llm import LiteLlm
-    from google.genai import types
-    
     logger.info("Categorizer Node: Using ADK LlmAgent (Llama 3.3 70b)")
     
     adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
@@ -121,12 +121,6 @@ def should_curate(state: ReflectionState) -> str:
     return "save_results_node"
 
 def curator_node(state: ReflectionState) -> ReflectionState:
-    import asyncio
-    from google.adk.agents.llm_agent import Agent
-    from google.adk.runners import InMemoryRunner
-    from google.adk.models.lite_llm import LiteLlm
-    from google.genai import types
-    
     logger.info("Curator Node: Using ADK LlmAgent (Llama 3.3 70b)")
     
     adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
