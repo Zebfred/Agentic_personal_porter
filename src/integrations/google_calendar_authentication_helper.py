@@ -3,6 +3,8 @@ from pathlib import Path
 import sys
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
+import logging
+logger = logging.getLogger("APP_ROUTER")
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
@@ -39,8 +41,9 @@ def get_calendar_credentials(scopes=None):
     if os.path.exists(paths["token"]):
         try:
             creds = Credentials.from_authorized_user_file(paths["token"], target_scopes)
-        except Exception:
+        except Exception as e:
             # If the token file is invalid or corrupted, we'll re-authenticate
+            logger.warning(f"Failed to load token file {paths['token']}: {e}")
             creds = None
 
     # If there are no (valid) credentials available, let the user log in.
@@ -48,8 +51,9 @@ def get_calendar_credentials(scopes=None):
         if creds and creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-            except Exception:
+            except Exception as e:
                 # If refresh fails, set creds to None to trigger a fresh login flow below
+                logger.warning(f"Failed to refresh credentials: {e}")
                 creds = None
 
         if not creds or not creds.valid:

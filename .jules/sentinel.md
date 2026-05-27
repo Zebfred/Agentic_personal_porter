@@ -35,3 +35,7 @@
 **Vulnerability:** The application used a hardcoded fallback (`default_dev_secret`) for `JWT_SECRET` when the environment variable was missing. This allows an attacker who knows the codebase to forge valid JWTs and bypass authentication if the production server was misconfigured.
 **Learning:** Cryptographic secrets and API keys must never have hardcoded default fallbacks in source code. Misconfigurations in the production environment should result in a secure, loud failure rather than silently relying on a known, insecure fallback.
 **Prevention:** Implement fail-secure patterns: check for the existence of required secrets via environment variables and, if missing, throw a critical error (e.g., 500 response or fail to start) to alert administrators immediately.
+## 2026-05-27 - Bare Except Statements Silently Hiding Application Logic Errors
+**Vulnerability:** Found multiple instances of `except Exception: pass` and bare excepts silently ignoring start parsing or other exceptions.
+**Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
+**Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
