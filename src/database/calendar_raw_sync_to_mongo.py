@@ -167,5 +167,5 @@ class SovereignCalendarSync:
 if __name__ == "__main__":
     sync = SovereignCalendarSync()
     # Perform a 90-day pull for verification tonight
-    sync.pull_large_batch(days=90)
+    sync.pull_historical_backlog(user_email="Hero")
     sync.verify_landing_zone()

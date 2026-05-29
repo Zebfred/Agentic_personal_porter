@@ -116,13 +116,13 @@ def chroma_vibe_check(query: str) -> str:
     return f"[DATABASE RETURN] Conceptual Vibe matches:\n{compiled}"
 
 @tool
-def fetch_unverified_audits() -> str:
+def fetch_unverified_audits(user_email: str = "Hero") -> str:
     """Use this to pull any categorized events that the human has not verified yet.
     You will use this to generate the presentation bundle for the Verification Dashboard.
     """
     from src.agents.audit_inspector import AuditInspector
     inspector = AuditInspector()
-    records = inspector.batch_unverified_records()
+    records = inspector.batch_unverified_records(user_email=user_email)
     if not records:
          return "[AUDIT RETURN] No unverified events found. The Verification Dashboard is clean."
     
