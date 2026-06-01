@@ -36,13 +36,9 @@ def require_api_key(f):
     """Decorator that enforces API key or JWT authentication on a route."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Let CORS preflight through cleanly
+        # Let CORS preflight through cleanly (flask_cors will append the correct headers)
         if request.method == 'OPTIONS':
-            response = make_response()
-            response.headers.add("Access-Control-Allow-Origin", request.headers.get("Origin", "*"))
-            response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-            response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-            return response, 204
+            return make_response('', 204)
 
         # Read secrets at request time, not import time
         api_key = os.environ.get("PORTER_ADMIN_KEY", "")
