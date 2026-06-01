@@ -1,7 +1,7 @@
 name: Pylint
 
 # Runs on push to any branch and on PRs targeting main.
-# Tests against Python 3.11 — the version used in pp_env (production runtime).
+# Tests against Python 3.12 — the version used in pp_env (production runtime).
 on:
   push:
   pull_request:
@@ -13,10 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |

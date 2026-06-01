@@ -1,5 +1,5 @@
 # Use the official Python base image
-FROM python:3.11-slim as builder
+FROM python:3.12-slim as builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -20,7 +20,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-cache --no-install-project
 
 # --- Production Stage ---
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 # Set the working directory
 WORKDIR /app

@@ -317,7 +317,7 @@ graph LR
 - Frontend served directly by Flask's `send_from_directory`
 
 ### Production (GCP Cloud Run)
-- **Dockerfile:** Multi-stage build → Python 3.11-slim → Gunicorn (1 worker, 4 threads, 300s timeout)
+- **Dockerfile:** Multi-stage build → Python 3.12-slim → Gunicorn (1 worker, 4 threads, 300s timeout)
 - **[deploy_gcp.sh](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/deploy_gcp.sh):** Utilizes `sync_secrets_gcp.sh` to upload `.env` natively to **GCP Secret Manager**, binding them securely via `--set-secrets`.
 - **Health Check:** `curl -f http://localhost:5090/` every 30s
 - **Memory Budget:** 1024Mi
@@ -326,7 +326,7 @@ graph LR
 ```mermaid
 graph TB
     subgraph "GCP Cloud Run"
-        CR["Container (python:3.11-slim)"]
+        CR["Container (python:3.12-slim)"]
         GN["Gunicorn WSGI<br/>(1 worker, 4 threads)"]
         FL["Flask App"]
         CR --> GN --> FL

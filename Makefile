@@ -18,7 +18,7 @@ help: ## Show this help message with available commands
 
 # --- Environment Management ---
 install: ## Create the conda environment and install all dependencies
-	conda create -n $(CONDA_ENV) python=3.11 nodejs -y
+	conda create -n $(CONDA_ENV) python=3.12 nodejs -y
 	conda run -n $(CONDA_ENV) uv sync --dev
 
 install-uv: ## Install dependencies using uv package manager
