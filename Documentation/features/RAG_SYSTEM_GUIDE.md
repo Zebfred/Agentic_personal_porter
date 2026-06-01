@@ -346,7 +346,7 @@ Panel 3 productionizes the ResearchAgent RAG system by:
 **Multi-stage build** for optimized image size.
 
 **Features**:
-- Python 3.11 slim base image
+- Python 3.12 slim base image
 - Build stage for dependencies
 - Production stage with minimal footprint
 - Health check configuration
@@ -1500,7 +1500,7 @@ All 6 pytest tests passing:
 ### 2. Docker Configuration
 
 #### ✅ Dockerfile
-- Base image: Python 3.11-slim ✅
+- Base image: Python 3.12-slim ✅
 - Multi-stage build: ✅
 - Working directory: ✅
 - File copying: ✅

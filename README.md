@@ -42,11 +42,19 @@ MONGO_URI="mongodb://localhost:27017/"
 Ensure your `category_mapping.json` (as shown in `data/category_mapping.example.json`) is also placed in `.auth/`.
 
 ### 2. Environment & Dependencies
-This project uses Python 3.11+.
+This project uses Python 3.12+. We manage Python dependencies using `uv` inside a Conda environment.
+
+**Option A: Automatic Setup (via Makefile)**
 ```bash
-conda create --name agentic_porter python=3.11
+make install
+```
+
+**Option B: Manual Setup**
+```bash
+conda create --name agentic_porter python=3.12 nodejs -y
 conda activate agentic_porter
-pip install -r requirements.txt
+# Ensure uv is installed, then sync the dependencies
+uv sync --dev
 ```
 
 ### 3. Running the Ecosystem
