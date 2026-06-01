@@ -64,6 +64,7 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
+                        <label for="porter-chat-input" class="sr-only">Talk with your Porter</label>
                         <input id="porter-chat-input" type="text"
                             class="flex-grow border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 outline-none"
                             placeholder="Talk with your Porter (e.g., 'Update my origin story...')">
@@ -129,16 +130,16 @@
                     <h3 class="text-xl font-bold text-gray-800 mb-4">Current Week Trajectory</h3>
                     <ul class="space-y-3">
                         <li class="flex items-start gap-3">
-                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
-                            <span class="text-sm text-gray-700">Map out Database connections</span>
+                            <input type="checkbox" id="goal-1" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
+                            <label for="goal-1" class="text-sm text-gray-700 cursor-pointer">Map out Database connections</label>
                         </li>
                         <li class="flex items-start gap-3">
-                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
-                            <span class="text-sm text-gray-700">Finalize Hub overhaul</span>
+                            <input type="checkbox" id="goal-2" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
+                            <label for="goal-2" class="text-sm text-gray-700 cursor-pointer">Finalize Hub overhaul</label>
                         </li>
                         <li class="flex items-start gap-3">
-                            <input type="checkbox" class="mt-1 w-4 h-4 text-indigo-600 rounded">
-                            <span class="text-sm text-gray-700">Audit Socratic Mirror prompts</span>
+                            <input type="checkbox" id="goal-3" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
+                            <label for="goal-3" class="text-sm text-gray-700 cursor-pointer">Audit Socratic Mirror prompts</label>
                         </li>
                     </ul>
                 </section>
