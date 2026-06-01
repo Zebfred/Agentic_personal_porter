@@ -35,8 +35,12 @@
 **Vulnerability:** The application used a hardcoded fallback (`default_dev_secret`) for `JWT_SECRET` when the environment variable was missing. This allows an attacker who knows the codebase to forge valid JWTs and bypass authentication if the production server was misconfigured.
 **Learning:** Cryptographic secrets and API keys must never have hardcoded default fallbacks in source code. Misconfigurations in the production environment should result in a secure, loud failure rather than silently relying on a known, insecure fallback.
 **Prevention:** Implement fail-secure patterns: check for the existence of required secrets via environment variables and, if missing, throw a critical error (e.g., 500 response or fail to start) to alert administrators immediately.
-
 ## 2024-05-20 - Overly Permissive CORS Headers in Auth Middleware Bypass Global Security
 **Vulnerability:** The authentication middleware (`src/routes/auth_middleware.py`) intercepted `OPTIONS` requests and unconditionally echoed the `Origin` header back via the `Access-Control-Allow-Origin` header (or set it to `*`). This bypassed the secure, restricted CORS configuration defined at the Flask app level in `src/app.py`.
 **Learning:** Custom middleware that manually handles `OPTIONS` requests must not blindly reflect request origins or use wildcards, as this nullifies globally configured CORS protections and exposes authenticated endpoints to cross-origin attacks (like CSRF). If `flask_cors` is installed, it is typically safer to delegate all CORS preflight handling to it.
 **Prevention:** Remove manual header injections for CORS preflight in local route middleware. Rely on the app-level `flask_cors` setup, ensuring it relies on environment-driven whitelists (e.g., `CORS_ORIGINS`). For any custom `OPTIONS` interception, return a clean response without explicit CORS headers and let the global CORS handler append the appropriate headers based on configuration.
+
+## 2026-05-27 - Bare Except Statements Silently Hiding Application Logic Errors
+**Vulnerability:** Found multiple instances of `except Exception: pass` and bare excepts silently ignoring start parsing or other exceptions.
+**Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
+**Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.

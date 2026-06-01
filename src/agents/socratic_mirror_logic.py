@@ -1,5 +1,7 @@
 import os
 from datetime import datetime, timedelta
+import logging
+logger = logging.getLogger("APP_ROUTER")
 from src.database.context_engine import SovereignContextEngine
 from src.database.mongo_storage import SovereignMongoStorage
 
@@ -68,8 +70,8 @@ class SocraticMirrorEngine:
                             })
                     
                     previous_end_time = start_time + timedelta(minutes=duration)
-                except Exception:
-                    pass # Skip gap logic if parsing fails
+                except Exception as e:
+                    logger.warning(f"Skipping gap logic, failed to parse start time '{start_str}': {e}")
 
                 pillar = event.get('pillar', 'Uncategorized')
                 is_intentional = any(pillar.lower() in intent.lower() for intent in hero_dna['intentions'])

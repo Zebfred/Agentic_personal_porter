@@ -123,7 +123,8 @@ def event_record_type(event):
         else:
             return "Intention"
             
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to parse event_record_type for event '{event.get('id')}': {e}")
         return "Unknown"
 
 def parse_calendar_to_intentions(raw_events):

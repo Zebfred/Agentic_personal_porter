@@ -54,7 +54,8 @@ class CalendarTimeseriesClient:
             if start_raw.endswith('Z'):
                 start_raw = start_raw.replace('Z', '+00:00')
             start_dt = datetime.fromisoformat(start_raw)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
             start_dt = datetime.now(timezone.utc)
             
         payload = {
