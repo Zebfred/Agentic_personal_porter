@@ -8,3 +8,6 @@
 
 **Learning:** Custom UI toggle checkboxes visually hide the actual `<input>` using classes like `.sr-only`, breaking default keyboard focus rings.
 **Action:** When working with hidden form elements, ensure keyboard accessibility by targeting focus on the hidden input using the `:focus-visible` pseudo-class and applying styles to its visible sibling element (e.g., `#input:focus-visible + #visible-bg { outline: 2px solid; }`), and add ARIA attributes to describe its state.
+## 2024-05-19 - Explicit 'for' attributes missing on labels
+**Learning:** Found multiple instances where `<label>` tags either didn't have a `for` attribute matching their input's `id` or were missing altogether (requiring visually hidden `.sr-only` labels). This makes it harder for screen readers to associate text with inputs, and prevents users from clicking the label text to activate the input.
+**Action:** Always ensure every `<input>` has a `<label>` with a matching `for` attribute. Add `.sr-only` if the label shouldn't be visually displayed. Add the Tailwind `cursor-pointer` class to the label to indicate interactivity.
