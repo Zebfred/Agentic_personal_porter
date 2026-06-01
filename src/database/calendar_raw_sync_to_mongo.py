@@ -10,7 +10,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 from datetime import datetime, timedelta, timezone, UTC
 
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
@@ -109,6 +109,7 @@ class SovereignCalendarSync:
                 logger.info("No new events found.")
                 break
 
+            raw_ops = []
             for event in events:
                 event_id = event.get('id')
                 
@@ -126,10 +127,12 @@ class SovereignCalendarSync:
                 }
 
                 # Upsert into MongoDB based on GCal Unique ID and user_email
-                self.raw_collection.update_one(
-                    {"gcal_id": event_id},
-                    {"$set": payload},
-                    upsert=True
+                raw_ops.append(
+                    UpdateOne(
+                        {"gcal_id": event_id},
+                        {"$set": payload},
+                        upsert=True
+                    )
                 )
                 
                 # 2. Native Time-Series Dual-Write
@@ -137,6 +140,11 @@ class SovereignCalendarSync:
                 
                 # Increment operation count
                 ops_count += 1
+
+            # ⚡ Bolt Optimization: Replace O(N) update_one calls with a single O(1) bulk_write
+            # to drastically reduce network round-trips and database latency.
+            if raw_ops:
+                self.raw_collection.bulk_write(raw_ops, ordered=False)
 
             page_token = events_result.get('nextPageToken')
             if not page_token:
