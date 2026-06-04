@@ -12,3 +12,6 @@
 ## 2026-04-30 - Optimize audit inspector database writes with MongoDB bulk_write
 **Learning:** In MongoDB, iterative updates within loops using `update_one` cause multiple network roundtrips, which can become a major latency bottleneck, especially for batch operations.
 **Action:** Replace multiple `update_one` calls inside loops with batched `UpdateOne` objects and execute them in a single `bulk_write(ops, ordered=False)` call outside the loop to minimize network roundtrips.
+## 2024-03-24 - MongoDB Sync Bottleneck (O(N) vs BulkWrite)
+**Learning:** In heavily looping network tasks (like processing hundreds of returned Google Calendar events), sequentially triggering downstream updates inside the loop causes massive network round-trip overhead and bottlenecks database IO.
+**Action:** Extract database writes out of sequential processing loops. Accumulate the payloads in an array and dispatch them using a single PyMongo `bulk_write()` or `insert_many()` transaction for an O(1) network operation.

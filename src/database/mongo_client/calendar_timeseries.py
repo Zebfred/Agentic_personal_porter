@@ -84,3 +84,65 @@ class CalendarTimeseriesClient:
         except Exception as e:
            logger.info(f"Error processing event {gcal_id}: {e}")
            return False
+
+    def stage_raw_events(self, gcal_events: list, user_email: str = "Hero") -> bool:
+        """
+        Batch upserts the completely raw JSON from google calendar into the timeseries collection.
+        Automatically triggers the downstream processor to route to intent/actual schemas in batch.
+        """
+        if not gcal_events:
+            return True
+
+        payloads = []
+        valid_events = []
+
+        for gcal_event in gcal_events:
+            gcal_id = gcal_event.get('id')
+            if not gcal_id:
+                continue
+
+            # Parse Google Calendar start time to python datetime for timeField
+            start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
+            if not start_raw:
+                continue
+
+            try:
+                if start_raw.endswith('Z'):
+                    start_raw = start_raw.replace('Z', '+00:00')
+                start_dt = datetime.fromisoformat(start_raw)
+            except Exception as e:
+                logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
+                start_dt = datetime.now(timezone.utc)
+
+            payload = {
+                "start_time": start_dt,
+                "metadata": {
+                    "gcal_id": str(gcal_id),
+                    "user_email": user_email,
+                    "sync_status": "staged",
+                    "event_type": str(gcal_event.get("eventType", "default"))
+                },
+                "raw_data": gcal_event,
+                "porter_ingested_at": datetime.now(timezone.utc)
+            }
+
+            payloads.append(payload)
+            valid_events.append(gcal_event)
+
+        if not payloads:
+            return True
+
+        # Insert as a true timeseries historical event audit log
+        try:
+            self.timeseries_col.insert_many(payloads)
+        except Exception as e:
+            logger.info(f"Failed to bulk insert timeseries events: {e}")
+            return False
+
+        # Trigger downstream processor to split into schemas in batch
+        try:
+           self.processor.process_and_route_events(valid_events, user_email)
+           return True
+        except Exception as e:
+           logger.info(f"Error batch processing events: {e}")
+           return False

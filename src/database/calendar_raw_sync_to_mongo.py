@@ -135,11 +135,11 @@ class SovereignCalendarSync:
                     )
                 )
                 
-                # 2. Native Time-Series Dual-Write
-                success = self.ts_client.stage_raw_event(event, user_email=user_email)
-                
                 # Increment operation count
                 ops_count += 1
+
+            # 2. Native Time-Series Dual-Write (Batched)
+            self.ts_client.stage_raw_events(events, user_email=user_email)
 
             # ⚡ Bolt Optimization: Replace O(N) update_one calls with a single O(1) bulk_write
             # to drastically reduce network round-trips and database latency.
