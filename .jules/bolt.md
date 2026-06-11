@@ -12,3 +12,7 @@
 ## 2026-04-30 - Optimize audit inspector database writes with MongoDB bulk_write
 **Learning:** In MongoDB, iterative updates within loops using `update_one` cause multiple network roundtrips, which can become a major latency bottleneck, especially for batch operations.
 **Action:** Replace multiple `update_one` calls inside loops with batched `UpdateOne` objects and execute them in a single `bulk_write(ops, ordered=False)` call outside the loop to minimize network roundtrips.
+## 2026-06-11 - Bulk Database Writes
+
+**Learning:** When using `ruff` to verify linting or formatting, never use the `--fix` flag on the entire `src/` directory (e.g., `uv run ruff check src --fix`), as it introduces widespread, out-of-scope architectural or formatting changes that violate strict operation boundaries.
+**Action:** Run linting without `--fix` or apply fixes only to explicitly modified files.

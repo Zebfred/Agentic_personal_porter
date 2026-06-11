@@ -1,10 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
-import sys
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dateutil import parser
 
 # Path resolution
@@ -28,7 +24,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
     4. Injects Formatted Data into Neo4j.
     5. Finalizes the sync status in Mongo.
     """
-    logger.info(f"--- Starting Sovereign Sync Pipeline ---")
+    logger.info("--- Starting Sovereign Sync Pipeline ---")
     logger.info(f"Timestamp: {datetime.now().isoformat()}")
 
     storage = SovereignMongoStorage()

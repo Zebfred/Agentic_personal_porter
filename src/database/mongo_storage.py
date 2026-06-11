@@ -1,12 +1,8 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
-import sys
-import json
 from pymongo import MongoClient, UpdateOne
-from datetime import datetime, timezone, UTC, timedelta
-from pathlib import Path
+from datetime import datetime, timezone, timedelta
     
 # Ensure we can import from the src directory when running from helper_scripts
 

@@ -1,17 +1,8 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
-import sys
-import json
-import logging
-from pathlib import Path
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from pymongo import MongoClient, UpdateOne
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, timezone
 
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 from src.config import MongoConfig
@@ -40,7 +31,7 @@ class SovereignCalendarSync:
 
     def get_gcal_service(self, refresh_token=None):
         """Authenticates and returns the GCal service."""
-        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user, get_calendar_credentials
+        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user
         if refresh_token:
             creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
         else:
@@ -110,6 +101,7 @@ class SovereignCalendarSync:
                 break
 
             raw_ops = []
+            ts_events_batch = []
             for event in events:
                 event_id = event.get('id')
                 
@@ -136,15 +128,19 @@ class SovereignCalendarSync:
                 )
                 
                 # 2. Native Time-Series Dual-Write
-                success = self.ts_client.stage_raw_event(event, user_email=user_email)
+                ts_events_batch.append(event)
                 
                 # Increment operation count
                 ops_count += 1
 
-            # ⚡ Bolt Optimization: Replace O(N) update_one calls with a single O(1) bulk_write
-            # to drastically reduce network round-trips and database latency.
+
+            # ⚡ Bolt Optimization: Replace O(N) DB calls with bulk write in event routing.
             if raw_ops:
                 self.raw_collection.bulk_write(raw_ops, ordered=False)
+
+            if ts_events_batch:
+                self.ts_client.stage_raw_events_batch(ts_events_batch, user_email=user_email)
+
 
             page_token = events_result.get('nextPageToken')
             if not page_token:

@@ -1,8 +1,5 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
-from pathlib import Path
 from datetime import datetime, timezone
 
 from src.config import MongoConfig
@@ -84,3 +81,60 @@ class CalendarTimeseriesClient:
         except Exception as e:
            logger.info(f"Error processing event {gcal_id}: {e}")
            return False
+
+    def stage_raw_events_batch(self, gcal_events: list[dict], user_email: str = "Hero") -> bool:
+        """
+        Bulk inserts raw JSON from google calendar into the timeseries collection.
+        Automatically triggers the downstream processor to route to intent/actual schemas in bulk.
+        """
+        if not gcal_events:
+            return True
+
+        payloads = []
+        valid_events = []
+        for gcal_event in gcal_events:
+            gcal_id = gcal_event.get('id')
+            if not gcal_id:
+                continue
+
+            # Parse Google Calendar start time to python datetime for timeField
+            start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
+            if not start_raw:
+                continue
+
+            try:
+                if start_raw.endswith('Z'):
+                    start_raw = start_raw.replace('Z', '+00:00')
+                start_dt = datetime.fromisoformat(start_raw)
+            except Exception as e:
+                logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
+                start_dt = datetime.now(timezone.utc)
+
+            payloads.append({
+                "start_time": start_dt,
+                "metadata": {
+                    "gcal_id": str(gcal_id),
+                    "user_email": user_email,
+                    "sync_status": "staged",
+                    "event_type": str(gcal_event.get("eventType", "default"))
+                },
+                "raw_data": gcal_event,
+                "porter_ingested_at": datetime.now(timezone.utc)
+            })
+            valid_events.append(gcal_event)
+
+        if payloads:
+            try:
+                self.timeseries_col.insert_many(payloads, ordered=False)
+            except Exception as e:
+                logger.info(f"Failed to bulk insert timeseries events: {e}")
+                return False
+
+        if valid_events:
+            try:
+                self.processor.process_and_route_events_batch(valid_events, user_email)
+            except Exception as e:
+                logger.info(f"Error bulk processing events: {e}")
+                return False
+
+        return True

@@ -1,12 +1,9 @@
 import os
-from pathlib import Path
-import sys
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 import logging
 logger = logging.getLogger("APP_ROUTER")
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
 
 # This defines what our app is allowed to do. Defaulting to full calendar access for syncing.
 SCOPES = ['https://www.googleapis.com/auth/calendar']

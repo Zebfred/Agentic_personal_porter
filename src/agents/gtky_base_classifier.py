@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from typing import List, Dict, Any
-from pydantic import BaseModel
 from src.utils.llm_factory import AgentLLMConfig
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars

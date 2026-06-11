@@ -1,7 +1,5 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
 from pathlib import Path
 
 # Find root

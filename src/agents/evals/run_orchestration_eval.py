@@ -10,8 +10,6 @@ Usage:
 """
 
 import argparse
-import json
-import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -47,16 +45,16 @@ def _write_results_markdown(results: list[dict], output_path: Path) -> None:
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     lines = [
-        f"# Orchestration Eval Results",
-        f"",
+        "# Orchestration Eval Results",
+        "",
         f"**Generated**: {timestamp}",
-        f"**Test Type**: Single-turn tool-routing accuracy",
-        f"**Agent**: First-Serving Porter (ReAct with 7 mock tools)",
-        f"",
-        f"## Summary",
-        f"",
-        f"| Provider | Model | Tool Accuracy | Arg Accuracy | Avg Latency |",
-        f"|---|---|---|---|---|",
+        "**Test Type**: Single-turn tool-routing accuracy",
+        "**Agent**: First-Serving Porter (ReAct with 7 mock tools)",
+        "",
+        "## Summary",
+        "",
+        "| Provider | Model | Tool Accuracy | Arg Accuracy | Avg Latency |",
+        "|---|---|---|---|---|",
     ]
 
     for r in results:
@@ -73,7 +71,7 @@ def _write_results_markdown(results: list[dict], output_path: Path) -> None:
         lines.append(f"### {r['provider']} / {r['model']}")
         lines.append("")
         lines.append(
-            f"| ID | Profile | Expected Tool | Actual Tool(s) | Tool ✓ | Args ✓ | Latency |"
+            "| ID | Profile | Expected Tool | Actual Tool(s) | Tool ✓ | Args ✓ | Latency |"
         )
         lines.append("|---|---|---|---|---|---|---|")
 

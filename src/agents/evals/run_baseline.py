@@ -5,9 +5,7 @@ Updated 2026-05-10: Enhanced output with token/cost tracking and CLI flags.
 """
 
 import os
-import sys
 import argparse
-from pathlib import Path
 from datetime import datetime
 from rich.console import Console
 
@@ -52,7 +50,7 @@ def main():
     out_file = os.path.join(out_dir, "baseline_results.md")
 
     with open(out_file, "w") as f:
-        f.write(f"# Agentic Personal Porter - Baseline Evaluation\n")
+        f.write("# Agentic Personal Porter - Baseline Evaluation\n")
         f.write(f"**Date:** {current_date}\n\n")
 
         # Summary table

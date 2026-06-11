@@ -1,5 +1,4 @@
 import uuid
-from typing import Dict, Any
 
 class UUIDGenerator:
     """
