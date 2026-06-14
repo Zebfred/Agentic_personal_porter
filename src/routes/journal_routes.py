@@ -5,7 +5,6 @@ Handles saving time-chunk logs, retrieving historical monthly data,
 Handles saving time-chunk logs, retrieving historical monthly data,
 and triggering the daily AI reflection via LangGraph.
 """
-import os
 import logging
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify

@@ -3,9 +3,7 @@ Helper script to dynamically list available models from Groq and Vertex AI.
 """
 
 import os
-import sys
 import requests
-from pathlib import Path
 from rich.console import Console
 
 console = Console()

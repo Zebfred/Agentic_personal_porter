@@ -37,7 +37,7 @@ class GCPComputeClient:
         except Exception as e:
             if "Reauthentication is needed" in str(e) or "RefreshError" in str(type(e).__name__):
                 if not self._auth_failed:
-                    logger.error(f"GCP Reauthentication is needed. Please run `gcloud auth application-default login` to reauthenticate.")
+                    logger.error("GCP Reauthentication is needed. Please run `gcloud auth application-default login` to reauthenticate.")
                     self._auth_failed = True
             else:
                 logger.error(f"Error checking status for {instance}: {e}")

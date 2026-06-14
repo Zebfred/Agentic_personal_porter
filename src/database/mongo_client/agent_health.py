@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 import uuid
-import os
 
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig

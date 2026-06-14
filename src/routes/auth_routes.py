@@ -4,7 +4,6 @@ Authentication routes.
 Handles user login and JWT token issuance.
 """
 import os
-import hmac
 import logging
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify

@@ -1,5 +1,4 @@
 from typing import List, Dict
-import os
 from datetime import datetime, timezone
 from pymongo import UpdateOne
 from src.database.mongo_client.connection import MongoConnectionManager

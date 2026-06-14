@@ -1,10 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
-import sys
-from pathlib import Path
-from pydantic import SecretStr
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -13,8 +9,6 @@ from langchain_core.messages import HumanMessage, ToolMessage
 
 from src.utils.llm_factory import AgentLLMConfig
 from src.utils.path_utils import load_env_vars, get_auth_file
-from src.database.context_engine import SovereignContextEngine
-from src.config import NeoConfig
 from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler, TokenLimitExceededError
 from src.utils.monitoring import FirstServingMonitoringHandler
 
@@ -56,7 +50,7 @@ def scan_origin_story() -> str:
     """Use this to comprehensively scan the user's origin story for missing gaps (especially from their teenage and secondary education years).
     This tool returns 3 targeted interview questions you should ask the user to help fill in their timeline via the frontend UI.
     """
-    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
+    logger.info("\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     return architect.scan_for_missing_origin()
