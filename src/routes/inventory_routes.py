@@ -12,11 +12,13 @@ from flask import Blueprint, request, jsonify
 
 from src.routes.auth_middleware import require_api_key
 from src.database.mongo_storage import SovereignMongoStorage
+from src.utils.path_utils import get_project_root
 
 inventory_bp = Blueprint('inventory', __name__)
 logger = logging.getLogger("APP_ROUTER")
 
 # Project root for filesystem artifact fallback
+project_root = get_project_root()
 
 @inventory_bp.route('/graph_data', methods=['GET'])
 @require_api_key

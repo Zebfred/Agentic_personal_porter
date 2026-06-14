@@ -6,6 +6,9 @@ import json
 from pathlib import Path
 
 from src.database.mongo_storage import SovereignMongoStorage
+from src.utils.path_utils import get_project_root
+
+root = get_project_root()
 
 class GTKYIdentityArchitect:
     """

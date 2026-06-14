@@ -21,7 +21,7 @@ if os.getenv("LANGCHAIN_API_KEY") and os.getenv("LANGCHAIN_API_KEY") != "YOUR_AP
 
 class MongoConfig:
     MONGO_URI = os.getenv("MONGO_URI")
-    DB_NAME = "porter_mach2"
+    DB_NAME = "porter_collections"
     RAW_COLLECTION = "raw_calendar_events"
     FORMATTED_COLLECTION = "formatted_calendar_events"
     DAILY_CATEGORIZED_EVENTS = "daily_categorized_events"

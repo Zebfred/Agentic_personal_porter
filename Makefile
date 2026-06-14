@@ -50,7 +50,7 @@ lint:
 	conda run -n $(CONDA_ENV) uv run mypy .
 
 pulse: ## Execute the local system health diagnostic
-	conda run -n $(CONDA_ENV) python helper_scripts/local_pulse_check.py
+	conda run -n $(CONDA_ENV) python scripts/analyze_scripts/local_pulse_check.py
 
 # --- Frontend Assets ---
 build-css: ## Build and minify Tailwind CSS assets

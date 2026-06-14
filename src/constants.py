@@ -8,19 +8,23 @@ from pathlib import Path
 root_dir = Path(__file__).resolve().parent.parent
 import json
 
+from pymongo import MongoClient
+from src.config import MongoConfig
+
 # --- THE LIFE PILLAR MAP ---
 # This is the "Learning" base. We map keywords and Google Colors to Pillars.
-mapping_file_path = root_dir / ".auth" / "category_mapping.json"
-example_file_path = root_dir / "data" / "category_mapping.example.json"
-
+# We load ACTUAL_CATEGORY_MAPPING dynamically from MongoDB (Sovereign Mongo Storage representation).
 try:
-    if mapping_file_path.exists():
-        with open(mapping_file_path, 'r') as f:
-            ACTUAL_CATEGORY_MAPPING = json.load(f)
+    client = MongoClient(MongoConfig.MONGO_URI)
+    db = client[MongoConfig.DB_NAME]
+    # Artifact name is stored as 'category_mapping' without '.json' in MongoDB
+    doc = db["hero_artifacts"].find_one({"artifact_name": "category_mapping", "username": "system"}, {"_id": 0})
+    if doc and "data" in doc:
+        ACTUAL_CATEGORY_MAPPING = doc["data"]
+        logger.info("Successfully loaded category mapping from MongoDB.")
     else:
-        # Fallback to example mapping if the protected one doesn't exist
-        with open(example_file_path, 'r') as f:
-            ACTUAL_CATEGORY_MAPPING = json.load(f)
+        logger.warning("category_mapping artifact not found in MongoDB hero_artifacts. Using empty fallback.")
+        ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}
 except Exception as e:
-    logger.info(f"Warning: Could not load category mapping. {e}")
+    logger.error(f"Error loading category mapping from MongoDB: {e}")
     ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}
