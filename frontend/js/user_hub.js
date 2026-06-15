@@ -172,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         div.innerHTML = `
                             <h4 class="font-bold text-yellow-800 mb-1">Gap Detected</h4>
                             <p class="text-sm text-yellow-700 mb-3">${escapeHTML(line)}</p>
+                            <label for="gap-input-${index}" class="sr-only">Write memory details</label>
                             <textarea id="gap-input-${index}" class="w-full bg-white border border-yellow-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-yellow-400 mb-2" rows="2" placeholder="Write memory details here to satisfy the architect..."></textarea>
                             <button id="gap-btn-${index}" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition shadow-sm">Send to Porter to Save</button>
                         `;

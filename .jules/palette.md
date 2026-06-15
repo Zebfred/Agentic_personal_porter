@@ -11,3 +11,6 @@
 ## 2024-05-19 - Explicit 'for' attributes missing on labels
 **Learning:** Found multiple instances where `<label>` tags either didn't have a `for` attribute matching their input's `id` or were missing altogether (requiring visually hidden `.sr-only` labels). This makes it harder for screen readers to associate text with inputs, and prevents users from clicking the label text to activate the input.
 **Action:** Always ensure every `<input>` has a `<label>` with a matching `for` attribute. Add `.sr-only` if the label shouldn't be visually displayed. Add the Tailwind `cursor-pointer` class to the label to indicate interactivity.
+## 2024-05-19 - Ensure textareas have labels
+**Learning:** Textareas generated dynamically in JavaScript (like the gap-input textarea in user_hub.js) lacked associated labels, making them invisible to screen readers or confusing for assistive tech.
+**Action:** Always ensure every `<textarea>` element, not just `<input>` elements, has an explicit `<label>` with a matching `for` attribute. Use `.sr-only` if the label shouldn't be visually displayed.
