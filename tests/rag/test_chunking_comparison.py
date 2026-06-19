@@ -5,22 +5,17 @@ This module provides side-by-side comparisons of different chunking strategies
 with metrics, statistics, and quality assessments.
 """
 
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 
 
-import pytest
 import numpy as np
 from rag_system.pipeline.data_pipeline.chunking import (
     FixedSizeChunking,
     FastSemanticChunking,
-    ScienceDetailSemanticChunking,
-    DocumentChunker
+    ScienceDetailSemanticChunking
 )
 from sentence_transformers import SentenceTransformer
 
@@ -235,7 +230,7 @@ def test_chunking_strategies_comparison():
     }
     most_chunks = max(counts, key=counts.get)
     fewest_chunks = min(counts, key=counts.get)
-    logger.info(f"\n📊 Chunk Count:")
+    logger.info("\n📊 Chunk Count:")
     logger.info(f"   Most chunks: {most_chunks} ({counts[most_chunks]} chunks)")
     logger.info(f"   Fewest chunks: {fewest_chunks} ({counts[fewest_chunks]} chunks)")
     logger.info(f"   Ratio: {counts[most_chunks] / counts[fewest_chunks]:.2f}x difference")
@@ -247,7 +242,7 @@ def test_chunking_strategies_comparison():
         'Science Detail Semantic': science_stats['std_chunk_size']
     }
     most_consistent = min(size_consistency, key=size_consistency.get)
-    logger.info(f"\n📏 Size Consistency (lower std = more consistent):")
+    logger.info("\n📏 Size Consistency (lower std = more consistent):")
     logger.info(f"   Most consistent: {most_consistent} (std: {size_consistency[most_consistent]:.0f})")
     
     # Semantic coherence
@@ -257,7 +252,7 @@ def test_chunking_strategies_comparison():
         'Science Detail Semantic': science_coherence['avg_coherence']
     }
     most_coherent = max(coherence_scores, key=coherence_scores.get)
-    logger.info(f"\n🧠 Semantic Coherence:")
+    logger.info("\n🧠 Semantic Coherence:")
     logger.info(f"   Most coherent: {most_coherent} (score: {coherence_scores[most_coherent]:.4f})")
     
     # Assertions for pytest
@@ -338,7 +333,7 @@ def test_chunk_boundary_quality():
     fast_analysis = analyze_boundaries(fast_chunks, "Fast Semantic")
     science_analysis = analyze_boundaries(science_chunks, "Science Detail Semantic")
     
-    logger.info(f"\nMid-sentence breaks (chunks not ending with . ! ?):")
+    logger.info("\nMid-sentence breaks (chunks not ending with . ! ?):")
     logger.info(f"  Fixed-Size: {fixed_analysis['breaks']}/{fixed_analysis['total']} chunks ({fixed_analysis['percentage']:.1f}%)")
     logger.info(f"  Fast Semantic: {fast_analysis['breaks']}/{fast_analysis['total']} chunks ({fast_analysis['percentage']:.1f}%)")
     logger.info(f"  Science Detail Semantic: {science_analysis['breaks']}/{science_analysis['total']} chunks ({science_analysis['percentage']:.1f}%)")
@@ -411,7 +406,7 @@ def test_chunk_boundary_quality():
     fast_incomplete = check_sentence_completeness(fast_chunks)
     science_incomplete = check_sentence_completeness(science_chunks)
     
-    logger.info(f"Potentially incomplete sentences:")
+    logger.info("Potentially incomplete sentences:")
     logger.info(f"  Fixed-Size: {fixed_incomplete}/{len(fixed_chunks)} chunks")
     logger.info(f"  Fast Semantic: {fast_incomplete}/{len(fast_chunks)} chunks")
     logger.info(f"  Science Detail Semantic: {science_incomplete}/{len(science_chunks)} chunks")
@@ -493,7 +488,7 @@ def test_chunk_boundary_quality():
     fast_para_analysis = analyze_paragraph_breaks(fast_chunks, text)
     science_para_analysis = analyze_paragraph_breaks(science_chunks, text)
     
-    logger.info(f"\nParagraph boundary breaks (chunks breaking at paragraph boundaries):")
+    logger.info("\nParagraph boundary breaks (chunks breaking at paragraph boundaries):")
     logger.info(f"  Fixed-Size: {fixed_para_analysis['paragraph_boundary']}/{fixed_para_analysis['total_breaks']} breaks ({fixed_para_analysis['paragraph_boundary_percentage']:.1f}%)")
     logger.info(f"  Fast Semantic: {fast_para_analysis['paragraph_boundary']}/{fast_para_analysis['total_breaks']} breaks ({fast_para_analysis['paragraph_boundary_percentage']:.1f}%)")
     logger.info(f"  Science Detail Semantic: {science_para_analysis['paragraph_boundary']}/{science_para_analysis['total_breaks']} breaks ({science_para_analysis['paragraph_boundary_percentage']:.1f}%)")
@@ -590,7 +585,7 @@ def test_chunk_boundary_quality():
     # Only Fixed-Size chunking uses overlap
     fixed_overlap_analysis = analyze_overlap_quality(fixed_chunks, overlap_size=200)
     
-    logger.info(f"\nFixed-Size Overlap Analysis (target overlap: 200 chars):")
+    logger.info("\nFixed-Size Overlap Analysis (target overlap: 200 chars):")
     logger.info(f"  Total overlaps: {fixed_overlap_analysis['total_overlaps']}")
     logger.info(f"  Meaningful overlaps (contain complete words): {fixed_overlap_analysis['meaningful_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['meaningful_percentage']:.1f}%)")
     logger.info(f"  Sentence boundary overlaps: {fixed_overlap_analysis['sentence_boundary_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['sentence_boundary_percentage']:.1f}%)")
@@ -603,10 +598,10 @@ def test_chunk_boundary_quality():
             (fixed_overlap_analysis['sentence_boundary_percentage'] / 100) * 0.5
         )
         logger.info(f"  Overall overlap quality score: {quality_score:.2f}/1.0")
-        logger.info(f"    (0.5 = meaningful overlaps, 0.5 = sentence boundaries)")
+        logger.info("    (0.5 = meaningful overlaps, 0.5 = sentence boundaries)")
     
     # For semantic chunking, check if there's any natural overlap/continuity
-    logger.info(f"\nSemantic Chunking Continuity (no explicit overlap, but check for context preservation):")
+    logger.info("\nSemantic Chunking Continuity (no explicit overlap, but check for context preservation):")
     
     def check_semantic_continuity(chunks):
         """Check if semantic chunks maintain context continuity."""

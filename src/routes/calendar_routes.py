@@ -217,29 +217,41 @@ def get_adventure_log():
     """
     try:
         from src.database.mongo_storage import SovereignMongoStorage
+        from src.config import MongoConfig
         mongo = SovereignMongoStorage()
         
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
         
-        # In a fully robust query we'd filter by date > (now - 30 days).
-        # For now, we do a basic count using the user_email scope.
+        # Calculate full suite of metrics for the Hub
+        intentions_count = mongo.db["event_intentions"].count_documents({"user_id": user_email})
         
-        actuals_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
-        matched_count = mongo.db["event_actuals"].count_documents({
-            "user_id": user_email, 
-            "actual.matches_intent": True
+        actuals_count = mongo.db["event_actuals"].count_documents({"user_id": user_email}) + \
+                        mongo.db["unified_events"].count_documents({"user_id": user_email})
+        
+        unclassified_count = mongo.db[MongoConfig.RAW_TIMESERIES_COLLECTION].count_documents({
+            "metadata.user_email": user_email,
+            "metadata.sync_status": "staged"
         })
         
-        # Assuming intention logs might be stored similarly, or just using actuals_count as a proxy 
-        # until full explicit intention collection is built out. Let's return the real matched actuals.
-        intentions_count = mongo.db["unified_events"].count_documents({"user_id": user_email, "actual.status": "Verified Log"})
+        matched_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
+        
+        total_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email})
+        valuable_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "valuable"})
+        detrimental_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "detrimental"})
+        
+        if valuable_detours == 0 and detrimental_detours == 0 and total_detours > 0:
+            valuable_detours = total_detours
 
         analysis = {
             "intentions": intentions_count,
-            "actuals": actuals_count,
-            "matched": matched_count
+            "calendar_events": actuals_count,
+            "unclassified": unclassified_count,
+            "matched": matched_count,
+            "valuable_detours": valuable_detours,
+            "detrimental_detours": detrimental_detours,
+            "detrimental_delta": "↓ 0%"
         }
         return jsonify({"status": "success", "data": analysis})
     except Exception as e:

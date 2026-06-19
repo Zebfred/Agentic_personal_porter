@@ -5,7 +5,8 @@
 
 # Large binaries and data
 tailwindcss
-data/
+data/*
+!data/category_mapping.example.json
 data_pipeline_pdf/
 logs/
 .legacy_hr/

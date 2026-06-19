@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from typing import List, Dict, Any
-from pydantic import BaseModel
 from src.utils.llm_factory import AgentLLMConfig
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars
@@ -38,10 +37,10 @@ class GTKYBaseClassifier:
         mapping_ctx = self._load_artifact("category_mapping", username)
         
         # System Prompt
-        system_prompt = f"""You are the GTKY {agent_role} Agent. Your duty is to review the user's raw {time_context} Google Calendar events 
-and rigidly classify them into "Golden Objects" based on the user's Origin Story and Ambitions.
+        system_prompt = f"""You are the GTKY {agent_role} Agent. Your duty is to review {username}'s raw {time_context} Google Calendar events 
+and rigidly classify them into "Golden Objects" based on {username}'s Origin Story and Ambitions.
 
-Context of the Hero:
+Context of the Hero ({username}):
 Origin: {{origin}}
 Ambitions/Intent: {{ambition}}
 
@@ -54,9 +53,9 @@ If an event falls under a specific ambition (e.g., "Career Goal"), use that as t
 Schema per object:
 {{{{
   "gcal_id": "string (MUST MATCH the input gcal_id exactly)",
-  "title": "string",
-  "start": "string",
-  "duration_minutes": int,
+  "title": "string (MUST MATCH the input title exactly)",
+  "start": "string (MUST MATCH the input start exactly)",
+  "duration_minutes": int (MUST MATCH the input duration_minutes exactly),
   "record_type": "Actual",
   "pillar": "string (Must map to an ambition category or generic)",
   "subcategory": "string (More detailed description)",
@@ -90,12 +89,31 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             chunk = events[i:i + chunk_size]
             events_subset = []
             for ev in chunk:
-                # Simplification: we forward 'start', 'end', 'summary', 'gcal_id'
+                gcal_id = ev.get("id") or ev.get("gcal_id")
+                
+                # Pre-parse start and end times
+                start_obj = ev.get("start", {})
+                end_obj = ev.get("end", {})
+                start_iso = start_obj.get("dateTime") or start_obj.get("date")
+                end_iso = end_obj.get("dateTime") or end_obj.get("date")
+                
+                duration_minutes = 0
+                if start_iso and end_iso:
+                    try:
+                        from dateutil import parser
+                        st = parser.parse(start_iso)
+                        et = parser.parse(end_iso)
+                        duration_minutes = int((et - st).total_seconds() / 60)
+                    except Exception:
+                        pass
+                
+                # Simplification: we forward 'start', 'duration_minutes', 'title', 'gcal_id'
                 events_subset.append({
-                    "gcal_id": ev.get("gcal_id"),
-                    "summary": ev.get("summary"),
-                    "start": ev.get("start"),
-                    "end": ev.get("end")
+                    "gcal_id": gcal_id,
+                    "title": ev.get("summary", "Untitled Event"),
+                    "start": start_iso,
+                    "duration_minutes": duration_minutes,
+                    "description": ev.get("description", "")
                 })
                 
             logger.info(f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}...")
@@ -118,7 +136,11 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                 # Validate and append
                 if isinstance(parsed_objects, list):
                     for obj in parsed_objects:
-                        if "gcal_id" in obj:
+                        if "gcal_id" in obj and obj["gcal_id"] is not None:
+                            obj.setdefault("start", "")
+                            obj.setdefault("duration_minutes", 0)
+                            obj.setdefault("pillar", "Unclassified")
+                            obj.setdefault("record_type", "Actual")
                             golden_objects.append(obj)
             except Exception as e:
                 logger.error(f"❌ Failed to classify chunk {i}: {e}")

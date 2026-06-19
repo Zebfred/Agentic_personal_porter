@@ -4,10 +4,7 @@ Inventory and artifact routes.
 Handles Neo4j graph data retrieval, hero inventory,
 and hero artifact CRUD (with MongoDB as source of truth).
 """
-import os
-import json
 import logging
-from pathlib import Path
 from flask import Blueprint, request, jsonify
 
 from src.routes.auth_middleware import require_api_key

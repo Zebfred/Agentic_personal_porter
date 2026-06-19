@@ -8,11 +8,8 @@ Usage:
     python test_rag_manual.py
 """
 
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 

@@ -1,5 +1,4 @@
 import pytest
-import importlib
 
 def test_neo4j_module_imports():
     """Verify the modular neo4j_client structure loads correctly"""

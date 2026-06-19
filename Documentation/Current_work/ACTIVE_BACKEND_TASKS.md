@@ -25,6 +25,8 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [x] **Multi-Tenant Identifiers**: Upgraded `UUIDGenerator` to hash `user_email` + `gcal_id`.
 - [x] **Compound Indexing**: Added dynamic MongoDB index generation for `user_email` + `start_time` across all timeseries and unified event collections.
 - [x] **Saga Tracking**: Embedded `saga_status` tracking across the `/process_journal` pipeline.
+- [x] **Category Mapping Artifact Sync**: Resolved containerized production warning by establishing a self-healing fallback search query for system-wide and multi-tenant `category_mapping` artifacts in MongoDB, combined with file-system fallbacks (`.auth/` and `data/` examples).
+- [x] **Python 3.12 Compatibility**: Resolved `SyntaxWarning: invalid escape sequence` in `context_engine.py` by convertingLaTeX expressions in docstrings to raw string literals.
 
 ## Highest Priority: Server Networking & Cloud Deployment Fixes
 *Status: Investigating structural connection issues for production.*

@@ -103,7 +103,7 @@ def build_index(chunks: list,
     
     # Verify
     final_size = vector_store.get_collection_size()
-    print(f"\n✓ Index built successfully!")
+    print("\n✓ Index built successfully!")
     print(f"  Collection: {collection_name}")
     print(f"  Total chunks: {final_size}")
     print(f"  Persist directory: {persist_directory}")
@@ -145,7 +145,7 @@ def main():
     
     if not chunk_file.exists():
         print(f"Error: Chunk file not found: {chunk_file}")
-        print(f"\nAvailable chunk files:")
+        print("\nAvailable chunk files:")
         data_dir = Path("data")
         for f in data_dir.glob("chunks_*.json"):
             print(f"  - {f}")

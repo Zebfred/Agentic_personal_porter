@@ -2,8 +2,6 @@
 Integration tests for FastAPI service.
 """
 
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 

@@ -74,12 +74,29 @@ dependencies = [
     "functions-framework>=3.10.1",
 ]
 
+[dependency-groups]
+dev = [
+    "codespell>=2.4.2",
+    "mypy>=2.0.0",
+    "ruff>=0.15.12",
+]
+
 [tool.pyright]
 extraPaths = ["."]
 typeCheckingMode = "basic"
 
 [tool.ruff]
 src = ["."]
+
+[tool.codespell]
+skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
+ignore-words-list = "rouge"
+
+[tool.mypy]
+exclude = ["scratch/", ".venv/", ".legacy_hr/", "tests/", "src/agents/evals/"]
+explicit_package_bases = true
+ignore_missing_imports = true
+ignore_errors = true
 
 [tool.uv.workspace]
 members = [

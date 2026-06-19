@@ -1,10 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
-import sys
-from pathlib import Path
-from pydantic import SecretStr
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -13,8 +9,6 @@ from langchain_core.messages import HumanMessage, ToolMessage
 
 from src.utils.llm_factory import AgentLLMConfig
 from src.utils.path_utils import load_env_vars, get_auth_file
-from src.database.context_engine import SovereignContextEngine
-from src.config import NeoConfig
 from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler, TokenLimitExceededError
 from src.utils.monitoring import FirstServingMonitoringHandler
 
@@ -56,7 +50,7 @@ def scan_origin_story() -> str:
     """Use this to comprehensively scan the user's origin story for missing gaps (especially from their teenage and secondary education years).
     This tool returns 3 targeted interview questions you should ask the user to help fill in their timeline via the frontend UI.
     """
-    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
+    logger.info("\n[SYSTEM] First-Serving Porter engaging Identity Architect for timeline gap scan.")
     from src.agents.gtky_identity_architect import GTKYIdentityArchitect
     architect = GTKYIdentityArchitect()
     return architect.scan_for_missing_origin()
@@ -140,7 +134,7 @@ def consult_time_keeper(date_iso: str) -> str:
     return keeper.summarize_day(date_iso)
 
 # 3. Agent Setup
-def get_porter_agent(hero_name: str, intentions: str, principles: str, ambition_context: str, detriments_context: str):
+def get_porter_agent(hero_name: str, user_email: str, intentions: str, principles: str, ambition_context: str, detriments_context: str):
     config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile")
     llm = config.get_chat_model(verbose=True)
     
@@ -160,6 +154,7 @@ You operate under the Sovereign Data Protocol. This means:
 
 III. Current Protocol Context
 Hero Name: {hero_name}
+Hero Email: {user_email} (Use this for any tool calls requiring a user_email constraint)
 Active Intentions: {intentions}
 Active Principles: {principles}
 
@@ -170,14 +165,15 @@ Core Detriments: {detriments_context}
 
     return create_react_agent(llm, tools=tools, prompt=system_prompt)
 
-def run_first_serving_porter(user_input: str, username: str = "Hero") -> dict:
+def run_first_serving_porter(user_input: str, username: str = "Hero", user_email: str = "hero@example.com") -> dict:
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
     health_manager = AgentHeartbeatManager()
-    run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input})
+    run_id = health_manager.start_agent_run("first_serving_porter", {"user_input": user_input, "username": username})
     
     context = get_context(username=username)
     agent = get_porter_agent(
         hero_name=username,
+        user_email=user_email,
         intentions=context.get("intentions", "Unknown"),
         principles=context.get("principles", "Unknown"),
         ambition_context=str(context.get("ambition", "Unknown")),

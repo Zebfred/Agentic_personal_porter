@@ -5,15 +5,11 @@ This module creates and configures the Flask application.
 All route handlers live in src/routes/ as Flask Blueprints.
 """
 import os
-import sys
 import logging
-from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 from flask_cors import CORS
-from src.config import NeoConfig, MongoConfig
-from src.database.neo4j_client import close_driver
 
 # --- Critical security checks ---
 PORTER_API_KEY = os.environ.get("PORTER_API_KEY")

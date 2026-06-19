@@ -2,13 +2,10 @@
 Unit tests for embedding system.
 """
 
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 
 
-import pytest
 import numpy as np
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 

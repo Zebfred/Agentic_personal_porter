@@ -180,7 +180,7 @@ graph LR
 
 ### 6.2 MongoDB — Landing Zone & Operational Store
 
-Database: **`porter_mach2`**
+Database: **`porter_collections`**
 
 | Collection | Purpose |
 |---|---|

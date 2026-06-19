@@ -1,7 +1,5 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
 from google.cloud.aiplatform_v1beta1 import ModelGardenServiceClient
 from google.api_core.exceptions import GoogleAPICallError
 

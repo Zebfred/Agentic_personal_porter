@@ -2,17 +2,12 @@
 Unit tests for PDF extraction module.
 """
 
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 
 
 import pytest
-from pathlib import Path
 from rag_system.pipeline.data_pipeline.pdf_extractor import PDFExtractor
-import tempfile
-import os
 
 def test_pdf_extractor_initialization():
     """Test PDFExtractor initialization."""

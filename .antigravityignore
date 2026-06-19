@@ -62,6 +62,7 @@ test-results/
 tests/reports/
 
 # Environment and credentials
+.auth/
 .env.*
 #*.env
 *cred*

@@ -1,24 +1,19 @@
 import os
-import sys
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, TypedDict, Dict, Any
 
 from dotenv import load_dotenv
-from pydantic import SecretStr, BaseModel, Field
-from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, START, END
 
-from src.utils.llm_factory import AgentLLMConfig
 
 from src.utils.path_utils import load_env_vars, get_auth_file
-from src.database.context_engine import SovereignContextEngine
-from src.config import NeoConfig
 from src.database.mongo_storage import SovereignMongoStorage
-from src.utils.token_circuit_breaker import TokenCircuitBreakerHandler, TokenLimitExceededError
+from src.utils.token_circuit_breaker import TokenLimitExceededError
 from src.database.mongo_client.agent_health import AgentHeartbeatManager
 from src.agents.context_loader import get_context
+from src.agents.finops_agent import with_finops_trace
 
 load_env_vars()
 raw_api_key = os.getenv("GROQ_API_KEY")
@@ -93,7 +88,7 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
                 total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
                 if total_tokens > 25000:
                     logger.error(f"[CIRCUIT BROKEN] Categorizer exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
-                    raise TokenLimitExceededError(f"Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+                    raise TokenLimitExceededError("Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
             
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
@@ -157,7 +152,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
                 total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
                 if total_tokens > 25000:
                     logger.error(f"[CIRCUIT BROKEN] Curator exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
-                    raise TokenLimitExceededError(f"Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+                    raise TokenLimitExceededError("Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
             
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
@@ -221,6 +216,7 @@ builder.add_edge("save_results_node", END)
 
 graph = builder.compile()
 
+@with_finops_trace("run_porter_reflection")
 def run_porter_reflection(journal_entry: str, log_data: dict | None = None, username: str = "Hero") -> str:
     """
     Executes the Sovereign Socratic Reflection Pipeline using LangGraph.

@@ -1,5 +1,5 @@
 # Use the official Python base image
-FROM python:3.12-slim as builder
+FROM python:3.12-slim AS builder
 
 # Set the working directory in the container
 WORKDIR /app
@@ -60,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:6010/ || exit 1
 
 # Start the application using Gunicorn (WSGI)
-CMD exec gunicorn --bind 0.0.0.0:${PORT:-6010} --workers 1 --threads 4 --timeout 300 src.app:app
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-6010} --workers 1 --threads 4 --timeout 300 src.app:app"]

@@ -15,13 +15,11 @@ from typing import Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 from rag_system.rag_core.query_engine import RAGQueryEngine
 from rag_system.rag_core.vector_store import VectorStore
-from rag_system.rag_core.embeddings import SciBERTEmbedder
 from rag_system.build_rag_index import build_index, load_chunks
 
 load_dotenv()
@@ -43,7 +41,7 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
     # Startup
     logger.info("Starting ResearchAgent RAG Service")
-    logger.info(f"Service version: 1.0.0")
+    logger.info("Service version: 1.0.0")
     logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
     
     # Check required environment variables

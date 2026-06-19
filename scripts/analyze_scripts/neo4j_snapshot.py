@@ -1,10 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
-import os
 import json
-from pathlib import Path
 from datetime import datetime
 from neo4j import GraphDatabase
 

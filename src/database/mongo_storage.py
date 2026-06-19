@@ -1,12 +1,8 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
-import sys
-import json
 from pymongo import MongoClient, UpdateOne
-from datetime import datetime, timezone, UTC, timedelta
-from pathlib import Path
+from datetime import datetime, timezone, timedelta
     
 # Ensure we can import from the src directory when running from helper_scripts
 
@@ -156,6 +152,16 @@ class SovereignMongoStorage:
         """
         reflection_data["created_at"] = datetime.now(timezone.utc)
         result = self.reflections_col.insert_one(reflection_data)
+        return str(result.inserted_id)
+
+    def save_telemetry_trace(self, trace_data: dict):
+        """
+        Saves telemetry trace data for FinOps and monitoring to first_serving_traces.
+        Expects keys like: run_id, agent_name, total_tokens, execution_time_ms, status.
+        """
+        trace_data["timestamp"] = datetime.now(timezone.utc).isoformat()
+        trace_col = self.db["first_serving_traces"]
+        result = trace_col.insert_one(trace_data)
         return str(result.inserted_id)
 
     def get_hero_artifact(self, artifact_name: str, username: str = "system") -> dict:

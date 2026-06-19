@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from src.app import app
 import os
 
@@ -28,7 +28,7 @@ def test_porter_chat_route(mock_run_porter, client):
     data = response.get_json()
     assert data["response"] == "Hello, I am the Porter. I have marked that for update."
     assert len(data["transparency_logs"]) == 1
-    mock_run_porter.assert_called_once_with('Update my motivation.')
+    mock_run_porter.assert_called_once_with('Update my motivation.', username='Hero', user_email='system_script@localhost')
 
 @patch('src.routes.chat_routes.run_first_serving_porter')
 def test_porter_chat_route_missing_message(mock_run_porter, client):

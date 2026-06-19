@@ -53,7 +53,9 @@ class PulseService:
                 "event_actuals": db[MongoConfig.ACTUAL_COLLECTION].estimated_document_count(),
                 "unified_events": db[MongoConfig.UNIFIED_EVENTS_COLLECTION].estimated_document_count(),
                 "journal_entries": db['journal_entries'].estimated_document_count(),
-                "agent_reflections": db['agent_reflections'].estimated_document_count()
+                "agent_reflections": db['agent_reflections'].estimated_document_count(),
+                "first_serving_traces": db['first_serving_traces'].estimated_document_count(),
+                "weekly_expectations": db['weekly_expectations'].estimated_document_count()
             }
 
             # LangSmith / Environment Check
@@ -88,6 +90,15 @@ class PulseService:
             except Exception as ls_err:
                 recent_traces.append({"error": f"Failed to fetch from LangSmith: {ls_err}"})
                 
+            # Fetch recent FinOps Traces
+            recent_finops_traces = []
+            try:
+                cursor = db["first_serving_traces"].find({}, {"_id": 0}).sort("timestamp", -1).limit(5)
+                for doc in cursor:
+                    recent_finops_traces.append(doc)
+            except Exception as fe:
+                recent_finops_traces.append({"error": f"Failed to fetch FinOps traces: {fe}"})
+                
             # Agent Health Monitor
             try:
                 from src.database.mongo_client.agent_health import AgentHeartbeatManager
@@ -114,6 +125,7 @@ class PulseService:
                 "mongo_collections_counts": mongo_counts,
                 "environment_and_observability": env_status,
                 "langsmith_recent_traces": recent_traces,
+                "finops_recent_traces": recent_finops_traces,
                 "agent_health": agent_health,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }

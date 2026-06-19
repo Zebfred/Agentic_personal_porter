@@ -1,6 +1,5 @@
 from .connection import get_driver
 
-import os
 
 def get_all_detours(username: str):
     if not username:

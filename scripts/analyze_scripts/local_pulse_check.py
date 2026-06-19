@@ -1,17 +1,11 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
-import sys
 import json
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import datetime
 
 # Setup path so we can import from src
 
 from src.utils.path_utils import load_env_vars
-from src.database.mongo_storage import SovereignMongoStorage
-from src.database.neo4j_client.connection import get_driver
 
 def run_pulse_check():
     """
@@ -42,7 +36,7 @@ def run_pulse_check():
         with open(log_filename, "w") as f:
             f.write(json.dumps(pulse_data, indent=4, cls=DateTimeEncoder))
             
-        logger.info(f"Pulse Check Complete.")
+        logger.info("Pulse Check Complete.")
         logger.info(f"Log saved to: {log_filename}")
         
     except Exception as e:

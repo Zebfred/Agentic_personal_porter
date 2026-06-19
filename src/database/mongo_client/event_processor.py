@@ -1,12 +1,9 @@
-import sys
-from pathlib import Path
 from datetime import datetime, timezone
-import os
 
 from src.config import MongoConfig
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.database.mongo_client.uuid_manager import UUIDGenerator
-from src.integrations.calendar_parser import determine_category, event_record_type
+from src.integrations.calendar_parser import determine_category
 from dateutil import parser
 
 class EventProcessorClient:
@@ -19,6 +16,7 @@ class EventProcessorClient:
         self.intent_col = self.db[MongoConfig.INTENT_COLLECTION]
         self.actual_col = self.db[MongoConfig.ACTUAL_COLLECTION]
         self.unified_col = self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
+        self.timeseries_col = self.db[MongoConfig.RAW_TIMESERIES_COLLECTION]
 
     def _calculate_delta(self, intent_duration: int, actual_energy: int) -> dict:
         """
@@ -119,6 +117,12 @@ class EventProcessorClient:
             {"_id": event_uuid},
             unified_update,
             upsert=True
+        )
+        
+        # 4. Mark the source raw event as processed to close the staging loop
+        self.timeseries_col.update_many(
+            {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
+            {"$set": {"metadata.sync_status": "processed"}}
         )
         
         return event_uuid

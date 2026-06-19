@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
 import re
-import json
 import requests
 import sys
 

@@ -1,9 +1,7 @@
 import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
 import os
-import logging
 import argparse
 
 logging.basicConfig(level=logging.DEBUG)
@@ -22,6 +20,6 @@ try:
     logger.info(f"Running pipeline for user: {args.user if args.user else 'All users'}")
     run_sync_pipeline(target_user_email=args.user)
     logger.info("Finished run_sync_pipeline")
-except Exception as e:
+except Exception:
     import traceback
     traceback.print_exc()

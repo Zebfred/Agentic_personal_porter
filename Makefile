@@ -2,7 +2,7 @@
 SHELL := /bin/bash
 
 # Variables
-CONDA_ENV = agentic_porter
+CONDA_ENV = agentic_porter_312
 IMAGE_NAME = agentic-porter
 PORT = 6010
 PYTHON = python
@@ -25,8 +25,8 @@ install-uv: ## Install dependencies using uv package manager
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
 	conda run -n $(CONDA_ENV) uv sync --dev
 
-update: ## Update the conda environment from requirements.txt
-	conda run -n $(CONDA_ENV) $(PIP) install -r requirements.txt
+update: ## Update the conda environment dependencies using uv sync
+	conda run -n $(CONDA_ENV) uv sync --dev
 
 # --- Development & Execution ---
 # Run unit and integration tests
@@ -39,8 +39,15 @@ run: build-css ## Start the backend in production mode (Gunicorn)
 	conda run -n $(CONDA_ENV) gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
-	@test -n "$(PROJECT_ID)" || (echo "Error: PROJECT_ID is not set. Setup environment before running tests" && exit 1)
-	DISABLE_CLOUD_LOGGING=true conda run -n $(CONDA_ENV) pytest tests/
+	@proj_id="$(PROJECT_ID)"; \
+	if [ -z "$$proj_id" ] && [ -f .auth/.env ]; then \
+		proj_id=$$(grep -E '^PROJECT_ID=' .auth/.env | cut -d'=' -f2-); \
+	fi; \
+	if [ -z "$$proj_id" ]; then \
+		echo "Error: PROJECT_ID is not set in environment or .auth/.env. Setup environment before running tests"; \
+		exit 1; \
+	fi; \
+	PROJECT_ID="$$proj_id" DISABLE_CLOUD_LOGGING=true conda run -n $(CONDA_ENV) uv run pytest tests/
 # Run code quality checks (codespell, ruff, mypy)
 lint:
 	@echo "Running code quality checks..."

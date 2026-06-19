@@ -1,10 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
-import sys
-from pathlib import Path
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from dateutil import parser
 
 # Path resolution
@@ -13,7 +9,6 @@ from src.database.mongo_storage import SovereignMongoStorage
 from src.database.inject_hero_calendar import SovereignGraphInjector
 from src.agents.gtky_librarian import GTKYLibrarian
 from src.agents.gtky_historian import GTKYHistorian
-from pymongo import UpdateOne, UpdateMany
 
 def run_sync_pipeline(target_date=None, target_user_email=None):
     if target_date is None:
@@ -28,7 +23,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
     4. Injects Formatted Data into Neo4j.
     5. Finalizes the sync status in Mongo.
     """
-    logger.info(f"--- Starting Sovereign Sync Pipeline ---")
+    logger.info("--- Starting Sovereign Sync Pipeline ---")
     logger.info(f"Timestamp: {datetime.now().isoformat()}")
 
     storage = SovereignMongoStorage()
@@ -92,121 +87,86 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
             timeseries_col = db[MongoConfig.RAW_TIMESERIES_COLLECTION]
             daily_cat_col = db[MongoConfig.DAILY_CATEGORIZED_EVENTS]
             
-            # --- Stream A: Current & Future (Librarian) ---
-            recent_staged_cursor = timeseries_col.find({
-                "start_time": {"$gte": start_of_day},
-                "metadata.sync_status": "staged",
-                "metadata.user_email": user_email
-            })
-            recent_staged_list = list(recent_staged_cursor)
-            
-            # --- Stream B: Historical Backlog (Historian) limit 100 per run ---
-            historic_staged_cursor = timeseries_col.find({
-                "start_time": {"$lt": start_of_day},
-                "metadata.sync_status": "staged",
-                "metadata.user_email": user_email
-            }).sort("start_time", -1).limit(100)
-            historic_staged_list = list(historic_staged_cursor)
-            
-            # Helper to process and save a batch
-            def process_and_save_batch(staged_list, is_historical=False):
-                if not staged_list:
-                    return
-                raw_events = [e.get("raw_data", {}) for e in staged_list]
+            # --- AI EVALUATION TRIGGER (COMMENTED OUT FOR CORE FUNCTIONALITY) ---
+            # Future Improvement: When the LLM evaluation logic is stabilized, uncomment this 
+            # section to re-enable daily batch classification via GTKYLibrarian and GTKYHistorian.
+            # 
+            # # --- Stream A: Current & Future (Librarian) ---
+            # recent_staged_cursor = timeseries_col.find({
+            #     "start_time": {"$gte": start_of_day},
+            #     "metadata.sync_status": "staged",
+            #     "metadata.user_email": user_email
+            # })
+            # recent_staged_list = list(recent_staged_cursor)
+            # 
+            # # --- Stream B: Historical Backlog (Historian) limit 100 per run ---
+            # historic_staged_cursor = timeseries_col.find({
+            #     "start_time": {"$lt": start_of_day},
+            #     "metadata.sync_status": "staged",
+            #     "metadata.user_email": user_email
+            # }).sort("start_time", -1).limit(100)
+            # historic_staged_list = list(historic_staged_cursor)
+            # 
+            # def process_and_save_batch(staged_list, is_historical=False):
+            #     if not staged_list:
+            #         return
+            #     raw_events = [e.get("raw_data", {}) for e in staged_list]
+            #     user_doc = storage.get_user_by_email(user_email)
+            #     username = user_doc.get("username", "unknown") if user_doc else "unknown"
+            #     
+            #     if is_historical:
+            #         logger.info(f"Historian found {len(raw_events)} historical events for {user_email}.")
+            #         try:
+            #             golden_objects = historian.classify_historical_batch(raw_events, username=username)
+            #         except Exception as e:
+            #             logger.info(f"Agent failed: {e}")
+            #             golden_objects = []
+            #     else:
+            #         logger.info(f"Librarian found {len(raw_events)} recent events for {user_email}.")
+            #         try:
+            #             golden_objects = librarian.classify_daily_batch(raw_events, username=username)
+            #         except Exception as e:
+            #             logger.info(f"Agent failed: {e}")
+            #             golden_objects = []
+            #             
+            #     if not golden_objects:
+            #         logger.info(f"Agents returned empty for {user_email}. Skipping this batch.")
+            #         return
+            #         
+            #     if golden_objects:
+            #         formatted_ops = []
+            #         daily_ops = []
+            #         for obj in golden_objects:
+            #             obj["user_email"] = user_email
+            #             obj["username"] = username
+            #             obj["gcal_pushed"] = False
+            #             obj["gcal_push_timestamp"] = None
+            #             
+            #             formatted_ops.append(UpdateOne({"gcal_id": obj.get('gcal_id')}, {"$set": obj}, upsert=True))
+            #             
+            #             obj['status'] = "Pending Verification"
+            #             daily_ops.append(UpdateOne({"gcal_id": obj.get('gcal_id')}, {"$set": obj}, upsert=True))
+            #         
+            #         if formatted_ops: storage.formatted_col.bulk_write(formatted_ops, ordered=False)
+            #         if daily_ops: daily_cat_col.bulk_write(daily_ops, ordered=False)
+            #     
+            #     timeseries_ops = []
+            #     for e in staged_list:
+            #         gcal_id = e.get("metadata", {}).get("gcal_id")
+            #         email = e.get("metadata", {}).get("user_email")
+            #         if gcal_id and email:
+            #             timeseries_ops.append(UpdateMany(
+            #                 {"metadata.gcal_id": gcal_id, "metadata.user_email": email},
+            #                 {"$set": {"metadata.sync_status": "formatted"}}
+            #             ))
+            #     if timeseries_ops: timeseries_col.bulk_write(timeseries_ops, ordered=False)
+            # 
+            # process_and_save_batch(recent_staged_list, is_historical=False)
+            # process_and_save_batch(historic_staged_list, is_historical=True)
+            # --- END AI EVALUATION TRIGGER ---
                 
-                # Fetch username for partitioning
-                user_doc = storage.get_user_by_email(user_email)
-                username = user_doc.get("username", "unknown") if user_doc else "unknown"
-                
-                if is_historical:
-                    logger.info(f"Historian found {len(raw_events)} historical events for {user_email}.")
-                    try:
-                        golden_objects = historian.classify_historical_batch(raw_events, username=username)
-                    except Exception as e:
-                        logger.info(f"Agent failed: {e}")
-                        golden_objects = []
-                else:
-                    logger.info(f"Librarian found {len(raw_events)} recent events for {user_email}.")
-                    try:
-                        golden_objects = librarian.classify_daily_batch(raw_events, username=username)
-                    except Exception as e:
-                        logger.info(f"Agent failed: {e}")
-                        golden_objects = []
-                        
-                # DRY-RUN FALLBACK: If agents return nothing (which they currently do due to format issues), 
-                # we map raw events to golden objects to keep the pipeline moving.
-                if not golden_objects:
-                    logger.info("Agents returned empty. Using DRY-RUN fallback to populate formatted collections.")
-                    golden_objects = []
-                    for ev in raw_events:
-                        golden_objects.append({
-                            "gcal_id": ev.get("id"),
-                            "summary": ev.get("summary", "Untitled Event"),
-                            "description": ev.get("description", ""),
-                            "start": ev.get("start", {}),
-                            "end": ev.get("end", {}),
-                            "creator": ev.get("creator", {}).get("email"),
-                            "category": "Unclassified (Dry-Run)",
-                            "pillar": "Unclassified"
-                        })
-                    
-                if golden_objects:
-                    formatted_ops = []
-                    daily_ops = []
-                    for obj in golden_objects:
-                        obj["user_email"] = user_email
-                        obj["username"] = username
-                        obj["gcal_pushed"] = False
-                        obj["gcal_push_timestamp"] = None
-                        
-                        formatted_ops.append(
-                            UpdateOne(
-                                {"gcal_id": obj.get('gcal_id')}, 
-                                {"$set": obj}, 
-                                upsert=True
-                            )
-                        )
-                        
-                        # Copy the object to avoid modifying the original if it matters, 
-                        # but adding status is fine.
-                        obj['status'] = "Pending Verification"
-                        daily_ops.append(
-                            UpdateOne(
-                                {"gcal_id": obj.get('gcal_id')},
-                                {"$set": obj},
-                                upsert=True
-                            )
-                        )
-                    if formatted_ops:
-                        storage.formatted_col.bulk_write(formatted_ops, ordered=False)
-                    if daily_ops:
-                        daily_cat_col.bulk_write(daily_ops, ordered=False)
-                
-                # Mark raw timeseries as formatted
-                timeseries_ops = []
-                for e in staged_list:
-                    # In MongoDB Time-Series collections, updates must query on the metaField (metadata)
-                    gcal_id = e.get("metadata", {}).get("gcal_id")
-                    email = e.get("metadata", {}).get("user_email")
-                    if gcal_id and email:
-                        timeseries_ops.append(
-                            UpdateMany(
-                                {"metadata.gcal_id": gcal_id, "metadata.user_email": email},
-                                {"$set": {"metadata.sync_status": "formatted"}}
-                            )
-                        )
-                if timeseries_ops:
-                    timeseries_col.bulk_write(timeseries_ops, ordered=False)
-
-            process_and_save_batch(recent_staged_list, is_historical=False)
-            process_and_save_batch(historic_staged_list, is_historical=True)
-            
-            if not recent_staged_list and not historic_staged_list:
-                logger.info(f"No new raw events in Timeseries Landing Zone for {user_email}.")
-                
-            # Phase 3: Identify events that haven't hit the Graph yet
-            # Also filter by user_email in get_formatted_for_neo4j if possible, but let's just query direct
-            formatted_events = list(storage.formatted_col.find({"neo4j_synced": {"$ne": True}, "user_email": user_email}))
+            # Phase 3: Identify events that haven't hit the Graph yet from unified_events
+            formatted_events = list(db["unified_events"].find({"neo4j_synced": {"$ne": True}, "user_id": user_email}))
             
             if not formatted_events:
                 logger.info(f"No new formatted events ready for Neo4j for {user_email}.")
@@ -214,15 +174,25 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                 
             logger.info(f"Attempting to inject {len(formatted_events)} events into the Identity Graph for {user_email}...")
 
+            # Fetch username for partitioning
+            user_doc = storage.get_user_by_email(user_email)
+            username = user_doc.get("username", "unknown") if user_doc else "unknown"
+
             # Phase 4: Push to Neo4j
             injected_count = injector.inject_calendar_to_graph(formatted_events, user_email=user_email, username=username)
             
             if injected_count > 0:
-                gcal_ids = [e.get('gcal_id') for e in formatted_events if e.get('gcal_id')]
+                # Map gcal_ids correctly from the unified_events payload (can be inside intent or top level depending on event_processor)
+                gcal_ids = []
+                for e in formatted_events:
+                    gcal_id = e.get('gcal_id')
+                    if gcal_id:
+                        gcal_ids.append(gcal_id)
+                
                 if gcal_ids:
                     # Phase 5: Acknowledge sync in MongoDB
-                    storage.formatted_col.update_many(
-                        {"gcal_id": {"$in": gcal_ids}, "user_email": user_email},
+                    db["unified_events"].update_many(
+                        {"gcal_id": {"$in": gcal_ids}, "user_id": user_email},
                         {
                             "$set": {
                                 "neo4j_synced": True, 

@@ -99,7 +99,7 @@ class TestRouteMapping:
                     if method not in registered[url]:
                         missing.append(f"MISSING METHOD: {method} on {url}")
 
-        assert not missing, f"Route mapping broken after refactor:\n" + "\n".join(missing)
+        assert not missing, "Route mapping broken after refactor:\n" + "\n".join(missing)
 
     def test_route_count_sanity(self, app):
         """Ensure we haven't accidentally duplicated or lost routes."""
@@ -238,7 +238,6 @@ class TestLogin:
     @patch("src.routes.auth_routes.id_token.verify_oauth2_token")
     def test_login_with_invalid_credential(self, mock_verify, client):
         """Invalid Google JWT should return 401."""
-        from google.auth.exceptions import GoogleAuthError
         mock_verify.side_effect = ValueError("Invalid token")
         
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"

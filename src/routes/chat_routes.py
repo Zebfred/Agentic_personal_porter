@@ -8,6 +8,7 @@ from flask import Blueprint, request, jsonify
 
 from src.routes.auth_middleware import require_api_key
 from src.agents.first_serving_porter import run_first_serving_porter
+from src.database.mongo_storage import SovereignMongoStorage
 
 chat_bp = Blueprint('chat', __name__)
 logger = logging.getLogger("APP_ROUTER")
@@ -26,10 +27,17 @@ def chat_porter():
         if not data or 'message' not in data:
             return jsonify({"error": "Message required"}), 400
 
-        user_msg = data['message']
-        logger.info("Received Porter chat message.")
+        user_email = request.user_email
+        if not user_email:
+            return jsonify({"error": "No email associated with token"}), 400
 
-        result = run_first_serving_porter(user_msg)
+        user_msg = data['message']
+        logger.info(f"Received Porter chat message for {user_email}.")
+
+        user_doc = SovereignMongoStorage().get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        result = run_first_serving_porter(user_msg, username=username, user_email=user_email)
         return jsonify(result)
 
     except Exception as e:

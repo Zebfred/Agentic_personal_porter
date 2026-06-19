@@ -1,10 +1,6 @@
 # /tmp/test_neo4j_conn.py
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
-import os
-from pathlib import Path
 
 # Add project root to sys.path
 

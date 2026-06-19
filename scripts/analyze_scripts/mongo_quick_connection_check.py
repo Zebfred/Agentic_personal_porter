@@ -3,12 +3,9 @@ Quick MongoDB connection health check.
 
 Tests connectivity to Mongo Atlas and lists available databases.
 """
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
 import os
-from pathlib import Path
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 from src.utils.path_utils import load_env_vars

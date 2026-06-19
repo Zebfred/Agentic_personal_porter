@@ -7,7 +7,6 @@ This module handles:
 - Storing metadata (title, authors, arxiv ID, date)
 """
 
-import os
 import json
 import requests
 import arxiv

@@ -2,18 +2,13 @@
 Integration tests for the complete RAG pipeline.
 """
 
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 
 
 import pytest
-import json
-from pathlib import Path
 import tempfile
 import shutil
-from rag_system.pipeline.data_pipeline.pdf_extractor import PDFExtractor
 from rag_system.pipeline.data_pipeline.chunking import DocumentChunker, FixedSizeChunking
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 from rag_system.rag_core.vector_store import VectorStore

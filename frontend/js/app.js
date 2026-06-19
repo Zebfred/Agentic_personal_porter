@@ -121,60 +121,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Intention Area -->
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <label for="intention-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">My Intention</label>
-                        <textarea id="intention-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${escapeHTML(chunkData.intention)}</textarea>
+                        <label for="intention-${day}-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">My Intention</label>
+                        <textarea id="intention-${day}-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${escapeHTML(chunkData.intention)}</textarea>
                     </div>
 
                     <!-- Actuals Form -->
                     <div class="space-y-4">
-                        <!-- Actual Activity input removed per user request (redundant) -->
-
                         <div class="flex items-center gap-4">
                             <div class="flex gap-2">
                                 ${['happy', 'neutral', 'sad'].map(feeling => `
-                                <label for="feeling-${chunkId}-${feeling}" class="cursor-pointer">
-                                    <input type="radio" id="feeling-${chunkId}-${feeling}" name="feeling-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
+                                <label for="feeling-${day}-${chunkId}-${feeling}" class="cursor-pointer">
+                                    <input type="radio" id="feeling-${day}-${chunkId}-${feeling}" name="feeling-${day}-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
                                     <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
                                 </label>
                                 `).join('')}
                             </div>
                             
                             <div class="flex-grow">
-                                <label for="brain-fog-${chunkId}" class="flex justify-between text-xs font-bold text-gray-500 mb-1">
-                                    <span>FOG: <span id="brain-fog-value-${chunkId}">${chunkData.brainFog}</span>%</span>
+                                <label for="brain-fog-${day}-${chunkId}" class="flex justify-between text-xs font-bold text-gray-500 mb-1">
+                                    <span>FOG: <span id="brain-fog-value-${day}-${chunkId}">${chunkData.brainFog}</span>%</span>
                                 </label>
-                                <input type="range" id="brain-fog-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog}" class="brain-fog-slider w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <input type="range" id="brain-fog-${day}-${chunkId}" min="0" max="100" step="10" value="${chunkData.brainFog}" class="brain-fog-slider w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                             </div>
                         </div>
 
                         <div>
                             <label class="inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="matches-intent-${chunkId}" class="matches-intent-checkbox form-checkbox h-4 w-4 text-green-600 rounded" ${chunkData.matchesIntent ? 'checked' : ''}>
+                                <input type="checkbox" id="matches-intent-${day}-${chunkId}" class="matches-intent-checkbox form-checkbox h-4 w-4 text-green-600 rounded" ${chunkData.matchesIntent ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Actual activity matches Intend</span>
                             </label>
                         </div>
                         <div class="mt-2">
                             <label class="inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="valuable-detour-${chunkId}" class="valuable-detour-checkbox form-checkbox h-4 w-4 text-blue-600 rounded" ${chunkData.valuableDetour ? 'checked' : ''}>
+                                <input type="checkbox" id="valuable-detour-${day}-${chunkId}" class="valuable-detour-checkbox form-checkbox h-4 w-4 text-blue-600 rounded" ${chunkData.valuableDetour ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Mark as Valuable Detour</span>
                             </label>
                         </div>
 
-                        <div id="inventory-note-container-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
-                            <label for="inventory-note-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inventory Note</label>
-                            <textarea id="inventory-note-${chunkId}" rows="2" class="inventory-note-textarea w-full border border-yellow-200 bg-yellow-50 rounded-md p-2 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="What did you gain?">${escapeHTML(chunkData.inventoryNote)}</textarea>
+                        <div id="inventory-note-container-${day}-${chunkId}" class="${chunkData.valuableDetour ? '' : 'hidden'}">
+                            <label for="inventory-note-${day}-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Inventory Note</label>
+                            <textarea id="inventory-note-${day}-${chunkId}" rows="2" class="inventory-note-textarea w-full border border-yellow-200 bg-yellow-50 rounded-md p-2 focus:ring-2 focus:ring-yellow-400 outline-none" placeholder="What did you gain?">${escapeHTML(chunkData.inventoryNote)}</textarea>
                         </div>
                         
                         <div class="mt-4">
                             <label class="inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="detrimental-detour-${chunkId}" class="detrimental-detour-checkbox form-checkbox h-4 w-4 text-red-600 rounded" ${chunkData.detrimentalDetour ? 'checked' : ''}>
+                                <input type="checkbox" id="detrimental-detour-${day}-${chunkId}" class="detrimental-detour-checkbox form-checkbox h-4 w-4 text-red-600 rounded" ${chunkData.detrimentalDetour ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Mark as Detrimental Detour</span>
                             </label>
                         </div>
 
-                        <div id="detriment-note-container-${chunkId}" class="${chunkData.detrimentalDetour ? '' : 'hidden'}">
-                            <label for="detriment-note-${chunkId}" class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">What did we lose?</label>
-                            <textarea id="detriment-note-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${escapeHTML(chunkData.detrimentNote)}</textarea>
+                        <div id="detriment-note-container-${day}-${chunkId}" class="${chunkData.detrimentalDetour ? '' : 'hidden'}">
+                            <label for="detriment-note-${day}-${chunkId}" class="block text-xs font-bold text-red-500 uppercase tracking-wider mb-2">What did we lose?</label>
+                            <textarea id="detriment-note-${day}-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${escapeHTML(chunkData.detrimentNote)}</textarea>
                         </div>
                     </div>
                 </div>
@@ -239,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         TIME_CHUNKS.forEach(chunk => {
             const chunkId = chunk.id;
             const events = eventsByChunk[chunkId] || [];
-            const intentionInput = document.getElementById(`intention-${chunkId}`);
+            const intentionInput = document.getElementById(`intention-${day}-${chunkId}`);
 
             if (intentionInput && events.length > 0) {
                 foundEvents += events.length;
@@ -300,22 +298,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Sync local state dynamically on input
+    const syncCardToLocal = (card) => {
+        const day = card.dataset.day;
+        const chunkId = card.dataset.chunk;
+        if (!day || !chunkId) return;
+
+        weeklyLog[day][chunkId] = {
+            intention: card.querySelector(`#intention-${day}-${chunkId}`).value,
+            feeling: card.querySelector(`input[name="feeling-${day}-${chunkId}"]:checked`)?.value || '',
+            brainFog: parseInt(card.querySelector(`#brain-fog-${day}-${chunkId}`).value) || 0,
+            matchesIntent: card.querySelector(`#matches-intent-${day}-${chunkId}`).checked,
+            valuableDetour: card.querySelector(`#valuable-detour-${day}-${chunkId}`).checked,
+            inventoryNote: card.querySelector(`#inventory-note-${day}-${chunkId}`).value,
+            detrimentalDetour: card.querySelector(`#detrimental-detour-${day}-${chunkId}`).checked,
+            detrimentNote: card.querySelector(`#detriment-note-${day}-${chunkId}`).value,
+            aiReflection: weeklyLog[day][chunkId].aiReflection || ""
+        };
+        saveWeeklyLog();
+    };
+
     // 3. UI Interactions (Delegation)
     dayViewContainer.addEventListener('input', (e) => {
+        const card = e.target.closest('.time-chunk-card');
+        if (!card) return;
+        
         if (e.target.classList.contains('brain-fog-slider')) {
-            const chunkId = e.target.closest('.time-chunk-card').dataset.chunk;
-            document.getElementById(`brain-fog-value-${chunkId}`).textContent = e.target.value;
+            const day = card.dataset.day;
+            const chunkId = card.dataset.chunk;
+            document.getElementById(`brain-fog-value-${day}-${chunkId}`).textContent = e.target.value;
+        }
+        
+        // Auto-sync on text input
+        if (e.target.tagName === 'TEXTAREA' || e.target.type === 'range') {
+            syncCardToLocal(card);
         }
     });
 
     dayViewContainer.addEventListener('change', (e) => {
+        const card = e.target.closest('.time-chunk-card');
+        if (!card) return;
+        
         if (e.target.classList.contains('valuable-detour-checkbox')) {
-            const chunkId = e.target.closest('.time-chunk-card').dataset.chunk;
-            document.getElementById(`inventory-note-container-${chunkId}`).classList.toggle('hidden', !e.target.checked);
+            const day = card.dataset.day;
+            const chunkId = card.dataset.chunk;
+            document.getElementById(`inventory-note-container-${day}-${chunkId}`).classList.toggle('hidden', !e.target.checked);
         } else if (e.target.classList.contains('detrimental-detour-checkbox')) {
-            const chunkId = e.target.closest('.time-chunk-card').dataset.chunk;
-            document.getElementById(`detriment-note-container-${chunkId}`).classList.toggle('hidden', !e.target.checked);
+            const day = card.dataset.day;
+            const chunkId = card.dataset.chunk;
+            document.getElementById(`detriment-note-container-${day}-${chunkId}`).classList.toggle('hidden', !e.target.checked);
         }
+        
+        // Auto-sync on checkbox/radio change
+        syncCardToLocal(card);
     });
 
     // 4. MAIN ACTION: Save Log (No Reflection)
@@ -327,15 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const chunkId = card.dataset.chunk;
 
             // Gather Data
-            const intention = card.querySelector(`#intention-${chunkId}`).value;
-            const feelingRadio = card.querySelector(`input[name="feeling-${chunkId}"]:checked`);
+            const intention = card.querySelector(`#intention-${day}-${chunkId}`).value;
+            const feelingRadio = card.querySelector(`input[name="feeling-${day}-${chunkId}"]:checked`);
             const feeling = feelingRadio ? feelingRadio.value : '';
-            const brainFog = card.querySelector(`#brain-fog-${chunkId}`).value;
-            const matchesIntent = card.querySelector(`#matches-intent-${chunkId}`).checked;
-            const valuableDetour = card.querySelector(`#valuable-detour-${chunkId}`).checked;
-            const inventoryNote = card.querySelector(`#inventory-note-${chunkId}`).value;
-            const detrimentalDetour = card.querySelector(`#detrimental-detour-${chunkId}`).checked;
-            const detrimentNote = card.querySelector(`#detriment-note-${chunkId}`).value;
+            const brainFog = card.querySelector(`#brain-fog-${day}-${chunkId}`).value;
+            const matchesIntent = card.querySelector(`#matches-intent-${day}-${chunkId}`).checked;
+            const valuableDetour = card.querySelector(`#valuable-detour-${day}-${chunkId}`).checked;
+            const inventoryNote = card.querySelector(`#inventory-note-${day}-${chunkId}`).value;
+            const detrimentalDetour = card.querySelector(`#detrimental-detour-${day}-${chunkId}`).checked;
+            const detrimentNote = card.querySelector(`#detriment-note-${day}-${chunkId}`).value;
 
             // Derive Actual Activity from checkboxes
             let activityTitle = "No actual activity recorded.";
@@ -546,6 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeWeekLabel) activeWeekLabel.textContent = `Historical Week: ${startStr} to ${endStr}`;
         if (resetWeekBtn) resetWeekBtn.classList.remove('hidden');
         renderDay('monday');
+        loadWeeklyExpectation();
     };
 
     const renderCalendar = async () => {
@@ -602,7 +638,65 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeWeekLabel) activeWeekLabel.textContent = "Current Local Week";
         resetWeekBtn.classList.add('hidden');
         renderDay('monday');
+        loadWeeklyExpectation();
     });
+
+    const loadWeeklyExpectation = async () => {
+        const mondayDate = activeDateMap['monday'];
+        const textarea = document.getElementById('weekly-expectation-text');
+        if (!mondayDate || !textarea) return;
+        
+        textarea.value = "Loading...";
+        try {
+            const response = await Auth.fetchWithAuth(`/api/planning/weekly?week_start_date=${mondayDate}`);
+            if (response.ok) {
+                const data = await response.json();
+                textarea.value = data.data.expectation_text || "";
+            } else {
+                textarea.value = "";
+            }
+        } catch (e) {
+            console.error("Failed to fetch weekly expectation", e);
+            textarea.value = "";
+        }
+    };
+
+    const saveWeeklyExpectationBtn = document.getElementById('save-weekly-expectation-btn');
+    if (saveWeeklyExpectationBtn) {
+        saveWeeklyExpectationBtn.addEventListener('click', async () => {
+            const mondayDate = activeDateMap['monday'];
+            const textarea = document.getElementById('weekly-expectation-text');
+            const statusDiv = document.getElementById('weekly-expectation-status');
+            if (!mondayDate || !textarea) return;
+
+            const text = textarea.value;
+            try {
+                saveWeeklyExpectationBtn.disabled = true;
+                saveWeeklyExpectationBtn.classList.add('opacity-50');
+                
+                const response = await Auth.fetchWithAuth('/api/planning/weekly', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        week_start_date: mondayDate,
+                        expectation_text: text
+                    })
+                });
+                
+                if (response.ok) {
+                    statusDiv.classList.remove('hidden');
+                    setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+                } else {
+                    alert("Failed to save weekly expectation");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("Error saving expectation.");
+            } finally {
+                saveWeeklyExpectationBtn.disabled = false;
+                saveWeeklyExpectationBtn.classList.remove('opacity-50');
+            }
+        });
+    }
 
     const init = async () => {
         calculateCurrentWeekMap();
@@ -611,6 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
         renderDay(currentDay);
+        loadWeeklyExpectation();
     };
 
     init();

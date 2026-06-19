@@ -1,17 +1,8 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import os
-import sys
-import json
-import logging
-from pathlib import Path
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from pymongo import MongoClient, UpdateOne
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, timezone
 
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 from src.config import MongoConfig
@@ -40,7 +31,7 @@ class SovereignCalendarSync:
 
     def get_gcal_service(self, refresh_token=None):
         """Authenticates and returns the GCal service."""
-        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user, get_calendar_credentials
+        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user
         if refresh_token:
             creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
         else:

@@ -13,22 +13,16 @@ Metrics scored per model:
   - Token Usage: estimated from response metadata
 """
 
-import re
 import time
-import json
-import sys
-import os
-from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.prebuilt import create_react_agent
 from src.utils.llm_factory import AgentLLMConfig
 from src.agents.evals.trajectory_tests import get_routing_test_cases
 
 from rich.console import Console
-from rich.table import Table
 
 console = Console()
 

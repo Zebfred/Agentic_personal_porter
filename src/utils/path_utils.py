@@ -1,4 +1,3 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
@@ -32,9 +31,11 @@ def load_env_vars():
             break
             
     if not loaded:
-        # We'll use a print here instead of a raise so we don't 
-        # crash scripts that don't actually need the .env
-        logger.info(f"⚠️ Warning: .env file not found at any expected path.")
+        # Check if critical env vars are already present (e.g. via Docker --env-file or GCP)
+        if not os.environ.get("MONGO_URI") and not os.environ.get("GROQ_API_KEY"):
+            # We'll use a print here instead of a raise so we don't 
+            # crash scripts that don't actually need the .env
+            logger.info("⚠️ Warning: .env file not found at any expected path.")
 
 def get_auth_file(filename: str) -> str:
     """

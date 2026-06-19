@@ -196,7 +196,7 @@ def main():
         result = engine.answer_question(query, top_k=3)
         
         print(f"\nAnswer:\n{result['answer']}")
-        print(f"\nSources:")
+        print("\nSources:")
         for i, source in enumerate(result['sources'], 1):
             print(f"  {i}. {source['paper_title']} - {source['section']} (similarity: {source['similarity_score']:.3f})")
 

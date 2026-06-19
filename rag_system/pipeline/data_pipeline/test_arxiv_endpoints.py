@@ -55,7 +55,7 @@ def test_single_paper(arxiv_id: str):
             return None
         
         paper = results[0]
-        print(f"✓ Successfully fetched paper")
+        print("✓ Successfully fetched paper")
         print(f"\nTitle: {paper.title}")
         print(f"Short ID: {paper.get_short_id()}")
         print(f"Entry ID: {paper.entry_id}")
@@ -63,7 +63,7 @@ def test_single_paper(arxiv_id: str):
         # Inspect the paper object
         inspection = inspect_paper(paper)
         
-        print(f"\n📋 Available attributes with 'link', 'url', or 'pdf' in name:")
+        print("\n📋 Available attributes with 'link', 'url', or 'pdf' in name:")
         for attr in inspection['link_attributes']:
             try:
                 value = getattr(paper, attr)
@@ -71,19 +71,19 @@ def test_single_paper(arxiv_id: str):
             except Exception as e:
                 print(f"  - {attr}: <error accessing: {e}>")
         
-        print(f"\n🔍 PDF URL check:")
+        print("\n🔍 PDF URL check:")
         if hasattr(paper, 'pdf_url'):
             pdf_url = paper.pdf_url
             print(f"  paper.pdf_url = {pdf_url}")
             if pdf_url:
-                print(f"  ✓ PDF URL found!")
+                print("  ✓ PDF URL found!")
             else:
-                print(f"  ✗ PDF URL is None or empty")
+                print("  ✗ PDF URL is None or empty")
         else:
-            print(f"  ✗ 'pdf_url' attribute does not exist")
+            print("  ✗ 'pdf_url' attribute does not exist")
         
         # Try alternative methods to get PDF URL
-        print(f"\n🔍 Alternative PDF URL methods:")
+        print("\n🔍 Alternative PDF URL methods:")
         
         # Method 1: Construct from entry_id
         if paper.entry_id:
@@ -105,10 +105,10 @@ def test_single_paper(arxiv_id: str):
         
         # Method 3: Check if there's a _raw attribute with more data
         if hasattr(paper, '_raw'):
-            print(f"  paper._raw exists (raw data available)")
+            print("  paper._raw exists (raw data available)")
         
         # Print full inspection as JSON for debugging
-        print(f"\n📄 Full inspection (JSON):")
+        print("\n📄 Full inspection (JSON):")
         print(json.dumps(inspection, indent=2, default=str))
         
         return paper

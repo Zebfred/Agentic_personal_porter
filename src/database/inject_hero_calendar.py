@@ -1,9 +1,6 @@
-import logging
 from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
-import sys
 import os
-from pathlib import Path
 from datetime import datetime
     
 # Ensure we can import from the src directory when running from helper_scripts
@@ -39,14 +36,35 @@ class SovereignGraphInjector:
         actual_events = []
         
         # Pre-process the events in Python to attach the TimeChunk and route them
-        for event in formatted_events:
+        for raw_event in formatted_events:
+            # Unpack unified_events schema
+            intent_data = raw_event.get("intent", {})
+            actual_data = raw_event.get("actual", {}) # May not exist yet if only intent
+            time_slot = raw_event.get("time_slot", {})
+            metadata = raw_event.get("metadata", {})
+            
+            event = {
+                "gcal_id": metadata.get("gcal_id", str(raw_event.get("_id", ""))),
+                "title": intent_data.get("title", "Untitled"),
+                "start": time_slot.get("start"),
+                "duration_minutes": intent_data.get("duration_minutes", 0),
+                "pillar": intent_data.get("pillar_id", "Uncategorized"),
+                "subcategory": intent_data.get("subcategory", "Uncategorized"),
+                # We assume these are intents initially unless actual data exists
+                "record_type": "Actual" if actual_data else "Intent"
+            }
+            
+            # If it has actual data, overlay it
+            if actual_data:
+                event["title"] = actual_data.get("title", event["title"])
+                event["duration_minutes"] = actual_data.get("duration_minutes", event["duration_minutes"])
+                event["human_confirmed"] = actual_data.get("human_confirmed", False)
+                event["matches_intent"] = actual_data.get("matches_intent", False)
+                event["is_valuable_detour"] = actual_data.get("is_valuable_detour", False)
+
             pillar = event.get("pillar", "Uncategorized")
             # Translate "Career related" to "Career Goal" using your dynamic map
             event["graph_intent_target"] = self.REVERSE_INTENT_MAP.get(pillar, pillar)
-            
-            # Neo4j cannot serialize Mongo ObjectIds, so we remove it
-            if '_id' in event:
-                del event['_id']
             
             # Convert start time to Python datetime object for the time chunk generator
             start_iso = event.get("start")
@@ -60,16 +78,9 @@ class SovereignGraphInjector:
                     event["time_chunk_id"] = None
             else:
                 event["time_chunk_id"] = None
-
-            # Neo4j python driver prefers string ISOs rather than datetime objects for dict params
-            if 'processed_at' in event and not isinstance(event['processed_at'], str):
-                event['processed_at'] = str(event['processed_at'])
                 
             # Route to correct track
             if event.get("record_type") == "Actual":
-                # Ensure defaults for match logic exist
-                event["matches_intent"] = event.get("matches_intent", False)
-                event["is_valuable_detour"] = event.get("is_valuable_detour", False)
                 actual_events.append(event)
             else:
                 intent_events.append(event)
@@ -185,7 +196,7 @@ if __name__ == "__main__":
                 "record_type": "Actual",
                 "start": "2026-03-03T09:00:00-06:00",
                 "subcategory": "Deep Work",
-                "title": "Replan of implimentation for Porter Project",
+                "title": "Replan of implementation for Porter Project",
                 "human_confirmed": True,
                 "matches_intent": True,
                 "is_valuable_detour": False

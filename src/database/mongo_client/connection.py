@@ -1,9 +1,6 @@
-import os
 from pymongo import MongoClient
 
 # Attempt to load from src root
-import sys
-from pathlib import Path
 
 from src.config import MongoConfig
 

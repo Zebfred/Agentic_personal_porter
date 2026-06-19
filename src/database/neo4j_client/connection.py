@@ -1,6 +1,3 @@
-import os
-import sys
-from pathlib import Path
 from neo4j import GraphDatabase
 
 from src.config import NeoConfig

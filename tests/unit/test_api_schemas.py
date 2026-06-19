@@ -1,6 +1,6 @@
 import pytest
 from pydantic import ValidationError
-from src.schemas.api_models import JournalLogBase, JournalRequestSchema, CalendarRequestSchema
+from src.schemas.api_models import JournalRequestSchema, CalendarRequestSchema
 
 def test_valid_journal_request():
     payload = {

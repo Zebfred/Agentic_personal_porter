@@ -2,8 +2,6 @@
 Unit tests for vector store.
 """
 
-import sys
-from pathlib import Path
 
 # Add project root to Python path
 
@@ -11,7 +9,6 @@ from pathlib import Path
 import pytest
 import numpy as np
 from rag_system.rag_core.vector_store import VectorStore
-from pathlib import Path
 import tempfile
 import shutil
 

@@ -11,9 +11,9 @@ os.environ['OPENAI_API_KEY'] = 'test_key'
 from scripts.analyze_scripts.local_pulse_check import run_pulse_check
 
 @pytest.mark.skipif(os.environ.get("GITHUB_ACTIONS") == "true", reason="Fails in CI/CD without full environment")
-@patch('scripts.analyze_scripts.local_pulse_check.load_env_vars')
-@patch('scripts.analyze_scripts.local_pulse_check.SovereignMongoStorage')
-@patch('scripts.analyze_scripts.local_pulse_check.get_driver')
+@patch('src.utils.pulse_service.load_env_vars')
+@patch('src.utils.pulse_service.SovereignMongoStorage')
+@patch('src.utils.pulse_service.get_driver')
 @patch('langsmith.Client')
 def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_mongo, mock_load_env):
     """
@@ -48,7 +48,7 @@ def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_
     
     # 3. Mock MongoDB Storage
     mock_mongo_instance = MagicMock()
-    mock_mongo_instance.get_system_status.return_value = "OK"
+    mock_mongo_instance.get_system_status.return_value = {"status": "OK"}
     mock_db = MagicMock()
     mock_collection = MagicMock()
     mock_collection.estimated_document_count.return_value = 99

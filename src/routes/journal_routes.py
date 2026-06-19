@@ -5,7 +5,6 @@ Handles saving time-chunk logs, retrieving historical monthly data,
 Handles saving time-chunk logs, retrieving historical monthly data,
 and triggering the daily AI reflection via LangGraph.
 """
-import os
 import logging
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, request, jsonify
@@ -96,6 +95,11 @@ def save_log():
             synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
             event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, username)
             
+            intent_payload = {
+                "title": log_data_dict.get("intention", "Weekly Expectation"),
+                "description": log_data_dict.get("intention", "Weekly Expectation"),
+            }
+            
             actual_payload = {
                 "title": log_data_dict.get("title", "Adventure Log Entry"),
                 "category": log_data_dict.get("category", "General"),
@@ -129,6 +133,7 @@ def save_log():
                 {"$set": {
                     "user_id": username,
                     "time_slot": time_slot,
+                    "intent": intent_payload,
                     "actual": actual_payload
                 }},
                 upsert=True
@@ -146,6 +151,106 @@ def save_log():
     except Exception as e:
         logger.error(f"Error saving log: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/planning/weekly', methods=['POST', 'OPTIONS'])
+@require_api_key
+def save_weekly_expectation():
+    """
+    Saves a Weekly Expectation mapping it to the (Week) node in Neo4j.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+
+        week_start_date = data.get("week_start_date")
+        expectation_text = data.get("expectation_text")
+        
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        if not week_start_date or not expectation_text:
+            return jsonify({"error": "Missing week_start_date or expectation_text"}), 400
+
+        # Save to MongoDB weekly_expectations
+        db = MongoConnectionManager.get_db()
+        week_col = db["weekly_expectations"]
+        
+        week_col.update_one(
+            {"user_id": username, "week_start_date": week_start_date},
+            {"$set": {
+                "expectation_text": expectation_text,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }},
+            upsert=True
+        )
+
+        # Inject to Neo4j (Week)-[:PLANNED_AS]->(Intention)
+        neo4j_status = "Failed"
+        try:
+            with NeoConfig.get_driver().session() as session:
+                query = """
+                MERGE (u:User {id: $username})
+                MERGE (w:Week {id: $week_start_date})
+                MERGE (u)-[:EXPERIENCED]->(w)
+                MERGE (i:Intention {type: "Weekly Expectation", week: $week_start_date})
+                SET i.text = $expectation_text, i.updated_at = $timestamp
+                MERGE (w)-[:PLANNED_AS]->(i)
+                """
+                session.run(query, {
+                    "username": username,
+                    "week_start_date": week_start_date,
+                    "expectation_text": expectation_text,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+                neo4j_status = "Success"
+        except Exception as neo_e:
+            logger.warning(f"Failed to inject weekly expectation to Neo4j: {neo_e}")
+            neo4j_status = f"Neo4j Error: {neo_e}"
+
+        return jsonify({
+            "status": "success",
+            "neo4j_status": neo4j_status
+        })
+
+    except Exception as e:
+        logger.error(f"Error saving weekly expectation: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/planning/weekly', methods=['GET'])
+@require_api_key
+def get_weekly_expectation():
+    """
+    Fetches the Weekly Expectation for a given week_start_date.
+    """
+    try:
+        week_start_date = request.args.get("week_start_date")
+        if not week_start_date:
+            return jsonify({"error": "Missing week_start_date"}), 400
+            
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        db = MongoConnectionManager.get_db()
+        week_col = db["weekly_expectations"]
+        doc = week_col.find_one({"user_id": username, "week_start_date": week_start_date})
+        
+        return jsonify({
+            "status": "success",
+            "data": {
+                "expectation_text": doc.get("expectation_text", "") if doc else ""
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching weekly expectation: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
 @require_api_key

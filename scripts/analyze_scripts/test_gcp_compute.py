@@ -3,9 +3,7 @@ from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import sys
 import os
-from pathlib import Path
 import time
-import logging
 
 # Ensure concise logging for the test
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
