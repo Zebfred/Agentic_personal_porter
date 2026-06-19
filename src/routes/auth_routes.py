@@ -136,19 +136,35 @@ def login_code():
             return jsonify({"error": "Server configuration error"}), 500
         paths = get_auth_paths()
 
-        if not os.path.exists(paths["credentials"]):
-            logger.error("Missing Google credentials.json")
-            return jsonify({"error": "Server configuration error"}), 500
-
         try:
             # Google sometimes returns extra scopes (like calendar.readonly). 
             # We must relax strict checking so requests_oauthlib doesn't crash.
             os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
             
-            flow = Flow.from_client_secrets_file(
-                paths["credentials"],
-                scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
-            )
+            client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
+            client_secret = os.environ.get("GOOGLE_CLIENT_USER_SECRET", "").strip("\"'")
+            
+            if client_id and client_secret:
+                client_config = {
+                    "web": {
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                    }
+                }
+                flow = Flow.from_client_config(
+                    client_config,
+                    scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
+                )
+            elif os.path.exists(paths["credentials"]):
+                flow = Flow.from_client_secrets_file(
+                    paths["credentials"],
+                    scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
+                )
+            else:
+                logger.error("Missing Google credentials.json and environment secrets")
+                return jsonify({"error": "Server configuration error"}), 500
             flow.redirect_uri = 'postmessage'
             flow.fetch_token(code=auth_code)
             credentials = flow.credentials
@@ -327,15 +343,31 @@ def nexus_login_code():
             return jsonify({"error": "Server configuration error"}), 500
         paths = get_auth_paths()
 
-        if not os.path.exists(paths["credentials"]):
-            logger.error("Missing Google credentials.json")
-            return jsonify({"error": "Server configuration error"}), 500
-
         try:
-            flow = Flow.from_client_secrets_file(
-                paths["credentials"],
-                scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
-            )
+            client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
+            client_secret = os.environ.get("GOOGLE_CLIENT_USER_SECRET", "").strip("\"'")
+            
+            if client_id and client_secret:
+                client_config = {
+                    "web": {
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                        "token_uri": "https://oauth2.googleapis.com/token",
+                    }
+                }
+                flow = Flow.from_client_config(
+                    client_config,
+                    scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
+                )
+            elif os.path.exists(paths["credentials"]):
+                flow = Flow.from_client_secrets_file(
+                    paths["credentials"],
+                    scopes=['openid', 'https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'https://www.googleapis.com/auth/calendar']
+                )
+            else:
+                logger.error("Missing Google credentials.json and environment secrets")
+                return jsonify({"error": "Server configuration error"}), 500
             flow.redirect_uri = 'postmessage'
             flow.fetch_token(code=auth_code)
             credentials = flow.credentials

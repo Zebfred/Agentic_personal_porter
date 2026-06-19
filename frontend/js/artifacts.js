@@ -122,7 +122,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
 
                     itemWrapper.appendChild(header);
-                    buildForm(item, bodyContainer, rootRef);
+                    
+                    if (typeof item === 'object' && item !== null) {
+                        buildForm(item, bodyContainer, rootRef);
+                    } else {
+                        // It's a primitive (String or Number) inside an Array
+                        const input = document.createElement('textarea');
+                        input.rows = 3;
+                        input.className = 'w-full p-4 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-y shadow-inner text-gray-800 bg-white leading-relaxed mt-2';
+                        input.value = item;
+                        input.addEventListener('input', (e) => {
+                            obj[index] = e.target.value;
+                        });
+                        bodyContainer.appendChild(input);
+                    }
+                    
                     itemWrapper.appendChild(bodyContainer);
                     listContainer.appendChild(itemWrapper);
                 });
