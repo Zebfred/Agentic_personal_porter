@@ -148,13 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
 
                         <div>
-                            <label class="inline-flex items-center cursor-pointer">
+                            <label for="matches-intent-${chunkId}" class="inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="matches-intent-${chunkId}" class="matches-intent-checkbox form-checkbox h-4 w-4 text-green-600 rounded" ${chunkData.matchesIntent ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Actual activity matches Intend</span>
                             </label>
                         </div>
                         <div class="mt-2">
-                            <label class="inline-flex items-center cursor-pointer">
+                            <label for="valuable-detour-${chunkId}" class="inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="valuable-detour-${chunkId}" class="valuable-detour-checkbox form-checkbox h-4 w-4 text-blue-600 rounded" ${chunkData.valuableDetour ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Mark as Valuable Detour</span>
                             </label>
@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         
                         <div class="mt-4">
-                            <label class="inline-flex items-center cursor-pointer">
+                            <label for="detrimental-detour-${chunkId}" class="inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="detrimental-detour-${chunkId}" class="detrimental-detour-checkbox form-checkbox h-4 w-4 text-red-600 rounded" ${chunkData.detrimentalDetour ? 'checked' : ''}>
                                 <span class="ml-2 text-sm font-medium text-gray-600">Mark as Detrimental Detour</span>
                             </label>
