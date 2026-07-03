@@ -126,3 +126,90 @@ class EventProcessorClient:
         )
         
         return event_uuid
+
+    def process_and_route_events_batch(self, raw_gcal_events: list[dict], user_email: str):
+        from pymongo import UpdateOne
+        intent_ops = []
+        unified_ops = []
+        event_uuids = []
+
+        for raw_gcal_event in raw_gcal_events:
+            gcal_id = raw_gcal_event.get('id')
+            if not gcal_id:
+                continue
+
+            event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
+
+            # 1. Parse base details
+            start_str = raw_gcal_event.get('start', {}).get('dateTime') or raw_gcal_event.get('start', {}).get('date')
+            end_str = raw_gcal_event.get('end', {}).get('dateTime') or raw_gcal_event.get('end', {}).get('date')
+
+            if not start_str or not end_str:
+                continue
+
+            start_dt = parser.parse(start_str)
+            end_dt = parser.parse(end_str)
+            duration_mins = int((end_dt - start_dt).total_seconds() / 60)
+
+            title = raw_gcal_event.get('summary', 'Untitled')
+            color_id = raw_gcal_event.get('colorId', '1')
+
+            # Determine category (Pillar/Subcategory)
+            category_data = determine_category(title, color_id)
+
+            # Build Standard Payload Block
+            base_payload = {
+                "title": title,
+                "pillar_id": category_data.get("pillar"),
+                "subcategory": category_data.get("subcategory"),
+                "duration_minutes": duration_mins
+            }
+
+            # Time slot
+            time_slot = {
+                "start": start_dt.isoformat(),
+                "end": end_dt.isoformat()
+            }
+
+            # 1. Update Intention Collection
+            intent_ops.append(UpdateOne(
+                {"_id": event_uuid},
+                {"$set": {
+                    "user_id": user_email,
+                    "gcal_id": gcal_id,
+                    "time_slot": time_slot,
+                    "intent": base_payload,
+                    "metadata": {
+                        "source": "google_calendar",
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                }},
+                upsert=True
+            ))
+
+            # 3. Update Unified Collection
+            unified_update = {
+                "$set": {
+                    "user_id": user_email,
+                    "time_slot": time_slot,
+                    "intent": base_payload,
+                    "metadata": {
+                        "source": "google_calendar",
+                        "last_sync": datetime.now(timezone.utc).isoformat()
+                    }
+                }
+            }
+
+            unified_ops.append(UpdateOne(
+                {"_id": event_uuid},
+                unified_update,
+                upsert=True
+            ))
+            event_uuids.append(event_uuid)
+
+        if intent_ops:
+            self.intent_col.bulk_write(intent_ops, ordered=False)
+        if unified_ops:
+            self.unified_col.bulk_write(unified_ops, ordered=False)
+
+        return event_uuids

@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 os.environ.setdefault("PORTER_ADMIN_KEY", "test-api-key-for-ci")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-ci")
 os.environ.setdefault("HERO_NAME", "TestHero")
+os.environ.setdefault("GOOGLE_CLIENT_USER_LOGIN_ID", "test_google_client_id")
 
 from src.app import create_app
 

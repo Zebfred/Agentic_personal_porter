@@ -101,6 +101,7 @@ class SovereignCalendarSync:
                 break
 
             raw_ops = []
+            ts_events_batch = []
             for event in events:
                 event_id = event.get('id')
                 
@@ -127,15 +128,19 @@ class SovereignCalendarSync:
                 )
                 
                 # 2. Native Time-Series Dual-Write
-                success = self.ts_client.stage_raw_event(event, user_email=user_email)
+                ts_events_batch.append(event)
                 
                 # Increment operation count
                 ops_count += 1
 
-            # ⚡ Bolt Optimization: Replace O(N) update_one calls with a single O(1) bulk_write
-            # to drastically reduce network round-trips and database latency.
+
+            # ⚡ Bolt Optimization: Replace O(N) DB calls with bulk write in event routing.
             if raw_ops:
                 self.raw_collection.bulk_write(raw_ops, ordered=False)
+
+            if ts_events_batch:
+                self.ts_client.stage_raw_events_batch(ts_events_batch, user_email=user_email)
+
 
             page_token = events_result.get('nextPageToken')
             if not page_token:
