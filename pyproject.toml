@@ -78,6 +78,7 @@ dev = [
     "codespell>=2.4.2",
     "mypy>=2.0.0",
     "ruff>=0.15.12",
+    "pylint>=3.0.0",
 ]
 
 [tool.pyright]
