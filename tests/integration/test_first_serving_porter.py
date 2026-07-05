@@ -9,8 +9,15 @@ def client():
     with app.test_client() as client:
         yield client
 
+@patch('src.routes.chat_routes.SovereignMongoStorage')
 @patch('src.routes.chat_routes.run_first_serving_porter')
-def test_porter_chat_route(mock_run_porter, client):
+def test_porter_chat_route(mock_run_porter, mock_mongo, client):
+    # Mock the Mongo storage call to get user info
+    mock_mongo.return_value.get_user_by_email.return_value = {
+        "username": "Hero",
+        "email": "system_script@localhost"
+    }
+
     # Mock the return value of the agent
     mock_run_porter.return_value = {
         "response": "Hello, I am the Porter. I have marked that for update.",
