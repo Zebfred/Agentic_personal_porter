@@ -614,3 +614,105 @@ def edit_journal_event():
     except Exception as e:
         logger.error(f"Error editing journal event: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/journal/review_data', methods=['GET'])
+@require_api_key
+def get_journal_review_data():
+    """
+    Returns data for the Journal Review page: Intentions (Weekly & Hero) and Actual Events (Time Chunks).
+    """
+    try:
+        date_str = request.args.get('date') # e.g. YYYY-MM-DD
+        if not date_str:
+            return jsonify({"error": "Missing date parameter"}), 400
+            
+        user_email = getattr(request, 'user_email', None)
+        if not user_email:
+            return jsonify({"error": "User email context not found"}), 400
+            
+        from src.database.mongo_storage import SovereignMongoStorage
+        mongo = SovereignMongoStorage()
+        
+        # 1. Fetch Intentions (Weekly Planning and Hero Ambition)
+        active_intentions = []
+        weekly_plan = mongo.db['weekly_planning'].find_one({"user_id": user_email}, sort=[("week_start_date", -1)])
+        if weekly_plan and weekly_plan.get("expectation_text"):
+            active_intentions.append(f"Weekly Expectation: {weekly_plan['expectation_text']}")
+            
+        hero_ambition = mongo.get_hero_artifact("hero_ambition.json")
+        if hero_ambition and isinstance(hero_ambition, dict):
+            # Extract some high-level ambitions if available
+            for k, v in hero_ambition.items():
+                if isinstance(v, str):
+                    active_intentions.append(f"{k.capitalize()}: {v}")
+                elif isinstance(v, dict) and "description" in v:
+                    active_intentions.append(f"{k.capitalize()}: {v['description']}")
+                elif isinstance(v, list) and v and isinstance(v[0], str):
+                    active_intentions.append(f"{k.capitalize()}: {', '.join(v)}")
+        
+        # If still empty, add a placeholder
+        if not active_intentions:
+            active_intentions.append("No stated weekly ambitions or Hero Intentions found.")
+            
+        # 2. Fetch Actual Events (Time Chunks from unified_events / event_actuals for the given date)
+        observations = []
+        
+        query = {
+            "user_id": user_email,
+            "time_slot.start": {"$regex": f"^{date_str}"}
+        }
+        
+        unified = list(mongo.db['unified_events'].find(query))
+        actuals = list(mongo.db['event_actuals'].find(query))
+        
+        for event in unified:
+            # Unified events could be intents or matched actuals
+            title = event.get('intent', {}).get('title', 'Unknown')
+            pillar = event.get('intent', {}).get('pillar_id', 'Uncategorized')
+            duration = event.get('intent', {}).get('duration_minutes', 0)
+            status = "Aligned"
+            if pillar == "Uncategorized":
+                status = "Fog of War"
+            
+            # If there's an actual component in the unified event
+            if 'actual' in event:
+                title = event['actual'].get('title', title)
+                pillar = event['actual'].get('pillar_id', pillar)
+                duration = event['actual'].get('duration_minutes', duration)
+                if event['actual'].get('detour_type'):
+                    status = "Valuable Detour" if event['actual']['detour_type'] == 'valuable' else "Detrimental Detour"
+                    
+            observations.append({
+                "title": title,
+                "pillar": pillar,
+                "duration": duration,
+                "status": status
+            })
+            
+        for event in actuals:
+            title = event.get('actual', {}).get('title', 'Unknown')
+            pillar = event.get('actual', {}).get('pillar_id', 'Uncategorized')
+            duration = event.get('actual', {}).get('duration_minutes', 0)
+            status = "Fog of War" if pillar == "Uncategorized" else "Valuable Detour"
+            if event.get('actual', {}).get('detour_type') == 'detrimental':
+                status = "Detrimental Detour"
+            
+            observations.append({
+                "title": title,
+                "pillar": pillar,
+                "duration": duration,
+                "status": status
+            })
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "active_intentions": active_intentions,
+                "observations": observations
+            }
+        })
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error fetching journal review data: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

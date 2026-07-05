@@ -43,3 +43,31 @@ def chat_porter():
     except Exception as e:
         logger.error(f"Error in First-Serving Porter chat: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@chat_bp.route('/chat/welcome', methods=['GET', 'OPTIONS'])
+@require_api_key
+def chat_welcome():
+    """
+    Generates a dynamic welcome message on dashboard load.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+
+    try:
+        user_email = request.user_email
+        if not user_email:
+            return jsonify({"error": "No email associated with token"}), 400
+
+        logger.info(f"Generating dynamic welcome message for {user_email}.")
+
+        user_doc = SovereignMongoStorage().get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        # Ask the agent for a welcome message
+        user_msg = "Please provide a short, welcoming 1-2 sentence greeting for the user acknowledging their current identity graph stability. Keep it extremely brief and helpful."
+        result = run_first_serving_porter(user_msg, username=username, user_email=user_email)
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in First-Serving Porter welcome: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500

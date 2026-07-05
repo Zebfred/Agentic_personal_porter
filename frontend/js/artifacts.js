@@ -90,6 +90,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const buildForm = (obj, parentContent, rootRef) => {
         if (typeof obj === 'object' && obj !== null) {
             if (Array.isArray(obj)) {
+                // Check if it's an array of primitives
+                const isPrimitiveArray = obj.every(item => typeof item === 'string' || typeof item === 'number');
+                if (isPrimitiveArray && obj.length > 0) {
+                    const input = document.createElement('textarea');
+                    input.rows = 4;
+                    input.className = 'w-full p-4 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-y shadow-inner text-gray-800 bg-white leading-relaxed mt-2 text-sm';
+                    input.value = obj.join(', ');
+                    input.placeholder = "Enter items separated by commas...";
+                    input.addEventListener('input', (e) => {
+                        const vals = e.target.value.split(',').map(s => s.trim()).filter(s => s !== '');
+                        obj.length = 0; // Clear original array
+                        vals.forEach(v => obj.push(v));
+                    });
+                    parentContent.appendChild(input);
+                    return;
+                }
+
                 const listContainer = document.createElement('div');
                 listContainer.className = 'flex flex-col space-y-4 w-full mt-2';
                 obj.forEach((item, index) => {
@@ -105,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             headerText = `<span><strong class="text-indigo-900">${escapeHTML(item.name)}</strong> <span class="text-gray-500 font-normal ml-2">(${escapeHTML(item.timeframe)})</span></span>`;
                         } else if (item.title !== undefined) {
                             headerText = item.title.trim() === "" 
-                                ? `<span><strong class="text-amber-600">Empty Experience</strong></span>`
+                                ? `<span><strong class="text-amber-600">New Experience</strong></span>`
                                 : `<span><strong class="text-indigo-900">${escapeHTML(item.title)}</strong></span>`;
                         }
                     }
@@ -126,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof item === 'object' && item !== null) {
                         buildForm(item, bodyContainer, rootRef);
                     } else {
-                        // It's a primitive (String or Number) inside an Array
+                        // It's a primitive (String or Number) inside an Array that wasn't purely primitives, or mixed
                         const input = document.createElement('textarea');
                         input.rows = 3;
                         input.className = 'w-full p-4 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-y shadow-inner text-gray-800 bg-white leading-relaxed mt-2';
@@ -145,7 +162,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const key in obj) {
                     const val = obj[key];
                     if (key === 'experience candidate' && Array.isArray(val) && val.length === 0) {
-                        continue; // Skip empty experience candidates
+                        // Push an empty template so the user can start filling it out
+                        val.push({"title": "", "description": ""});
                     }
 
                     const fieldWrapper = document.createElement('div');
@@ -155,6 +173,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     label.className = 'block text-sm font-bold text-gray-700 mb-2 capitalize tracking-wide';
                     label.textContent = key.replace(/_/g, ' ');
                     fieldWrapper.appendChild(label);
+
+                    if (key === 'experience candidate' || key === 'experiences') {
+                        const promptText = document.createElement('div');
+                        promptText.className = 'text-xs text-indigo-700 bg-indigo-50 p-3 rounded border border-indigo-100 mb-3 italic leading-relaxed';
+                        promptText.innerHTML = "<strong>Self-Authoring Guide:</strong> Describe in detail the significant experiences (positive or negative) that occurred during this epoch. Provide a clear title. Limit your description to the event itself (what happened, the setting, the details), saving analysis of its lifelong impact for later reflection.";
+                        fieldWrapper.appendChild(promptText);
+                    }
 
                     if (typeof val === 'string' || typeof val === 'number') {
                         let input;
