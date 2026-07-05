@@ -52,7 +52,7 @@ class PulseService:
                 "event_intentions": db[MongoConfig.INTENT_COLLECTION].estimated_document_count(),
                 "event_actuals": db[MongoConfig.ACTUAL_COLLECTION].estimated_document_count(),
                 "unified_events": db[MongoConfig.UNIFIED_EVENTS_COLLECTION].estimated_document_count(),
-                "journal_entries": db['journal_entries'].estimated_document_count(),
+                "journal_time_entries": db['journal_time_entries'].estimated_document_count(),
                 "agent_reflections": db['agent_reflections'].estimated_document_count(),
                 "first_serving_traces": db['first_serving_traces'].estimated_document_count(),
                 "weekly_expectations": db['weekly_expectations'].estimated_document_count()

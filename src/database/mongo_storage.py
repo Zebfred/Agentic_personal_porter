@@ -27,7 +27,8 @@ class SovereignMongoStorage:
         # Collection Pointers
         self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
         self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
-        self.journal_col = self.db['journal_entries']
+        self.journal_col = self.db['journal_time_entries']
+        self.freeform_journal_col = self.db['journal_freeform_entries']
         self.artifacts_col = self.db['hero_artifacts']
         self.reflections_col = self.db['agent_reflections']
         self.system_status_col = self.db['system_status']
@@ -86,6 +87,23 @@ class SovereignMongoStorage:
             log_data["processed_at"] = datetime.now(timezone.utc)
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
+
+    def save_freeform_journal(self, date_str: str, text: str, user_id: str = "Hero"):
+        """
+        Saves a freeform daily journal entry for a specific date.
+        """
+        query = {"date": date_str, "user_id": user_id}
+        updated_at = datetime.now(timezone.utc).isoformat()
+        update = {"$set": {"text": text, "updated_at": updated_at}}
+        self.freeform_journal_col.update_one(query, update, upsert=True)
+        return updated_at
+
+    def get_freeform_journal(self, date_str: str, user_id: str = "Hero") -> dict:
+        """
+        Retrieves a freeform daily journal entry.
+        """
+        doc = self.freeform_journal_col.find_one({"date": date_str, "user_id": user_id}, {"_id": 0})
+        return doc if doc else {}
 
     def update_journal_sync_status(self, mongo_doc_id: str, day_str: str, time_chunk: str, status_updates: dict, user_id: str = "Hero"):
         """

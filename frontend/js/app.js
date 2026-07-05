@@ -55,8 +55,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let weeklyLog = {};
 
+    const getStorageKey = () => `weeklyLog_${activeDateMap['monday'] || 'default'}`;
+
     const getWeeklyLog = () => {
-        const log = localStorage.getItem('weeklyLog');
+        const log = localStorage.getItem(getStorageKey());
         if (log) {
             return JSON.parse(log);
         } else {
@@ -84,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const saveWeeklyLog = () => {
         if (activeWeekContext === 'current') {
-            localStorage.setItem('weeklyLog', JSON.stringify(weeklyLog));
+            localStorage.setItem(getStorageKey(), JSON.stringify(weeklyLog));
         }
     };
 
@@ -113,17 +115,24 @@ document.addEventListener('DOMContentLoaded', () => {
             card.dataset.day = day;
             card.dataset.chunk = chunkId;
 
+            const isFilled = chunkData.intention.trim() !== '' || chunkData.activityTitle.trim() !== '' || chunkData.matchesIntent;
+            const openAttr = isFilled ? '' : 'open';
+
             card.innerHTML = `
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold text-gray-800">${chunk.label}</h3>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Intention Area -->
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                        <label for="intention-${day}-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">My Intention</label>
-                        <textarea id="intention-${day}-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${escapeHTML(chunkData.intention)}</textarea>
-                    </div>
+                <details class="group" ${openAttr}>
+                    <summary class="flex justify-between items-center cursor-pointer list-none mb-2 outline-none">
+                        <h3 class="text-xl font-bold text-gray-800 flex-grow">${chunk.label}</h3>
+                        <span class="transition group-open:rotate-180">
+                            <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                        </span>
+                    </summary>
+                    
+                    <div class="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <!-- Intention Area -->
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <label for="intention-${day}-${chunkId}" class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">My Intention</label>
+                            <textarea id="intention-${day}-${chunkId}" rows="2" class="intention-input w-full bg-white border border-gray-300 rounded-md p-2 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Sync from calendar or type here...">${escapeHTML(chunkData.intention)}</textarea>
+                        </div>
 
                     <!-- Actuals Form -->
                     <div class="space-y-4">
@@ -175,18 +184,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <textarea id="detriment-note-${day}-${chunkId}" rows="2" class="detriment-note-textarea w-full border border-red-200 bg-red-50 rounded-md p-2 focus:ring-2 focus:ring-red-400 outline-none" placeholder="What did this cost you?">${escapeHTML(chunkData.detrimentNote)}</textarea>
                         </div>
                     </div>
-                </div>
 
-                <!-- Action Button & AI Output -->
-                <div class="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center gap-4">
-                    <button class="save-log-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition shadow-sm active:scale-95 flex justify-center items-center gap-2">
-                        <span>💾</span> Save Log
-                    </button>
-                    
-                    <div id="save-status-${chunkId}" class="hidden text-green-600 font-bold text-sm animate-pulse">
-                        Sovereign Sync Complete ✅
+                    <!-- Action Button & AI Output -->
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center gap-4">
+                        <button class="save-log-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded-lg transition shadow-sm active:scale-95 flex justify-center items-center gap-2">
+                            <span>💾</span> Save Log
+                        </button>
+                        
+                        <div id="save-status-${chunkId}" class="hidden text-green-600 font-bold text-sm animate-pulse">
+                            Sovereign Sync Complete ✅
+                        </div>
                     </div>
-                </div>
+                </details>
             `;
             dayViewContainer.appendChild(card);
         });
@@ -581,7 +590,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeWeekLabel) activeWeekLabel.textContent = `Historical Week: ${startStr} to ${endStr}`;
         if (resetWeekBtn) resetWeekBtn.classList.remove('hidden');
         renderDay('monday');
-        loadWeeklyExpectation();
     };
 
     const renderCalendar = async () => {
@@ -607,14 +615,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             const hasLogs = hasLogsForDate(dateStr);
             
-            btn.className = `p-2 aspect-square rounded-lg font-medium transition ${
-                hasLogs ? 'bg-purple-100 text-purple-900 border border-purple-200 hover:bg-purple-200 shadow-sm'
+            btn.className = `relative p-2 aspect-square rounded-lg font-medium transition ${
+                hasLogs ? 'bg-green-50 text-green-900 border border-green-200 hover:bg-green-100 shadow-sm'
                 : 'bg-gray-50 text-gray-700 hover:bg-gray-200 border border-transparent'
             }`;
             
             btn.textContent = i;
             if (hasLogs) {
-                btn.innerHTML += `<div class="w-1.5 h-1.5 bg-purple-500 rounded-full mx-auto mt-1"></div>`;
+                btn.innerHTML += `<div class="absolute bottom-1 right-1 text-xs">✅</div>`;
             }
             
             btn.addEventListener('click', () => {
@@ -638,7 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (activeWeekLabel) activeWeekLabel.textContent = "Current Local Week";
         resetWeekBtn.classList.add('hidden');
         renderDay('monday');
-        loadWeeklyExpectation();
     });
 
     const loadWeeklyExpectation = async () => {
@@ -700,12 +707,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const init = async () => {
         calculateCurrentWeekMap();
-        renderCalendar();
-        weeklyLog = getWeeklyLog();
+        await renderCalendar();
+        
+        // Try to load current week from backend data (monthlyLogData) first
+        const mondayDateStr = activeDateMap['monday'];
+        let hasBackendData = false;
+        
+        if (monthlyLogData && monthlyLogData.weeks) {
+            for (const week of Object.values(monthlyLogData.weeks)) {
+                if (week[mondayDateStr] && week[mondayDateStr].chunks) {
+                    hasBackendData = true;
+                    loadHistoricalWeek(new Date(mondayDateStr + 'T00:00:00'));
+                    activeWeekContext = 'current'; // Override historical status
+                    if (activeWeekLabel) activeWeekLabel.textContent = "Current Local Week";
+                    if (resetWeekBtn) resetWeekBtn.classList.add('hidden');
+                    break;
+                }
+            }
+        }
+        
+        if (!hasBackendData) {
+            weeklyLog = getWeeklyLog();
+        }
+
         const today = new Date().toLocaleString('en-us', { weekday: 'long' }).toLowerCase();
         const currentDay = DAYS.includes(today) ? today : 'monday';
         renderDay(currentDay);
-        loadWeeklyExpectation();
     };
 
     init();

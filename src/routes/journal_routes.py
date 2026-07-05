@@ -176,6 +176,8 @@ def save_weekly_expectation():
         if not week_start_date or not expectation_text:
             return jsonify({"error": "Missing week_start_date or expectation_text"}), 400
 
+        updated_at = datetime.now(timezone.utc).isoformat()
+        
         # Save to MongoDB weekly_expectations
         db = MongoConnectionManager.get_db()
         week_col = db["weekly_expectations"]
@@ -184,7 +186,7 @@ def save_weekly_expectation():
             {"user_id": username, "week_start_date": week_start_date},
             {"$set": {
                 "expectation_text": expectation_text,
-                "updated_at": datetime.now(timezone.utc).isoformat()
+                "updated_at": updated_at
             }},
             upsert=True
         )
@@ -205,7 +207,7 @@ def save_weekly_expectation():
                     "username": username,
                     "week_start_date": week_start_date,
                     "expectation_text": expectation_text,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
+                    "timestamp": updated_at
                 })
                 neo4j_status = "Success"
         except Exception as neo_e:
@@ -214,7 +216,8 @@ def save_weekly_expectation():
 
         return jsonify({
             "status": "success",
-            "neo4j_status": neo4j_status
+            "neo4j_status": neo4j_status,
+            "updated_at": updated_at
         })
 
     except Exception as e:
@@ -244,13 +247,61 @@ def get_weekly_expectation():
         return jsonify({
             "status": "success",
             "data": {
-                "expectation_text": doc.get("expectation_text", "") if doc else ""
+                "expectation_text": doc.get("expectation_text", "") if doc else "",
+                "updated_at": doc.get("updated_at") if doc else None
             }
         })
     except Exception as e:
         logger.error(f"Error fetching weekly expectation: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@journal_bp.route('/api/journal/freeform', methods=['POST', 'OPTIONS'])
+@require_api_key
+def save_freeform_journal():
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        data = request.get_json()
+        date_str = data.get("date")
+        text = data.get("text")
+        if not date_str or text is None:
+            return jsonify({"error": "Missing date or text"}), 400
+            
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        
+        updated_at = mongo_storage.save_freeform_journal(date_str, text, username)
+        
+        return jsonify({"status": "success", "updated_at": updated_at})
+    except Exception as e:
+        logger.error(f"Error saving freeform journal: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/journal/freeform', methods=['GET'])
+@require_api_key
+def get_freeform_journal():
+    try:
+        date_str = request.args.get("date")
+        if not date_str:
+            return jsonify({"error": "Missing date"}), 400
+            
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        
+        doc = mongo_storage.get_freeform_journal(date_str, username)
+        # convert datetime to string if it was saved prior to the isoformat change
+        updated_at = doc.get("updated_at")
+        if updated_at and not isinstance(updated_at, str):
+            updated_at = updated_at.isoformat()
+            
+        return jsonify({"status": "success", "data": {"text": doc.get("text", ""), "updated_at": updated_at}})
+    except Exception as e:
+        logger.error(f"Error fetching freeform journal: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
 @require_api_key

@@ -19,6 +19,11 @@ def index():
 def adventure_log():
     return render_template('Adventure_Time_log.html')
 
+@static_bp.route('/adventure_journal')
+@static_bp.route('/Adventure_Journal.html')
+def adventure_journal():
+    return render_template('Adventure_Journal.html')
+
 @static_bp.route('/adventure_calendar')
 @static_bp.route('/adventure_calendar.html')
 def adventure_calendar():

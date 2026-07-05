@@ -11,11 +11,11 @@ from src.database.mongo_storage import SovereignMongoStorage
 
 def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     """
-    Pulls recent batches from MongoDB (journal_entries and agent_reflections),
+    Pulls recent batches from MongoDB (journal_time_entries and agent_reflections),
     tags them, embeds them with BGE-M3.
     SEGREGATION RULE:
     - agent_reflections -> ChromaDB (Vibe check)
-    - journal_entries -> Weaviate (Hybrid Search Intent/Actual tracking)
+    - journal_time_entries -> Weaviate (Hybrid Search Intent/Actual tracking)
     """
     logger.info(f"[{datetime.now(timezone.utc).isoformat()}] Starting Isolated Vector Database Batch Sync: {sync_trigger_time}")
     
@@ -30,7 +30,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
         cloud_client.wake_instance("ollama-vector-host", block_until_running=True)
 
         db = MongoConnectionManager.get_db()
-        journal_col = db["journal_entries"]
+        journal_col = db["journal_time_entries"]
         reflections_col = db["agent_reflections"]
         
         raw_reflections = list(reflections_col.find().sort("created_at", -1).limit(limit))

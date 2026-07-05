@@ -6,7 +6,8 @@ This document tracks immediate, actionable tasks for the frontend interface (`ap
 *Status: UI Scaffolding complete - Merged to main*
 
 - [x] **The Porter Hub (`index.html`):** UI converted into a central dashboard displaying specific calculated metrics (*Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours*). *(Note: UI layout is complete; full backend aggregation via `/api/user/hub_metrics` is pending)*.
-- [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*.
+- [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*. (Redesigned & Namespaced - Human verification required).
+- [x] **Adventure Journal (NEW):** Built a dedicated UI and API integration for unstructured daily reflection and high-level weekly expectations. (Human verification required)
 - [ ] **Adventure Calendar (NEW):** Build a flexible `Adventure-calendar` endpoint and UI component. This will serve as the base for monthly, "last week", and "next week" rolling views chronologically while keeping frontend payload sizes low.
 - [ ] **Historical Journal Review (`journal_review.html`):** Build a dedicated interface for evaluating past journal entries and grading agent classifications. *(Pending backend and Agent development)*
 - [x] **Verification Dashboard (NEW):** Migrated the "Dashboard of Inferences" to the main user Hub (`index.html`). Interfaces with the Audit Agent allowing the user to explicitly click "Approve" for unverified audits. Enables <20-second human friction rule.

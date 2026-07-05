@@ -13,7 +13,7 @@ Because cost limits and exact performance needs are still solidifying, we are do
 3.  **Pinecone (Serverless Starter)**: Retained as a scalable backup option if local instances degrade under load.
 
 ## Batch Processing Architecture
-To avoid constant database waking and token thrashing, the `vector_batch_sync_all.py` script pulls recent document batches from the MongoDB landing zone (the `journal_entries` and `agent_reflections` collections). 
+To avoid constant database waking and token thrashing, the `vector_batch_sync_all.py` script pulls recent document batches from the MongoDB landing zone (the `journal_time_entries` and `agent_reflections` collections). 
 Vector embeddings are compiled and injected strictly twice a day:
 - **Noon (12:00 PM)**
 - **Midnight (12:00 AM)**
