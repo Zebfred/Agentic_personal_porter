@@ -41,6 +41,7 @@ Documentation/issues_and_audit/*
 Documentation/Outdated_Doc/*
 Documentation/notes/*
 Documentation/Completed_Tasks/*
+Documentation/Current_work/*
 
 # Sensitive helper scripts removed from git history (2026-04-17).
 # These files read from .auth/.env and must never be re-committed.
