@@ -2,10 +2,10 @@
 SHELL := /bin/bash
 
 # Variables
-CONDA_ENV = agentic_porter_312
+CONDA_ENV = agentic_porter
 IMAGE_NAME = agentic-porter
 PORT = 6010
-PYTHON = python
+PYTHON = uv run python
 PIP = pip
 
 # Phony targets to prevent conflicts with file names
@@ -57,7 +57,7 @@ lint:
 	conda run -n $(CONDA_ENV) uv run mypy .
 
 pulse: ## Execute the local system health diagnostic
-	conda run -n $(CONDA_ENV) python scripts/analyze_scripts/local_pulse_check.py
+	PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py
 
 # --- Frontend Assets ---
 build-css: ## Build and minify Tailwind CSS assets
