@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - OVERHAUL/MACH3
+      - 'OVERHAUL/*'
   pull_request:
     branches:
       - main
       - OVERHAUL/MACH3
+      - 'OVERHAUL/*'
 
 jobs:
   test:
