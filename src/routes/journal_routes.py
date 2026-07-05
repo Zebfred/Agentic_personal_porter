@@ -307,7 +307,6 @@ def save_freeform_journal():
         text = data.get("text")
         if not date_str or text is None:
             return jsonify({"error": "Missing date or text"}), 400
-
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
@@ -342,18 +341,15 @@ def get_freeform_journal():
         date_str = request.args.get("date")
         if not date_str:
             return jsonify({"error": "Missing date"}), 400
-
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
         username = user_doc.get("username", "Hero") if user_doc else "Hero"
-
         doc = mongo_storage.get_freeform_journal(date_str, username)
         # convert datetime to string if it was saved prior to the isoformat change
         updated_at = doc.get("updated_at")
         if updated_at and not isinstance(updated_at, str):
             updated_at = updated_at.isoformat()
-
         return jsonify({"status": "success", "data": {"text": doc.get("text", ""), "updated_at": updated_at}})
     except Exception as e:
         logger.error(f"Error fetching freeform journal: {e}", exc_info=True)

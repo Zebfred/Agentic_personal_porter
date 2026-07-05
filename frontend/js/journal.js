@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    if (!Auth.isAuthenticated()) return;
+    if (!Auth.checkAuth()) return;
 
     const datePicker = document.getElementById('journal-date-picker');
     const journalText = document.getElementById('daily-journal-text');
@@ -58,7 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Daily Journal Logic ---
     const loadJournal = async (dateStr) => {
         try {
-            const res = await Auth.fetchWithAuth(`/api/journal/freeform?date=${dateStr}`);
+            const token = localStorage.getItem('porter_token');
+            const res = await fetch(`/api/journal/freeform?date=${dateStr}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 journalText.value = data.data?.text || '';
@@ -89,10 +92,12 @@ document.addEventListener('DOMContentLoaded', () => {
         saveJournalBtn.disabled = true;
 
         try {
-            const res = await Auth.fetchWithAuth('/api/journal/freeform', {
+            const token = localStorage.getItem('porter_token');
+            const res = await fetch('/api/journal/freeform', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ date: dateStr, text: text })
             });
@@ -127,7 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Weekly Expectation Logic ---
     const loadWeeklyExpectation = async (weekStartStr) => {
         try {
-            const response = await Auth.fetchWithAuth(`/api/planning/weekly?week_start_date=${weekStartStr}`);
+            const token = localStorage.getItem('porter_token');
+            const response = await fetch(`/api/planning/weekly?week_start_date=${weekStartStr}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (response.ok) {
                 const data = await response.json();
                 expText.value = data.data?.expectation_text || "";
@@ -150,10 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
         saveExpBtn.disabled = true;
         
         try {
-            const response = await Auth.fetchWithAuth('/api/planning/weekly', {
+            const token = localStorage.getItem('porter_token');
+            const response = await fetch('/api/planning/weekly', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     week_start_date: currentWeekStartStr,

@@ -99,69 +99,6 @@ class SovereignMongoStorage:
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
 
-    def save_freeform_journal(self, date_str: str, text: str, user_id: str = "Hero", correlation_id: str = None):
-        """
-        Saves a freeform daily journal entry for a specific date.
-        
-        Args:
-            date_str: Date in "YYYY-MM-DD" format.
-            text: Freeform journal text.
-            user_id: The username identifier.
-            correlation_id: Optional cross-system lineage ID for data provenance.
-        """
-        query = {"date": date_str, "user_id": user_id}
-        updated_at = datetime.now(timezone.utc).isoformat()
-        set_fields = {"text": text, "updated_at": updated_at}
-        if correlation_id:
-            set_fields["correlation_id"] = correlation_id
-        update = {"$set": set_fields}
-        self.freeform_journal_col.update_one(query, update, upsert=True)
-        return updated_at
-
-    def get_freeform_journal(self, date_str: str, user_id: str = "Hero") -> dict:
-        """
-        Retrieves a freeform daily journal entry.
-        """
-        doc = self.freeform_journal_col.find_one({"date": date_str, "user_id": user_id}, {"_id": 0})
-        return doc if doc else {}
-
-    def get_journal_and_expectation_history(self, user_id: str = "Hero", limit: int = 10, correlation_id: str = None) -> list:
-        """
-        Retrieves a combined history of recent freeform journals and weekly expectations.
-        If correlation_id is provided, fetches only the specific entry.
-        """
-        j_query = {"user_id": user_id}
-        e_query = {"user_id": user_id}
-
-        if correlation_id:
-            j_query["correlation_id"] = correlation_id
-            e_query["correlation_id"] = correlation_id
-
-        journals = list(self.freeform_journal_col.find(j_query, {"_id": 0}).sort("date", -1).limit(limit))
-        expectations = list(self.db["weekly_expectations"].find(e_query, {"_id": 0}).sort("week_start_date", -1).limit(limit))
-
-        history = []
-        for j in journals:
-            history.append({
-                "type": "journal",
-                "date": j.get("date"),
-                "text": j.get("text", ""),
-                "correlation_id": j.get("correlation_id", ""),
-                "updated_at": j.get("updated_at")
-            })
-        for e in expectations:
-            history.append({
-                "type": "expectation",
-                "date": e.get("week_start_date"),
-                "text": e.get("expectation_text", ""),
-                "correlation_id": e.get("correlation_id", ""),
-                "updated_at": e.get("updated_at")
-            })
-
-        # Sort combined history by date descending
-        history.sort(key=lambda x: x["date"], reverse=True)
-        return history[:limit]
-
     def update_journal_sync_status(self, mongo_doc_id: str, day_str: str, time_chunk: str, status_updates: dict, user_id: str = "Hero"):
         """
         Updates the sync_status of a journal entry, regardless of whether it's nested or flat.
