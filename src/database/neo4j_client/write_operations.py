@@ -2,14 +2,21 @@ from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 from .connection import get_driver
 
-def log_to_neo4j(log_data: dict, username: str) -> str:
+def log_to_neo4j(log_data: dict, username: str, correlation_id: str = None) -> str:
     """
     Logs a complete journal entry to the Neo4j database.
-    Returns a confirmation message.
+    
+    Args:
+        log_data: The journal entry data dict.
+        username: The user's display name.
+        correlation_id: Optional cross-system lineage ID for data provenance.
+    
+    Returns:
+        A confirmation message string.
     """
     driver = get_driver()
     with driver.session() as session:
-        result_node = session.execute_write(_create_log_entry, log_data, username)
+        result_node = session.execute_write(_create_log_entry, log_data, username, correlation_id)
         
         # another potential fix
         # We must check if result_node is not None before trying to access it.
@@ -19,9 +26,10 @@ def log_to_neo4j(log_data: dict, username: str) -> str:
             logger.info("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
             return "Failed to log entry to Neo4j."
 
-def _create_log_entry(tx, log_data: dict, username: str):
+def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = None):
     """
     Enhanced function that creates nodes and relationships with meaningful connections.
+    Includes source_id (correlation_id) for cross-system data lineage.
     """
     intention_text = log_data.get('intention', '')
     actual_text = log_data.get('actual', '')
@@ -52,14 +60,15 @@ def _create_log_entry(tx, log_data: dict, username: str):
         MERGE (tc:TimeChunk {id: $timeChunkId})
         MERGE (d)-[:HAS_CHUNK]->(tc)
         
-        // Create Intention node
+        // Create Intention node with source_id for data lineage
         CREATE (int:Intention {
             description: $intention,
+            source_id: $correlation_id,
             timestamp: datetime()
         })
         MERGE (tc)-[:INTENDED]->(int)
         
-        // Create Actual node
+        // Create Actual node with source_id for data lineage
         CREATE (a:Actual {
             activity: $actual,
             feeling: $feeling,
@@ -67,6 +76,7 @@ def _create_log_entry(tx, log_data: dict, username: str):
             matchesIntent: $matchesIntent,
             isValuableDetour: $isValuableDetour,
             inventoryNote: $inventoryNote,
+            source_id: $correlation_id,
             timestamp: datetime()
         })
         MERGE (tc)-[:RECORDED]->(a)
@@ -156,7 +166,8 @@ def _create_log_entry(tx, log_data: dict, username: str):
                     isValuableDetour=is_valuable_detour,
                     inventoryNote=inventory_note,
                     reflection=log_data.get('reflection', ''),
-                    timeOfDay=time_of_day
+                    timeOfDay=time_of_day,
+                    correlation_id=correlation_id or ''
                    )
     
     record = result.single()

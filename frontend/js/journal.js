@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    if (!Auth.checkAuth()) return;
+    if (!Auth.isAuthenticated()) return;
 
     const datePicker = document.getElementById('journal-date-picker');
     const journalText = document.getElementById('daily-journal-text');
@@ -52,15 +52,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         loadJournal(todayStr);
         loadWeeklyExpectation(currentWeekStartStr);
+        loadHistory();
     };
 
     // --- Daily Journal Logic ---
     const loadJournal = async (dateStr) => {
         try {
-            const token = localStorage.getItem('porter_token');
-            const res = await fetch(`/api/journal/freeform?date=${dateStr}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await Auth.fetchWithAuth(`/api/journal/freeform?date=${dateStr}`);
             if (res.ok) {
                 const data = await res.json();
                 journalText.value = data.data?.text || '';
@@ -91,12 +89,10 @@ document.addEventListener('DOMContentLoaded', () => {
         saveJournalBtn.disabled = true;
 
         try {
-            const token = localStorage.getItem('porter_token');
-            const res = await fetch('/api/journal/freeform', {
+            const res = await Auth.fetchWithAuth('/api/journal/freeform', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ date: dateStr, text: text })
             });
@@ -111,6 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     journalStatus.classList.add('hidden');
                 }, 3000);
+                loadHistory(); // Refresh history
             }
         } catch (e) {
             console.error("Failed to save journal", e);
@@ -130,10 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Weekly Expectation Logic ---
     const loadWeeklyExpectation = async (weekStartStr) => {
         try {
-            const token = localStorage.getItem('porter_token');
-            const response = await fetch(`/api/planning/weekly?week_start_date=${weekStartStr}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const response = await Auth.fetchWithAuth(`/api/planning/weekly?week_start_date=${weekStartStr}`);
             if (response.ok) {
                 const data = await response.json();
                 expText.value = data.data?.expectation_text || "";
@@ -156,12 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
         saveExpBtn.disabled = true;
         
         try {
-            const token = localStorage.getItem('porter_token');
-            const response = await fetch('/api/planning/weekly', {
+            const response = await Auth.fetchWithAuth('/api/planning/weekly', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     week_start_date: currentWeekStartStr,
@@ -179,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     expStatus.classList.add('hidden');
                 }, 3000);
+                loadHistory(); // Refresh history
             }
         } catch (e) {
             console.error("Failed to save expectation", e);
@@ -189,6 +182,61 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     saveExpBtn.addEventListener('click', saveWeeklyExpectation);
+
+    // --- History Logic ---
+    const loadHistory = async () => {
+        const container = document.getElementById('journal-history-container');
+        if (!container) return;
+        
+        try {
+            const res = await Auth.fetchWithAuth('/api/journal/history?limit=15');
+            if (res.ok) {
+                const data = await res.json();
+                renderHistory(data.data || []);
+            }
+        } catch (e) {
+            console.error("Failed to load history", e);
+        }
+    };
+
+    const renderHistory = (historyItems) => {
+        const container = document.getElementById('journal-history-container');
+        container.innerHTML = '';
+        
+        if (historyItems.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 italic">No past journals or expectations found.</p>';
+            return;
+        }
+
+        historyItems.forEach(item => {
+            const card = document.createElement('div');
+            // Fiona Protocol: Glassmorphism and high contrast UI
+            card.className = "bg-white bg-opacity-70 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-gray-200 transition hover:shadow-md";
+            
+            const isJournal = item.type === 'journal';
+            const icon = isJournal ? '📝' : '🎯';
+            const title = isJournal ? `Journal: ${item.date}` : `Expectation: Week of ${item.date}`;
+            const colorClass = isJournal ? 'text-blue-800' : 'text-indigo-900';
+            const badgeClass = isJournal ? 'bg-blue-100 text-blue-800' : 'bg-indigo-100 text-indigo-800';
+
+            // Show correlation ID if available (Hero lineage)
+            const lineageBadge = item.correlation_id ? `<span class="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-1 rounded ml-2" title="Data Lineage ID">🔗 ${item.correlation_id.substring(0,12)}...</span>` : '';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="text-lg font-bold ${colorClass} flex items-center gap-2">
+                        <span>${icon}</span> ${title}
+                    </h4>
+                    <div class="flex items-center">
+                        <span class="${badgeClass} text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">${item.type}</span>
+                        ${lineageBadge}
+                    </div>
+                </div>
+                <div class="text-gray-700 whitespace-pre-wrap font-medium">${item.text}</div>
+            `;
+            container.appendChild(card);
+        });
+    };
 
     init();
 });

@@ -3,6 +3,8 @@ import logging
 import re
 from typing import List, Dict, Any
 from src.utils.llm_factory import AgentLLMConfig
+from src.utils.llm_resilience import get_resilient_llm
+from src.utils.retry_utils import invoke_with_retry
 from langchain_core.prompts import ChatPromptTemplate
 from src.utils.path_utils import load_env_vars
 
@@ -70,14 +72,8 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             ("human", f"Here is the {time_context} batch of calendar events:\n{{events_batch}}")
         ])
         
-        # Primary: Groq Llama 3.3 70b (Bypasses Gemini API limits, highly capable of JSON reasoning)
-        primary_config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile", temperature=0.0)
-        primary_llm = primary_config.get_chat_model()
-        
-        # Fallback: Groq Llama 3.1 8b
-        fallback_config = AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant", temperature=0.0)
-        fallback_llm = fallback_config.get_chat_model()
-        llm_with_fallback = primary_llm.with_fallbacks([fallback_llm])
+        # Three-tier resilient LLM: Groq -> Gemini Flash -> Gemini Pro
+        llm_with_fallback = get_resilient_llm(task="gtky_classifier")
             
         chain = prompt | llm_with_fallback
         
@@ -119,12 +115,15 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
             logger.info(f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}...")
             
             try:
-                response = chain.invoke({
-                    "origin": json.dumps(origin_ctx),
-                    "ambition": json.dumps(ambition_ctx),
-                    "category_mapping": json.dumps(mapping_ctx) if mapping_ctx else "{}",
-                    "events_batch": json.dumps(events_subset, indent=2)
-                })
+                response = invoke_with_retry(
+                    chain.invoke,
+                    {
+                        "origin": json.dumps(origin_ctx),
+                        "ambition": json.dumps(ambition_ctx),
+                        "category_mapping": json.dumps(mapping_ctx) if mapping_ctx else "{}",
+                        "events_batch": json.dumps(events_subset, indent=2)
+                    }
+                )
                 
                 # Cleanup the markdown if it hallucinates it
                 raw_json = response.content.strip()

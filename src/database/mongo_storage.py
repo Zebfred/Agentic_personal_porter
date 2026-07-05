@@ -50,14 +50,21 @@ class SovereignMongoStorage:
         self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_unified_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
 
-    def save_journal_entry(self, log_data: dict, user_id: str = "Hero"):
+    def save_journal_entry(self, log_data: dict, user_id: str = "Hero", correlation_id: str = None):
         """
         Saves a direct Journal Entry into MongoDB using a nested monthly structure.
+        
+        Args:
+            log_data: The journal entry data dict.
+            user_id: The username identifier.
+            correlation_id: Optional cross-system lineage ID for data provenance.
         """
         day_str = log_data.get("day") # Expected format: "YYYY-MM-DD"
         time_chunk = log_data.get("timeChunk")
         
         if not day_str or not time_chunk:
+            if correlation_id:
+                log_data["correlation_id"] = correlation_id
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
             
@@ -73,6 +80,8 @@ class SovereignMongoStorage:
             # Prepare chunk data
             chunk_data = {k: v for k, v in log_data.items() if k not in ["day", "timeChunk"]}
             chunk_data["processed_at"] = datetime.now(timezone.utc)
+            if correlation_id:
+                chunk_data["correlation_id"] = correlation_id
             
             query = {"month_id": month_id, "user_id": user_id}
             update_path = f"weeks.{week_id}.{day_str}.chunks.{time_chunk}"
@@ -85,16 +94,27 @@ class SovereignMongoStorage:
         except ValueError:
             # Legacy string fallback (e.g. 'monday')
             log_data["processed_at"] = datetime.now(timezone.utc)
+            if correlation_id:
+                log_data["correlation_id"] = correlation_id
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
 
-    def save_freeform_journal(self, date_str: str, text: str, user_id: str = "Hero"):
+    def save_freeform_journal(self, date_str: str, text: str, user_id: str = "Hero", correlation_id: str = None):
         """
         Saves a freeform daily journal entry for a specific date.
+        
+        Args:
+            date_str: Date in "YYYY-MM-DD" format.
+            text: Freeform journal text.
+            user_id: The username identifier.
+            correlation_id: Optional cross-system lineage ID for data provenance.
         """
         query = {"date": date_str, "user_id": user_id}
         updated_at = datetime.now(timezone.utc).isoformat()
-        update = {"$set": {"text": text, "updated_at": updated_at}}
+        set_fields = {"text": text, "updated_at": updated_at}
+        if correlation_id:
+            set_fields["correlation_id"] = correlation_id
+        update = {"$set": set_fields}
         self.freeform_journal_col.update_one(query, update, upsert=True)
         return updated_at
 
@@ -104,6 +124,43 @@ class SovereignMongoStorage:
         """
         doc = self.freeform_journal_col.find_one({"date": date_str, "user_id": user_id}, {"_id": 0})
         return doc if doc else {}
+
+    def get_journal_and_expectation_history(self, user_id: str = "Hero", limit: int = 10, correlation_id: str = None) -> list:
+        """
+        Retrieves a combined history of recent freeform journals and weekly expectations.
+        If correlation_id is provided, fetches only the specific entry.
+        """
+        j_query = {"user_id": user_id}
+        e_query = {"user_id": user_id}
+        
+        if correlation_id:
+            j_query["correlation_id"] = correlation_id
+            e_query["correlation_id"] = correlation_id
+            
+        journals = list(self.freeform_journal_col.find(j_query, {"_id": 0}).sort("date", -1).limit(limit))
+        expectations = list(self.db["weekly_expectations"].find(e_query, {"_id": 0}).sort("week_start_date", -1).limit(limit))
+        
+        history = []
+        for j in journals:
+            history.append({
+                "type": "journal",
+                "date": j.get("date"),
+                "text": j.get("text", ""),
+                "correlation_id": j.get("correlation_id", ""),
+                "updated_at": j.get("updated_at")
+            })
+        for e in expectations:
+            history.append({
+                "type": "expectation",
+                "date": e.get("week_start_date"),
+                "text": e.get("expectation_text", ""),
+                "correlation_id": e.get("correlation_id", ""),
+                "updated_at": e.get("updated_at")
+            })
+            
+        # Sort combined history by date descending
+        history.sort(key=lambda x: x["date"], reverse=True)
+        return history[:limit]
 
     def update_journal_sync_status(self, mongo_doc_id: str, day_str: str, time_chunk: str, status_updates: dict, user_id: str = "Hero"):
         """
@@ -151,26 +208,63 @@ class SovereignMongoStorage:
         year_month format: 'YYYY-MM'
         """
         doc = self.journal_col.find_one({"month_id": year_month, "user_id": user_id}, {"_id": 0})
-        return doc if doc else {}
+        if not doc:
+            doc = {}
+            
+        # Fetch reflections for this month to determine which days have summaries generated
+        reflections_cursor = self.reflections_col.find(
+            {"day": {"$regex": f"^{year_month}-"}, "user_id": user_id}, 
+            {"day": 1, "_id": 0}
+        )
+        doc["reflections"] = [r["day"] for r in reflections_cursor]
+        
+        return doc
 
     def get_yearly_logs(self, year: str, user_id: str = "Hero") -> list:
         """
-        Retrieves all nested month objects for a given year.
+        Retrieves all nested month objects for a given year, including their reflections.
         year format: 'YYYY'
         """
-        # Regex matching YYYY-MM
         pattern = f"^{year}-"
         cursor = self.journal_col.find({"month_id": {"$regex": pattern}, "user_id": user_id}, {"_id": 0})
-        return list(cursor)
+        months_data = list(cursor)
+        
+        # Fetch all reflections for this year to determine which days have summaries generated
+        reflections_cursor = self.reflections_col.find(
+            {"day": {"$regex": f"^{year}-"}, "user_id": user_id}, 
+            {"day": 1, "_id": 0}
+        )
+        reflections = [r["day"] for r in reflections_cursor]
+        
+        # Inject reflections into the respective month docs
+        for month_doc in months_data:
+            m_id = month_doc.get("month_id")
+            month_doc["reflections"] = [d for d in reflections if d.startswith(m_id)]
+            
+        return months_data
 
-    def save_agent_reflection(self, reflection_data: dict):
+    def save_agent_reflection(self, reflection_data: dict, correlation_id: str = None):
         """
         Saves an AI-generated reflection into the agent_reflections collection.
         Expects keys: day, user_id, reflection_text, metadata.
+        
+        Args:
+            reflection_data: The reflection data dict.
+            correlation_id: Optional cross-system lineage ID — inherited from
+                           the source log that triggered the reflection.
         """
         reflection_data["created_at"] = datetime.now(timezone.utc)
+        if correlation_id:
+            reflection_data["correlation_id"] = correlation_id
         result = self.reflections_col.insert_one(reflection_data)
         return str(result.inserted_id)
+
+    def get_agent_reflection(self, day_str: str, user_id: str = "Hero") -> dict:
+        """
+        Retrieves a saved agent reflection for a specific day.
+        """
+        doc = self.reflections_col.find_one({"day": day_str, "user_id": user_id}, {"_id": 0})
+        return doc if doc else {}
 
     def save_telemetry_trace(self, trace_data: dict):
         """

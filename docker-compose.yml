@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   rag-service:
     build:
@@ -9,8 +7,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}
+    env_file:
+      - .auth/.env
     volumes:
       # Mount data directory for persistent vector store
       - ./data:/app/data
@@ -26,7 +25,46 @@ services:
     networks:
       - rag-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: porter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rag-network
+
+  porter-workers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: porter-workers
+    command: python -m src.events.workers
+    env_file:
+      - .auth/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+    networks:
+      - rag-network
+
 networks:
   rag-network:
     driver: bridge
 
+volumes:
+  redis-data:

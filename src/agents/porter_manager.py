@@ -14,6 +14,7 @@ from src.utils.token_circuit_breaker import TokenLimitExceededError
 from src.database.mongo_client.agent_health import AgentHeartbeatManager
 from src.agents.context_loader import get_context
 from src.agents.finops_agent import with_finops_trace
+from src.utils.retry_utils import with_llm_retry
 
 load_env_vars()
 raw_api_key = os.getenv("GROQ_API_KEY")
@@ -74,6 +75,7 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     
     runner = InMemoryRunner(agent=agent, app_name="porter")
     
+    @with_llm_retry
     async def run_adk():
         session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
         user_msg = types.Content(role="user", parts=[types.Part(text=query)])
@@ -138,6 +140,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
     
     runner = InMemoryRunner(agent=agent, app_name="porter")
     
+    @with_llm_retry
     async def run_adk():
         session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
         user_msg = types.Content(role="user", parts=[types.Part(text=query)])

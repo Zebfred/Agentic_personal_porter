@@ -199,6 +199,40 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             dayViewContainer.appendChild(card);
         });
+
+        // Load Sovereign Reflection if it exists for this day
+        fetchSovereignReflection(day);
+    };
+
+    const fetchSovereignReflection = async (day) => {
+        const dateStr = activeDateMap[day];
+        if (!dateStr) return;
+
+        const container = document.getElementById('daily-reflection-container');
+        const content = document.getElementById('daily-reflection-content');
+        
+        // Hide by default when switching days
+        container.classList.add('hidden');
+        content.innerHTML = '';
+
+        try {
+            const response = await Auth.fetchWithAuth(`/api/journal/reflection?date=${dateStr}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.data && data.data.reflection_text) {
+                    content.innerHTML = escapeHTML(data.data.reflection_text).replace(/\\n/g, '<br>');
+                    
+                    // Show correlation ID if available (Hero lineage)
+                    if (data.data.correlation_id) {
+                        content.innerHTML += `<div class="mt-4 text-right"><span class="text-xs font-mono bg-purple-100 text-purple-600 px-2 py-1 rounded" title="Data Lineage ID">🔗 ${data.data.correlation_id.substring(0,12)}...</span></div>`;
+                    }
+                    
+                    container.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch historical reflection", e);
+        }
     };
 
     /**
@@ -528,7 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return {};
     };
 
-    const hasLogsForDate = (dateStr) => {
+    const hasAnyLogsForDate = (dateStr) => {
         if (!monthlyLogData || !monthlyLogData.weeks) return false;
         for (const week of Object.values(monthlyLogData.weeks)) {
             if (week[dateStr] && week[dateStr].chunks && Object.keys(week[dateStr].chunks).length > 0) {
@@ -536,6 +570,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         return false;
+    };
+
+    const isDayComplete = (dateStr) => {
+        if (!monthlyLogData || !monthlyLogData.weeks) return false;
+        
+        let hasReflection = false;
+        if (monthlyLogData.reflections && monthlyLogData.reflections.includes(dateStr)) {
+            hasReflection = true;
+        }
+
+        // Fiona Protocol: Checkmark means Sovereign Report generated
+        return hasReflection;
     };
 
     const loadHistoricalWeek = (mondayDateObj) => {
@@ -613,7 +659,8 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 1; i <= daysInMonth; i++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
             const btn = document.createElement('button');
-            const hasLogs = hasLogsForDate(dateStr);
+            const hasLogs = hasAnyLogsForDate(dateStr);
+            const isComplete = isDayComplete(dateStr);
             
             btn.className = `relative p-2 aspect-square rounded-lg font-medium transition ${
                 hasLogs ? 'bg-green-50 text-green-900 border border-green-200 hover:bg-green-100 shadow-sm'
@@ -621,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }`;
             
             btn.textContent = i;
-            if (hasLogs) {
+            if (isComplete) {
                 btn.innerHTML += `<div class="absolute bottom-1 right-1 text-xs">✅</div>`;
             }
             

@@ -55,6 +55,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "pymongo>=4.6.1",
     "pymupdf~=1.26.6",
+    "redis>=5.0.0",
     "pytest>=9.0.3",
     "python-dotenv>=1.2.2",
     "rich==14.3.4",
@@ -71,6 +72,7 @@ dependencies = [
     "cloudevents==1.12.0",
     "google-cloud-billing>=1.19.0",
     "functions-framework>=3.10.1",
+    "weaviate-client>=3.26.7,<4.0.0",
 ]
 
 [dependency-groups]
@@ -89,7 +91,7 @@ typeCheckingMode = "basic"
 src = ["."]
 
 [tool.codespell]
-skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
+skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture,./uv.lock"
 ignore-words-list = "rouge"
 
 [tool.mypy]

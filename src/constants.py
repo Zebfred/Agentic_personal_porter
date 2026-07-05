@@ -13,7 +13,7 @@ from src.config import MongoConfig
 # This is the "Learning" base. We map keywords and Google Colors to Pillars.
 # We load ACTUAL_CATEGORY_MAPPING dynamically from MongoDB (Sovereign Mongo Storage representation).
 try:
-    client = MongoClient(MongoConfig.MONGO_URI)
+    client = MongoClient(MongoConfig.MONGO_URI, serverSelectionTimeoutMS=2000)
     db = client[MongoConfig.DB_NAME]
     # Artifact name is stored as 'category_mapping' without '.json' in MongoDB
     doc = db["hero_artifacts"].find_one({"artifact_name": "category_mapping", "username": "system"}, {"_id": 0})

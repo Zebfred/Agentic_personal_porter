@@ -9,7 +9,7 @@ PYTHON = uv run python
 PIP = pip
 
 # Phony targets to prevent conflicts with file names
-.PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse
+.PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse sync-brain ingest-private-brain trace-lineage
 
 help: ## Show this help message with available commands
 	@echo "Agentic Personal Porter Management Commands:"
@@ -36,7 +36,7 @@ dev: ## Start the backend in development mode (Flask server)
 
 run: build-css ## Start the backend in production mode (Gunicorn)
 	@echo "Starting production server on port $(PORT)..."
-	conda run -n $(CONDA_ENV) gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
+	conda run -n $(CONDA_ENV) $(PYTHON) -m gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
 	@proj_id="$(PROJECT_ID)"; \
@@ -58,6 +58,19 @@ lint:
 
 pulse: ## Execute the local system health diagnostic
 	PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py
+
+trace-lineage: ## Trace a correlation ID across all data sources (Mongo, Neo4j, ChromaDB)
+	@if [ -z "$(ID)" ]; then \
+		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list; \
+	else \
+		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID); \
+	fi
+
+sync-brain: ## Automate committing and pushing updates to the Agentic_Private_Brain submodule
+	@./Agentic_Private_Brain/deployment_scripts/sync_brain.sh
+
+ingest-private-brain: ## Parse the Agentic_Private_Brain and push vectors to Weaviate Cloud
+	PYTHONPATH=. conda run -n $(CONDA_ENV) uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
 
 # --- Frontend Assets ---
 build-css: ## Build and minify Tailwind CSS assets

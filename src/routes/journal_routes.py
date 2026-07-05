@@ -2,7 +2,6 @@
 Journal and daily log routes.
 
 Handles saving time-chunk logs, retrieving historical monthly data,
-Handles saving time-chunk logs, retrieving historical monthly data,
 and triggering the daily AI reflection via LangGraph.
 """
 import logging
@@ -19,6 +18,8 @@ from src.routes.calendar_routes import fetch_calendar_events_for_date
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
 from src.database.mongo_client.uuid_manager import UUIDGenerator
+from src.utils.correlation import generate_correlation_id, generate_freeform_correlation_id
+from src.events.publisher import publish_journal_event
 
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
@@ -62,15 +63,25 @@ def save_log():
             user_doc = mongo_storage.get_user_by_email(user_email)
             username = user_doc.get("username", "Hero") if user_doc else "Hero"
 
-        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
-        
         day_str = str(log_data_dict.get("day", "unknown_date"))
         time_chunk = str(log_data_dict.get("timeChunk", "unknown_time"))
+
+        # Generate deterministic correlation ID for cross-system lineage
+        correlation_id = generate_correlation_id(
+            user_id=username,
+            day_str=day_str,
+            time_chunk=time_chunk,
+            entry_type="log"
+        )
+        logger.info(f"[LINEAGE] Generated correlation_id: {correlation_id}")
+
+        # 1. Save pristine Frontend log to MongoDB Landing Zone (with lineage)
+        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict, correlation_id=correlation_id)
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
         db_confirmation = "Failed"
         try:
-            db_confirmation = log_to_neo4j(log_data_dict, username)
+            db_confirmation = log_to_neo4j(log_data_dict, username, correlation_id=correlation_id)
             mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
                 "neo4j": True,
                 "saga_status.status": "GRAPH_INJECTED",
@@ -120,6 +131,7 @@ def save_log():
                     "gcal_id": synthetic_gcal_id,
                     "time_slot": time_slot,
                     "actual": actual_payload,
+                    "correlation_id": correlation_id,
                     "metadata": {
                         "source": "adventure_log",
                         "last_sync": datetime.now(timezone.utc).isoformat()
@@ -134,7 +146,8 @@ def save_log():
                     "user_id": username,
                     "time_slot": time_slot,
                     "intent": intent_payload,
-                    "actual": actual_payload
+                    "actual": actual_payload,
+                    "correlation_id": correlation_id
                 }},
                 upsert=True
             )
@@ -143,10 +156,19 @@ def save_log():
             logger.warning(f"Failed to write to actuals/unified: {e_actual}")
             mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {"mongo_actuals": False, "unified": False, "mongo_error": str(e_actual)}, user_id=username)
 
+        # 4. Publish CDC event for async VectorDB embedding (hybrid mode)
+        publish_journal_event(
+            correlation_id=correlation_id,
+            entry_type="log",
+            payload=log_data_dict,
+            user_id=username
+        )
+
         return jsonify({
             "status": "success",
             "mongo_id": mongo_doc_id,
-            "db_status": db_confirmation
+            "db_status": db_confirmation,
+            "correlation_id": correlation_id
         })
     except Exception as e:
         logger.error(f"Error saving log: {e}", exc_info=True)
@@ -177,6 +199,14 @@ def save_weekly_expectation():
             return jsonify({"error": "Missing week_start_date or expectation_text"}), 400
 
         updated_at = datetime.now(timezone.utc).isoformat()
+
+        # Generate deterministic correlation ID for cross-system lineage
+        correlation_id = generate_correlation_id(
+            user_id=username,
+            day_str=week_start_date,
+            entry_type="weekly"
+        )
+        logger.info(f"[LINEAGE] Generated weekly correlation_id: {correlation_id}")
         
         # Save to MongoDB weekly_expectations
         db = MongoConnectionManager.get_db()
@@ -186,7 +216,8 @@ def save_weekly_expectation():
             {"user_id": username, "week_start_date": week_start_date},
             {"$set": {
                 "expectation_text": expectation_text,
-                "updated_at": updated_at
+                "updated_at": updated_at,
+                "correlation_id": correlation_id
             }},
             upsert=True
         )
@@ -194,25 +225,35 @@ def save_weekly_expectation():
         # Inject to Neo4j (Week)-[:PLANNED_AS]->(Intention)
         neo4j_status = "Failed"
         try:
-            with NeoConfig.get_driver().session() as session:
+            from src.database.neo4j_client.connection import get_driver
+            with get_driver().session() as session:
                 query = """
                 MERGE (u:User {id: $username})
                 MERGE (w:Week {id: $week_start_date})
                 MERGE (u)-[:EXPERIENCED]->(w)
                 MERGE (i:Intention {type: "Weekly Expectation", week: $week_start_date})
-                SET i.text = $expectation_text, i.updated_at = $timestamp
+                SET i.text = $expectation_text, i.updated_at = $timestamp, i.source_id = $correlation_id
                 MERGE (w)-[:PLANNED_AS]->(i)
                 """
                 session.run(query, {
                     "username": username,
                     "week_start_date": week_start_date,
                     "expectation_text": expectation_text,
-                    "timestamp": updated_at
+                    "timestamp": updated_at,
+                    "correlation_id": correlation_id
                 })
                 neo4j_status = "Success"
         except Exception as neo_e:
             logger.warning(f"Failed to inject weekly expectation to Neo4j: {neo_e}")
             neo4j_status = f"Neo4j Error: {neo_e}"
+
+        # Publish CDC event for async VectorDB embedding (hybrid mode)
+        publish_journal_event(
+            correlation_id=correlation_id,
+            entry_type="weekly",
+            payload={"expectation_text": expectation_text, "week_start_date": week_start_date},
+            user_id=username
+        )
 
         return jsonify({
             "status": "success",
@@ -271,10 +312,25 @@ def save_freeform_journal():
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
         username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        # Generate freeform correlation ID with HH:MM:SS timestamp
+        correlation_id = generate_freeform_correlation_id(
+            user_id=username,
+            day_str=date_str
+        )
+        logger.info(f"[LINEAGE] Generated freeform correlation_id: {correlation_id}")
         
-        updated_at = mongo_storage.save_freeform_journal(date_str, text, username)
+        updated_at = mongo_storage.save_freeform_journal(date_str, text, username, correlation_id=correlation_id)
+
+        # Publish CDC event for async VectorDB embedding (hybrid mode)
+        publish_journal_event(
+            correlation_id=correlation_id,
+            entry_type="freeform",
+            payload={"text": text, "date": date_str},
+            user_id=username
+        )
         
-        return jsonify({"status": "success", "updated_at": updated_at})
+        return jsonify({"status": "success", "updated_at": updated_at, "correlation_id": correlation_id})
     except Exception as e:
         logger.error(f"Error saving freeform journal: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
@@ -302,6 +358,35 @@ def get_freeform_journal():
     except Exception as e:
         logger.error(f"Error fetching freeform journal: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/journal/history', methods=['GET'])
+@require_api_key
+def get_journal_history():
+    """
+    Fetches the combined history of recent freeform journals and weekly expectations.
+    """
+    try:
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        
+        limit = int(request.args.get("limit", 10))
+        correlation_id = request.args.get("correlation_id")
+        
+        history = mongo_storage.get_journal_and_expectation_history(username, limit=limit, correlation_id=correlation_id)
+        
+        # Convert datetime to string for json serialization if necessary
+        for item in history:
+            updated_at = item.get("updated_at")
+            if updated_at and not isinstance(updated_at, str):
+                item["updated_at"] = updated_at.isoformat()
+                
+        return jsonify({"status": "success", "data": history})
+    except Exception as e:
+        logger.error(f"Error fetching journal history: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
 
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
 @require_api_key
@@ -438,6 +523,31 @@ def process_journal():
 
     except Exception as e:
         logger.error(f"Error reading request data: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@journal_bp.route('/api/journal/reflection', methods=['GET', 'OPTIONS'])
+@require_api_key
+def get_daily_reflection():
+    """
+    Fetches the agent reflection for a specific day.
+    """
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        date_str = request.args.get("date")
+        if not date_str:
+            return jsonify({"error": "Missing date parameter"}), 400
+            
+        user_email = getattr(request, 'user_email', 'Hero')
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        
+        doc = mongo_storage.get_agent_reflection(date_str, username)
+        
+        return jsonify({"status": "success", "data": doc})
+    except Exception as e:
+        logger.error(f"Error fetching reflection: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 @journal_bp.route('/api/journal/edit_event', methods=['POST', 'OPTIONS'])
