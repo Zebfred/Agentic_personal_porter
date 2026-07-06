@@ -28,7 +28,7 @@ try:
         # Fallback to local files
         auth_file = root_dir / ".auth" / "category_mapping.json"
         example_file = root_dir / "data" / "category_mapping.example.json"
-        
+
         loaded = False
         for filepath in [auth_file, example_file]:
             if filepath.exists():
@@ -40,7 +40,7 @@ try:
                     break
                 except Exception as file_err:
                     logger.warning(f"Error reading local category mapping fallback file {filepath}: {file_err}")
-        
+
         if not loaded:
             logger.warning("category_mapping artifact not found in MongoDB or local files. Using empty fallback.")
             ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}

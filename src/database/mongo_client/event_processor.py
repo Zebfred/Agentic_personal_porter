@@ -36,27 +36,27 @@ class EventProcessorClient:
         gcal_id = raw_gcal_event.get('id')
         if not gcal_id:
             return None
-            
+
         event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
-        
+
         # 1. Parse base details
         start_str = raw_gcal_event.get('start', {}).get('dateTime') or raw_gcal_event.get('start', {}).get('date')
         end_str = raw_gcal_event.get('end', {}).get('dateTime') or raw_gcal_event.get('end', {}).get('date')
-        
+
         if not start_str or not end_str:
             return None
-            
+
         start_dt = parser.parse(start_str)
         end_dt = parser.parse(end_str)
         duration_mins = int((end_dt - start_dt).total_seconds() / 60)
-        
+
         title = raw_gcal_event.get('summary', 'Untitled')
         color_id = raw_gcal_event.get('colorId', '1')
-        
+
         # Determine category (Pillar/Subcategory)
         category_data = determine_category(title, color_id)
         # record_type = event_record_type(raw_gcal_event) # Commented out per Mach 3 Rework: GCal is strictly Intent.
-        
+
         # Build Standard Payload Block
         base_payload = {
             "title": title,
@@ -64,7 +64,7 @@ class EventProcessorClient:
             "subcategory": category_data.get("subcategory"),
             "duration_minutes": duration_mins
         }
-        
+
         # Time slot
         time_slot = {
             "start": start_dt.isoformat(),
@@ -73,7 +73,7 @@ class EventProcessorClient:
 
         # Handle Routing based on Record Type
         # Mach 3 Rework: Google Calendar is strictly the source of Intent.
-        
+
         # 1. Update Intention Collection
         self.intent_col.update_one(
             {"_id": event_uuid},
@@ -89,15 +89,15 @@ class EventProcessorClient:
             }},
             upsert=True
         )
-        
+
         # 2. Actuals are NO LONGER written from Google Calendar ingestion.
         # They are strictly written from the Adventure Log and Verification Dashboard.
         actual_payload = None
-            
+
         # 3. Update Unified Collection
         # This allows a single query to calculate the Delta natively, exactly as requested.
         # We perform an upsert that specifically sets the fields independently so Actuals don't overwrite Intents.
-        
+
         unified_update = {
             "$set": {
                 "user_id": user_email,
@@ -109,7 +109,7 @@ class EventProcessorClient:
                 }
             }
         }
-        
+
         # Note: GCal is strictly Intent. We always set the intent block.
         # Actuals and Deltas will be set by the Human-in-the-Loop workflows.
 
@@ -118,13 +118,13 @@ class EventProcessorClient:
             unified_update,
             upsert=True
         )
-        
+
         # 4. Mark the source raw event as processed to close the staging loop
         self.timeseries_col.update_many(
             {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
             {"$set": {"metadata.sync_status": "processed"}}
         )
-        
+
         return event_uuid
 
     def process_and_route_events_batch(self, raw_gcal_events: list[dict], user_email: str):

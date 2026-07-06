@@ -58,14 +58,23 @@ trigger: always_on
 
 ## Building and Running
 
+### Tailwind CSS Version
+- Use **Tailwind CSS v4** (via `@tailwindcss/cli`) for compiling frontend stylesheets.
+- The build target is `make build-css` (which executes `npm run build:css` to compile `./frontend/css/input.css` to `./frontend/css/style.css`).
+
 ## Environment manager use conda
 
 ### Package Dependencies
 - **uv:** Python package manager (using workspaces)
 - **Google Cloud SDK:** For interacting with GCP services
 - **make:** For running common development tasks
+- **Weaviate:** Vector database client (`weaviate-client`) for managing private brain vectors and semantic lookups.
+
+### Private Brain & Vector Search
+- Use the **Weaviate** database for semantic lookup and indexing of the private brain knowledge bases. Avoid raw file reads where Weaviate vector lookup is applicable.
 
 Project dependencies are managed via `uv` in the `pyproject.toml` workspace.
+
 
 ### Python:
 - Use type hints where appropriate

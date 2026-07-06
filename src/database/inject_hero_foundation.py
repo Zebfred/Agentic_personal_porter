@@ -15,22 +15,22 @@ def get_or_create_time_chunk(driver, target_datetime, username="system"):
     Enforces UTC to ensure consistent chunk generation.
     """
     from datetime import timezone
-    
+
     # Enforce UTC
     if target_datetime.tzinfo is None:
         dt = target_datetime.replace(tzinfo=timezone.utc)
     else:
         dt = target_datetime.astimezone(timezone.utc)
-        
+
     chunk_index = (dt.hour // 4) + 1
-    
+
     year, week, _ = dt.isocalendar()
     day_of_week = dt.weekday() + 1
-    
+
     week_id = f"{year}-W{week:02d}"
     day_id = f"{week_id}-D{day_of_week}"
     chunk_id = f"{day_id}-C{chunk_index}"
-    
+
     query = """
     MATCH (h:Hero {hero: $username})-[:ADHERES_TO]->(t_hub:TimeHub)
     
@@ -45,11 +45,11 @@ def get_or_create_time_chunk(driver, target_datetime, username="system"):
     
     RETURN tc.id AS time_chunk_id
     """
-    
+
     try:
         with driver.session() as session:
-            result = session.run(query, username=username, week_id=week_id, year=year, week=week, 
-                                 day_id=day_id, day_of_week=day_of_week, 
+            result = session.run(query, username=username, week_id=week_id, year=year, week=week,
+                                 day_id=day_id, day_of_week=day_of_week,
                                  chunk_id=chunk_id, chunk_index=chunk_index)
             record = result.single()
             return record["time_chunk_id"] if record else None
@@ -65,22 +65,22 @@ def flatten_intents(raw_intents):
     flattened = []
     for intent_dict in raw_intents:
         for main_category, value in intent_dict.items():
-            
+
             # Case 1: Simple String (e.g., Career Goal, Health Goal)
             if isinstance(value, str):
                 flattened.append({
-                    "category": main_category, 
-                    "description": value, 
+                    "category": main_category,
+                    "description": value,
                     "parent_category": "None"
                 })
-                
+
             # Case 2: List of items
             elif isinstance(value, list):
                 # Subcase A: List of strings (e.g., Social Goal)
                 if all(isinstance(i, str) for i in value):
                     flattened.append({
-                        "category": main_category, 
-                        "description": " ".join(value), 
+                        "category": main_category,
+                        "description": " ".join(value),
                         "parent_category": "None"
                     })
                 # Subcase B: List of dictionaries (e.g., Loved ones)
@@ -91,8 +91,8 @@ def flatten_intents(raw_intents):
                     for sub_dict in value:
                         for sub_cat, sub_desc in sub_dict.items():
                             flattened.append({
-                                "category": sub_cat, 
-                                "description": sub_desc, 
+                                "category": sub_cat,
+                                "description": sub_desc,
                                 "parent_category": main_category
                             })
     return flattened
@@ -108,7 +108,7 @@ def process_epochs(raw_epochs):
     for epoch in raw_epochs:
         epoch_name = epoch.get("name", "Unknown Epoch")
         timeframe = epoch.get("timeframe", "Unknown Timeframe")
-        
+
         processed_epochs.append({
             "name": epoch_name,
             "timeframe": timeframe
@@ -118,10 +118,10 @@ def process_epochs(raw_epochs):
         for exp in epoch.get("experiences", []):
             title = exp.get("title", "").strip()
             desc = exp.get("description", "").strip()
-            
+
             # If the title is blank, we can treat it as an empty slot for the agent
             status = "Logged" if desc else "Needs_Detail"
-            
+
             # Only append if there's actually a title or a description
             if title or desc:
                 processed_experiences.append({
@@ -148,7 +148,7 @@ def inject_hero_data(username=None):
     if username is None:
         username = os.environ.get("HERO_NAME", "Hero")
     """Reads the JSON and runs the Cypher queries to build the Hero foundation."""
-    
+
     ambition_data = mongo_storage.get_hero_artifact('hero_ambition', username)
     if not ambition_data:
         logger.info("Error: hero_ambition not found in MongoDB.")
@@ -159,14 +159,14 @@ def inject_hero_data(username=None):
     #Might be better way to parse
     #flat_intents = flatten_intents(ambition_data.get("Intent", []))
 
-    
+
     origin_data = mongo_storage.get_hero_artifact('hero_origin', username)
     if not origin_data:
         logger.info("Error: hero_origin not found in MongoDB.")
         return
     raw_epochs = origin_data.get("origin_story", {}).get("epochs", [])
     epochs_data, experiences_data = process_epochs(raw_epochs)
-    
+
 
     # 3. Cypher Queries
     merge_hero_and_principles_query = """
@@ -258,7 +258,7 @@ def inject_hero_data(username=None):
         if pillars_list:
             session.run(merge_pillars_query, username=username, pillars=pillars_list)
             logger.info(f"✨ Dynamically injected {len(pillars_list)} Life Pillars!")
-        
+
         session.run(merge_intents_query, username=username, intents=flat_intents)
         logger.info(f"✨ Gorgeously injected {len(flat_intents)} Intents!")
 

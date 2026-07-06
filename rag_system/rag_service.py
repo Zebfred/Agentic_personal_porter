@@ -43,13 +43,13 @@ async def lifespan(app: FastAPI):
     logger.info("Starting ResearchAgent RAG Service")
     logger.info("Service version: 1.0.0")
     logger.info(f"Environment: {os.getenv('ENVIRONMENT', 'development')}")
-    
+
     # Check required environment variables
     if not os.getenv('GROQ_API_KEY'):
         logger.warning("GROQ_API_KEY not set - query endpoint will not work")
     else:
         logger.info("GROQ_API_KEY configured")
-    
+
     # Check vector store
     try:
         vs = VectorStore()
@@ -57,9 +57,9 @@ async def lifespan(app: FastAPI):
         logger.info(f"Vector store initialized with {size} chunks")
     except Exception as e:
         logger.warning(f"Vector store check failed: {e}")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down ResearchAgent RAG Service")
 
@@ -91,7 +91,7 @@ app.add_middleware(
 async def log_requests(request: Request, call_next):
     """Log all HTTP requests with timing information."""
     start_time = time.time()
-    
+
     # Log request
     logger.info(
         f"Request: {request.method} {request.url.path}",
@@ -102,12 +102,12 @@ async def log_requests(request: Request, call_next):
             "query_params": dict(request.query_params)
         }
     )
-    
+
     # Process request
     try:
         response = await call_next(request)
         process_time = time.time() - start_time
-        
+
         # Log response
         logger.info(
             f"Response: {request.method} {request.url.path} - {response.status_code}",
@@ -118,11 +118,11 @@ async def log_requests(request: Request, call_next):
                 "process_time": f"{process_time:.3f}s"
             }
         )
-        
+
         # Add timing header
         response.headers["X-Process-Time"] = f"{process_time:.3f}"
         return response
-        
+
     except Exception as e:
         process_time = time.time() - start_time
         logger.error(
@@ -199,9 +199,9 @@ async def health():
         logger.debug("Health check requested")
         vector_store = VectorStore()
         collection_size = vector_store.get_collection_size()
-        
+
         logger.info(f"Health check: healthy, vector_store_size={collection_size}")
-        
+
         return HealthResponse(
             status="healthy",
             vector_store_size=collection_size,
@@ -227,13 +227,13 @@ async def query(request: QueryRequest):
         QueryResponse with answer, sources, and metadata
     """
     query_start_time = time.time()
-    
+
     try:
         logger.info(
             f"Processing query: '{request.query[:100]}...' (top_k={request.top_k})",
             extra={"query_length": len(request.query), "top_k": request.top_k}
         )
-        
+
         # Check for API key
         if not os.getenv('GROQ_API_KEY'):
             logger.error("Query failed: GROQ_API_KEY not configured")
@@ -241,11 +241,11 @@ async def query(request: QueryRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="GROQ_API_KEY not configured"
             )
-        
+
         # Get query engine
         engine = get_query_engine()
         logger.debug("Query engine initialized")
-        
+
         # Check if vector store has data
         vector_store = VectorStore()
         collection_size = vector_store.get_collection_size()
@@ -255,16 +255,16 @@ async def query(request: QueryRequest):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Vector store is empty. Please rebuild the index first using /rebuild_index"
             )
-        
+
         logger.debug(f"Vector store has {collection_size} chunks")
-        
+
         # Process query
         result = engine.answer_question(request.query, top_k=request.top_k)
-        
+
         query_time = time.time() - query_start_time
         retrieved_count = len(result.get('retrieved_chunks', []))
         sources_count = len(result.get('sources', []))
-        
+
         logger.info(
             f"Query completed successfully in {query_time:.2f}s",
             extra={
@@ -274,14 +274,14 @@ async def query(request: QueryRequest):
                 "answer_length": len(result.get('answer', ''))
             }
         )
-        
+
         return QueryResponse(
             query=request.query,
             answer=result['answer'],
             sources=result['sources'],
             retrieved_chunks_count=retrieved_count
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -313,41 +313,41 @@ async def rebuild_index(
         RebuildIndexResponse with status and metadata
     """
     rebuild_start_time = time.time()
-    
+
     try:
         logger.info(
             f"Rebuilding index: strategy={chunking_strategy}, collection={collection_name}",
             extra={"chunking_strategy": chunking_strategy, "collection_name": collection_name}
         )
-        
+
         # Determine chunk file
         chunk_file_map = {
             'fixed': 'data/chunks_fixed.json',
             'fast_semantic': 'data/chunks_fast_semantic.json',
             'science_semantic': 'data/chunks_science_semantic.json'
         }
-        
+
         if chunking_strategy not in chunk_file_map:
             logger.error(f"Invalid chunking_strategy: {chunking_strategy}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid chunking_strategy. Must be one of: {list(chunk_file_map.keys())}"
             )
-        
+
         chunk_file = Path(chunk_file_map[chunking_strategy])
-        
+
         if not chunk_file.exists():
             logger.error(f"Chunk file not found: {chunk_file}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Chunk file not found: {chunk_file}"
             )
-        
+
         logger.info(f"Loading chunks from {chunk_file}")
         # Load chunks
         chunks = load_chunks(chunk_file)
         logger.info(f"Loaded {len(chunks)} chunks")
-        
+
         # Build index
         logger.info("Building vector index...")
         vector_store = build_index(
@@ -355,16 +355,16 @@ async def rebuild_index(
             collection_name=collection_name,
             batch_size=32
         )
-        
+
         final_size = vector_store.get_collection_size()
-        
+
         # Reset query engine to use new index
         global _query_engine
         _query_engine = None
         logger.info("Query engine reset to use new index")
-        
+
         rebuild_time = time.time() - rebuild_start_time
-        
+
         logger.info(
             f"Index rebuilt successfully in {rebuild_time:.2f}s",
             extra={
@@ -375,14 +375,14 @@ async def rebuild_index(
                 "rebuild_time": f"{rebuild_time:.2f}s"
             }
         )
-        
+
         return RebuildIndexResponse(
             status="success",
             message=f"Index rebuilt successfully using {chunking_strategy} chunks",
             chunks_indexed=len(chunks),
             collection_name=collection_name
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

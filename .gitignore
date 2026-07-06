@@ -25,9 +25,11 @@ token.pickle
 token.json
 credentials.json
 *.json
+!package.json
 
 # Ignore sensitive data
 data/*
+!data/category_mapping.example.json
 *.bin
 src/data/chroma_db/*
 tailwindcss

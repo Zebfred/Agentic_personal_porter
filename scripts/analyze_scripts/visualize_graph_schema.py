@@ -21,23 +21,23 @@ def visualize_schema():
             # Call the built-in Neo4j schema visualization procedure (Requires APOC usually, or built-in schema tools depending on version)
             # Alternative: use standard cypher to extract distinct labels and rels
             logger.info("Extracting current Graph Schema...")
-            
+
             nodes_query = "CALL db.labels() YIELD label RETURN collect(label) as labels"
             rels_query = "CALL db.relationshipTypes() YIELD relationshipType RETURN collect(relationshipType) as rels"
-            
+
             node_result = session.run(nodes_query).single()
             labels = node_result["labels"] if node_result else []
-            
+
             rel_result = session.run(rels_query).single()
             rels = rel_result["rels"] if rel_result else []
-            
+
             # Simple summary of graph shape
             shape_query = """
             MATCH (a)-[r]->(b)
             RETURN labels(a) AS source, type(r) AS rel_type, labels(b) AS target, count(*) as count
             ORDER BY count DESC
             """
-            
+
             shape_result = session.run(shape_query)
             patterns = []
             for record in shape_result:
@@ -47,15 +47,15 @@ def visualize_schema():
                     "target_labels": record["target"],
                     "occurrences": record["count"]
                 })
-            
+
             schema = {
                 "node_labels": labels,
                 "relationship_types": rels,
                 "observed_patterns": patterns
             }
-            
+
             logger.info(json.dumps(schema, indent=2))
-            
+
     except Exception as e:
         logger.info(f"Error extracting schema: {e}")
         logger.info("Note: The db.labels() or db.relationshipTypes() procedures might not be available depending on your Neo4j version/plugins.")

@@ -15,7 +15,7 @@ class AgentLLMConfig(BaseModel):
     model: str
     temperature: float = 0.0
     max_tokens: Optional[int] = 4096
-    
+
     def get_chat_model(self, **kwargs: Any) -> BaseChatModel:
         """Returns the appropriate LangChain chat model based on the configuration."""
         if self.provider == "groq":
@@ -30,7 +30,7 @@ class AgentLLMConfig(BaseModel):
                 max_tokens=self.max_tokens,
                 **kwargs
             )
-            
+
         elif self.provider == "openai":
             from langchain_openai import ChatOpenAI
             api_key = os.getenv("OPENAI_API_KEY", "")
@@ -43,12 +43,12 @@ class AgentLLMConfig(BaseModel):
                 max_tokens=self.max_tokens,
                 **kwargs
             )
-            
+
         elif self.provider == "vertex":
             from langchain_google_vertexai import ChatVertexAI
             project = os.getenv("PROJECT_ID")
             location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-            
+
             return ChatVertexAI(
                 model_name=self.model,
                 temperature=self.temperature,
@@ -57,14 +57,14 @@ class AgentLLMConfig(BaseModel):
                 location=location,
                 **kwargs
             )
-            
+
         elif self.provider == "google_genai":
             # Newer unified SDK — handles both API key and Vertex AI auth.
             # Recommended by LangChain for Gemini 3.x+ models.
             from langchain_google_genai import ChatGoogleGenerativeAI
             project = os.getenv("PROJECT_ID")
             location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
-            
+
             return ChatGoogleGenerativeAI(
                 model=self.model,
                 temperature=self.temperature,
@@ -74,6 +74,6 @@ class AgentLLMConfig(BaseModel):
                 location=location,
                 **kwargs
             )
-            
+
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")

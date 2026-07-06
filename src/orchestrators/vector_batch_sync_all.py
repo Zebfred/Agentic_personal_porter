@@ -18,11 +18,11 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
     - journal_time_entries -> Weaviate (Hybrid Search Intent/Actual tracking)
     """
     logger.info(f"[{datetime.now(timezone.utc).isoformat()}] Starting Isolated Vector Database Batch Sync: {sync_trigger_time}")
-    
+
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
     health_manager = AgentHeartbeatManager()
     run_id = health_manager.start_agent_run("vector_sync_orchestrator", {"sync_trigger_time": sync_trigger_time, "limit": limit})
-    
+
     try:
         # 0. Wake up the massive BGE-M3 instance for vector generation
         cloud_client = GCPComputeClient()
@@ -32,16 +32,16 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
         db = MongoConnectionManager.get_db()
         journal_col = db["journal_time_entries"]
         reflections_col = db["agent_reflections"]
-        
+
         raw_reflections = list(reflections_col.find().sort("created_at", -1).limit(limit))
         raw_journals = list(journal_col.find().sort("created_at", -1).limit(limit))
-        
+
         logger.info(f"Fetched {len(raw_reflections)} reflections and {len(raw_journals)} journal entries from Mongo.")
-        
+
         # 1. Processing and homogenizing the Mongo documents
         chroma_items = []
         weaviate_items = []
-        
+
         for doc in raw_reflections:
             reflection_text = doc.get("reflection_text", "")
             if not reflection_text: continue
@@ -49,11 +49,11 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
             chroma_items.append({
                 "id": f"reflection_{doc_id}",
                 "text": reflection_text,
-                "pillar": "Daily Reflection", 
+                "pillar": "Daily Reflection",
                 "source": "agent_reflection",
                 "db_timestamp": str(doc.get("created_at", ""))
             })
-            
+
         for doc in raw_journals:
             j_text = doc.get("text", "")
             if not j_text:
@@ -64,7 +64,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
             weaviate_items.append({
                 "id": f"journal_{doc_id}",
                 "text": j_text,
-                "pillar": doc.get("pillar", "Mundane Goal"), 
+                "pillar": doc.get("pillar", "Mundane Goal"),
                 "source": "journal_entry",
                 "db_timestamp": str(doc.get("created_at", ""))
             })
@@ -75,12 +75,12 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
             return
 
         embeddings_client = BGEM3EmbeddingsClient()
-        
+
         logger.info("Beginning BGE-M3 target embedding generation...")
         for item in chroma_items + weaviate_items:
             item["embedding"] = embeddings_client.get_embedding(item["text"])
-        
-        # 4. Isolated Insertions 
+
+        # 4. Isolated Insertions
         if chroma_items:
             chroma = ChromaExperimentalClient()
             chroma.insert_batch(
@@ -90,17 +90,17 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
                 documents=[r["text"] for r in chroma_items]
             )
             logger.info(f"Pushed {len(chroma_items)} items to ChromaDB.")
-            
+
         if weaviate_items:
             weaviate = WeaviateExperimentalClient()
             weaviate_vectors = [{"text": r["text"], "pillar": r["pillar"], "embedding": r["embedding"]} for r in weaviate_items]
             weaviate.insert_batch(weaviate_vectors)
             logger.info(f"Pushed {len(weaviate_items)} items to Weaviate.")
-        
+
         # 5. Shut down the heavy ML infrastructure to conserve budget
         logger.info("Vector batch inserted! Stopping Ollama Vector Host to save costs.")
         cloud_client.sleep_instance("ollama-vector-host")
-        
+
         # 6. Log Status
         try:
             storage = SovereignMongoStorage()
@@ -116,7 +116,7 @@ def execute_sync(sync_trigger_time: str = "NOON", limit: int = 20):
 
         logger.info("Isolated batch synchronization completed successfully.")
         health_manager.end_agent_run(run_id, status="success", result_summary=f"Synced {len(chroma_items)} to Chroma, {len(weaviate_items)} to Weaviate.")
-        
+
     except Exception as e:
         logger.info(f"Error during vector sync: {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))

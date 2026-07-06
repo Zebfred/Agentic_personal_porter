@@ -2,7 +2,6 @@ import json
 import logging
 import re
 from typing import List, Dict, Any
-from src.utils.llm_factory import AgentLLMConfig
 from src.utils.llm_resilience import get_resilient_llm
 from src.utils.retry_utils import invoke_with_retry
 from langchain_core.prompts import ChatPromptTemplate
@@ -37,7 +36,7 @@ class GTKYBaseClassifier:
         origin_ctx = self._load_artifact("hero_origin", username)
         ambition_ctx = self._load_artifact("hero_ambition", username)
         mapping_ctx = self._load_artifact("category_mapping", username)
-        
+
         # System Prompt
         system_prompt = f"""You are the GTKY {agent_role} Agent. Your duty is to review {username}'s raw {time_context} Google Calendar events 
 and rigidly classify them into "Golden Objects" based on {username}'s Origin Story and Ambitions.
@@ -66,33 +65,33 @@ Schema per object:
 
 Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
 """
-        
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", system_prompt),
             ("human", f"Here is the {time_context} batch of calendar events:\n{{events_batch}}")
         ])
-        
+
         # Three-tier resilient LLM: Groq -> Gemini Flash -> Gemini Pro
         llm_with_fallback = get_resilient_llm(task="gtky_classifier")
-            
+
         chain = prompt | llm_with_fallback
-        
+
         import time
         golden_objects = []
         chunk_size = 25  # Increased to reduce total API calls
-        
+
         for i in range(0, len(events), chunk_size):
             chunk = events[i:i + chunk_size]
             events_subset = []
             for ev in chunk:
                 gcal_id = ev.get("id") or ev.get("gcal_id")
-                
+
                 # Pre-parse start and end times
                 start_obj = ev.get("start", {})
                 end_obj = ev.get("end", {})
                 start_iso = start_obj.get("dateTime") or start_obj.get("date")
                 end_iso = end_obj.get("dateTime") or end_obj.get("date")
-                
+
                 duration_minutes = 0
                 if start_iso and end_iso:
                     try:
@@ -102,7 +101,7 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                         duration_minutes = int((et - st).total_seconds() / 60)
                     except Exception:
                         pass
-                
+
                 # Simplification: we forward 'start', 'duration_minutes', 'title', 'gcal_id'
                 events_subset.append({
                     "gcal_id": gcal_id,
@@ -111,9 +110,9 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                     "duration_minutes": duration_minutes,
                     "description": ev.get("description", "")
                 })
-                
+
             logger.info(f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}...")
-            
+
             try:
                 response = invoke_with_retry(
                     chain.invoke,
@@ -124,14 +123,14 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                         "events_batch": json.dumps(events_subset, indent=2)
                     }
                 )
-                
+
                 # Cleanup the markdown if it hallucinates it
                 raw_json = response.content.strip()
                 raw_json = re.sub(r'^```json|^```', '', raw_json, flags=re.MULTILINE)
                 raw_json = raw_json.strip('`').strip()
-                
+
                 parsed_objects = json.loads(raw_json)
-                
+
                 # Validate and append
                 if isinstance(parsed_objects, list):
                     for obj in parsed_objects:
@@ -143,8 +142,8 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                             golden_objects.append(obj)
             except Exception as e:
                 logger.error(f"❌ Failed to classify chunk {i}: {e}")
-                
+
             # Vertex AI has generous rate limits; light delay to be polite
             time.sleep(0.5)
-                
+
         return golden_objects

@@ -10,7 +10,7 @@ class WeaviateExperimentalClient:
     def __init__(self):
         self.cluster_url = os.getenv("WEAVIATE_URL", "mock-url")
         self.api_key = os.getenv("WEAVIATE_API_KEY", "mock-key")
-        
+
         if self.cluster_url != "mock-url":
             try:
                 import weaviate
@@ -36,7 +36,7 @@ class WeaviateExperimentalClient:
         }
         if not self.client.schema.contains(schema):
             self.client.schema.create(schema)
-            
+
         private_brain_class = {
             "class": "PrivateBrainObj",
             "description": "Private Brain documentation and scripts",
@@ -77,7 +77,7 @@ class WeaviateExperimentalClient:
         if not hasattr(self, 'client'):
             logger.info(f"Mock Weaviate search by pillar: {pillar_name}")
             return []
-            
+
         result = (
             self.client.query
             .get("MemoryObj", ["text", "pillar", "correlation_id"])
@@ -107,7 +107,7 @@ class WeaviateExperimentalClient:
         if not hasattr(self, 'client'):
             logger.info(f"Mock Weaviate search by correlation_id: {correlation_id}")
             return []
-            
+
         result = (
             self.client.query
             .get("MemoryObj", ["text", "pillar", "correlation_id"])
@@ -127,7 +127,7 @@ class WeaviateExperimentalClient:
                 for doc in documents:
                     batch.add_data_object(
                         data_object={
-                            "text": doc["text"], 
+                            "text": doc["text"],
                             "source_type": doc.get("source_type", "private_brain"),
                             "folder": doc.get("folder", "unknown"),
                             "filename": doc.get("filename", "unknown")
@@ -143,7 +143,7 @@ class WeaviateExperimentalClient:
         if not hasattr(self, 'client'):
             logger.info("Mock Weaviate search for private brain")
             return []
-            
+
         result = (
             self.client.query
             .get("PrivateBrainObj", ["text", "filename", "folder"])

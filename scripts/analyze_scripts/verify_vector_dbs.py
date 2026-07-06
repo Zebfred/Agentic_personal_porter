@@ -15,7 +15,7 @@ def test_chroma():
             return
 
         mock_embedding = [0.1, 0.2, 0.3] * 128 # Mock 384-dimensional vector typically used in BGE-M3
-        
+
         logger.info("[TEST] Inserting batch...")
         success = client.insert_batch(
             ids=["doc_1", "doc_2"],
@@ -24,7 +24,7 @@ def test_chroma():
             documents=["I ate a healthy salad", "I invested in stocks"]
         )
         logger.info(f"[SUCCESS] Batch inserted: {success}")
-        
+
         logger.info("[TEST] Performing Pillar Hybrid Search...")
         results = client.search_by_pillar(mock_embedding, "Health", n_results=1)
         if results and results.get("documents") and len(results["documents"][0]) > 0:
@@ -40,7 +40,7 @@ def test_weaviate():
     logger.info("\n--- Testing Weaviate (Production Target) ---")
     try:
         client = WeaviateExperimentalClient()
-        
+
         logger.info("[TEST] Inserting batch...")
         success = client.insert_batch([])
         if success:

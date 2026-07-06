@@ -9,11 +9,11 @@ class ChromaExperimentalClient:
     """
     def __init__(self):
         self.persist_directory = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "data", "chroma_db"
         )
         self.collection_name = "agentic_porter_memory"
-        
+
         try:
             import chromadb
             self.client = chromadb.PersistentClient(path=self.persist_directory)
@@ -49,7 +49,7 @@ class ChromaExperimentalClient:
         if not hasattr(self, 'collection'):
             logger.info(f"Mock Chroma search by pillar: {pillar_name}")
             return []
-            
+
         return self.collection.query(
             query_embeddings=[query_vector],
             n_results=n_results,
@@ -71,7 +71,7 @@ class ChromaExperimentalClient:
         if not hasattr(self, 'collection'):
             logger.info(f"Mock Chroma search by correlation_id: {correlation_id}")
             return []
-            
+
         return self.collection.get(
             where={"correlation_id": correlation_id}
         )

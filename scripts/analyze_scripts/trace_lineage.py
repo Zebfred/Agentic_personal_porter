@@ -15,7 +15,6 @@ Usage:
 import sys
 import os
 import argparse
-from datetime import datetime
 
 # Ensure project root is on path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -344,7 +343,7 @@ def render_list(limit: int):
         title="📋 Recent Correlation IDs",
         border_style="cyan"
     ))
-    
+
     ids = list_recent_correlation_ids(limit)
     if not ids:
         console.print("[dim]No correlation IDs found yet. Save a journal entry to generate one.[/dim]")

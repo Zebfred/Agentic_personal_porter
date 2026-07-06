@@ -33,15 +33,15 @@ def load_chunks(chunk_file: Path) -> list:
     """
     if not chunk_file.exists():
         raise FileNotFoundError(f"Chunk file not found: {chunk_file}")
-    
+
     with open(chunk_file, 'r') as f:
         chunks = json.load(f)
-    
+
     print(f"Loaded {len(chunks)} chunks from {chunk_file}")
     return chunks
 
 
-def build_index(chunks: list, 
+def build_index(chunks: list,
                 collection_name: str = "rl_papers",
                 batch_size: int = 32,
                 persist_directory: str = "data/chroma_db"):
@@ -57,17 +57,17 @@ def build_index(chunks: list,
     print(f"\n{'='*60}")
     print("Building RAG Index")
     print('='*60)
-    
+
     # Initialize components
     print("\n1. Initializing embedder...")
     embedder = SciBERTEmbedder()
-    
+
     print("\n2. Initializing vector store...")
     vector_store = VectorStore(
         collection_name=collection_name,
         persist_directory=persist_directory
     )
-    
+
     # Clear existing collection if it exists
     if vector_store.get_collection_size() > 0:
         print(f"   Existing collection has {vector_store.get_collection_size()} chunks")
@@ -82,32 +82,32 @@ def build_index(chunks: list,
             # Non-interactive: auto-clear for API calls
             print("   Auto-clearing existing collection (non-interactive mode)")
             vector_store.clear_collection()
-    
+
     # Generate embeddings in batches
     print("\n3. Generating embeddings...")
     texts = [chunk['text'] for chunk in chunks]
-    
+
     embeddings_list = []
     for i in tqdm(range(0, len(texts), batch_size), desc="Embedding batches"):
         batch_texts = texts[i:i + batch_size]
         batch_embeddings = embedder.embed_batch(batch_texts, batch_size=batch_size)
         embeddings_list.append(batch_embeddings)
-    
+
     # Concatenate all embeddings
     all_embeddings = np.vstack(embeddings_list)
     print(f"   Generated {all_embeddings.shape[0]} embeddings (dim: {all_embeddings.shape[1]})")
-    
+
     # Add chunks to vector store
     print("\n4. Storing in vector database...")
     vector_store.add_chunks(chunks, all_embeddings)
-    
+
     # Verify
     final_size = vector_store.get_collection_size()
     print("\n✓ Index built successfully!")
     print(f"  Collection: {collection_name}")
     print(f"  Total chunks: {final_size}")
     print(f"  Persist directory: {persist_directory}")
-    
+
     return vector_store
 
 
@@ -131,18 +131,18 @@ def main():
         default=32,
         help='Batch size for embedding generation (default: 32)'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Determine chunk file
     chunk_file_map = {
         'fixed': 'data/chunks_fixed.json',
         'fast_semantic': 'data/chunks_fast_semantic.json',
         'science_semantic': 'data/chunks_science_semantic.json'
     }
-    
+
     chunk_file = Path(chunk_file_map[args.chunking_strategy])
-    
+
     if not chunk_file.exists():
         print(f"Error: Chunk file not found: {chunk_file}")
         print("\nAvailable chunk files:")
@@ -150,23 +150,23 @@ def main():
         for f in data_dir.glob("chunks_*.json"):
             print(f"  - {f}")
         return
-    
+
     # Load chunks
     chunks = load_chunks(chunk_file)
-    
+
     # Build index
     vector_store = build_index(
         chunks,
         collection_name=args.collection_name,
         batch_size=args.batch_size
     )
-    
+
     # Test query
     print("\n5. Testing index with sample query...")
     embedder = SciBERTEmbedder()
     test_query = "What is Q-learning?"
     query_embedding = embedder.embed(test_query)
-    
+
     results = vector_store.search(query_embedding, top_k=3)
     print(f"\nTest query: '{test_query}'")
     print(f"Found {len(results)} results:")

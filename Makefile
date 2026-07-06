@@ -8,6 +8,13 @@ PORT = 6010
 PYTHON = uv run python
 PIP = pip
 
+# Platform detection
+ifeq ($(OS),Windows_NT)
+    GCLOUD_CONFIG_DIR := $(subst \,/,$(APPDATA))/gcloud
+else
+    GCLOUD_CONFIG_DIR := ~/.config/gcloud
+endif
+
 # Phony targets to prevent conflicts with file names
 .PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse sync-brain ingest-private-brain trace-lineage
 
@@ -39,6 +46,22 @@ run: build-css ## Start the backend in production mode (Gunicorn)
 	conda run -n $(CONDA_ENV) $(PYTHON) -m gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "\
+		$$proj_id = '$$env:PROJECT_ID'; \
+		if (!$$proj_id -and (Test-Path .auth/.env)) { \
+			$$line = Get-Content .auth/.env | Select-String '^PROJECT_ID='; \
+			if ($$line) { $$proj_id = ($$line -split '=', 2)[1] } \
+		} \
+		if (!$$proj_id) { \
+			Write-Error 'Error: PROJECT_ID is not set in environment or .auth/.env.'; \
+			exit 1; \
+		} \
+		$$env:PROJECT_ID = $$proj_id; \
+		$$env:DISABLE_CLOUD_LOGGING = 'true'; \
+		conda run -n $(CONDA_ENV) uv run pytest tests/ \
+	"
+else
 	@proj_id="$(PROJECT_ID)"; \
 	if [ -z "$$proj_id" ] && [ -f .auth/.env ]; then \
 		proj_id=$$(grep -E '^PROJECT_ID=' .auth/.env | cut -d'=' -f2-); \
@@ -48,6 +71,7 @@ test: ## Run the test suite using pytest
 		exit 1; \
 	fi; \
 	PROJECT_ID="$$proj_id" DISABLE_CLOUD_LOGGING=true conda run -n $(CONDA_ENV) uv run pytest tests/
+endif
 # Run code quality checks (codespell, ruff, mypy)
 lint:
 	@echo "Running code quality checks..."
@@ -84,14 +108,41 @@ docker-build: ## Build the production Docker image
 
 docker-run: ## Run the Docker container locally (requires .auth/.env)
 	@echo "Launching container on port $(PORT)..."
-	docker run -p $(PORT):$(PORT) --env-file .auth/.env -v $(PWD)/.auth:/app/.auth -v $(PWD)/data:/app/data -v ~/.config/gcloud:/root/.config/gcloud:ro $(IMAGE_NAME)
+	docker run -p $(PORT):$(PORT) --env-file .auth/.env -v $(CURDIR)/.auth:/app/.auth -v $(CURDIR)/data:/app/data -v $(GCLOUD_CONFIG_DIR):/root/.config/gcloud:ro $(IMAGE_NAME)
+
 
 docker-stop: ## Stop any running containers for this project
 	@echo "Stopping $(IMAGE_NAME) containers..."
 	docker stop $$(docker ps -q --filter ancestor=$(IMAGE_NAME)) 2>/dev/null || true
 
-# Deploy the Cloud Run Function
 deploy:
+ifeq ($(OS),Windows_NT)
+	@powershell -Command '\
+		if (!(Test-Path .auth/.env)) { Write-Error "Error: .env file not found."; exit 1 } \
+		Get-Content .auth/.env | ForEach-Object { \
+			if ($$PSItem -match "^([^=]+)=(.*)$$") { \
+				[System.Environment]::SetEnvironmentVariable($$Matches[1], $$Matches[2]) \
+			} \
+		}; \
+		$$env:SERVICE_ACCOUNT_NAME = "$$env:FUNCTION_NAME-sa"; \
+		$$env:SERVICE_ACCOUNT_EMAIL = "$$env:SERVICE_ACCOUNT_NAME@$$env:PROJECT_ID.iam.gserviceaccount.com"; \
+		gcloud run deploy $$env:FUNCTION_NAME \
+		  --base-image=python312 \
+		  --project=$$env:PROJECT_ID \
+		  --region=$$env:GOOGLE_CLOUD_REGION \
+		  --source=./src/infrastructure/billing_killswitch/ \
+		  --function=disable_billing_for_projects \
+		  --no-allow-unauthenticated \
+		  --execution-environment=gen1 \
+		  --cpu=0.2 \
+		  --memory=256Mi \
+		  --concurrency=1 \
+		  --min-instances=0 \
+		  --max-instances=1 \
+		  --service-account="$$env:SERVICE_ACCOUNT_EMAIL" \
+		  --set-env-vars LOG_LEVEL=$$env:LOG_LEVEL,SIMULATE_DEACTIVATION=$$env:SIMULATE_DEACTIVATION \
+	'
+else
 	@if [ ! -f .auth/.env ]; then echo "Error: .env file not found."; exit 1; fi
 	@source .auth/.env && \
 	export SERVICE_ACCOUNT_NAME="$$FUNCTION_NAME-sa" && \
@@ -111,13 +162,23 @@ deploy:
 	  --max-instances=1 \
 	  --service-account="$$SERVICE_ACCOUNT_EMAIL" \
 	  --set-env-vars LOG_LEVEL=$$LOG_LEVEL,SIMULATE_DEACTIVATION=$$SIMULATE_DEACTIVATION
+endif
 
 # --- Maintenance & Cleanup ---
 clean: ## Remove temporary files and archive backups to .legacy_hr
+ifeq ($(OS),Windows_NT)
+	@echo "Archiving .bk files to .legacy_hr..."
+	@powershell -Command "if (!(Test-Path .legacy_hr)) { New-Item -ItemType Directory -Force .legacy_hr | Out-Null }"
+	@powershell -Command 'Get-ChildItem -Path . -Filter "*.bk*" -Depth 2 | ForEach-Object { Move-Item -Path $$PSItem.FullName -Destination .legacy_hr\ -Force }'
+	@echo "Cleaning Python cache files..."
+	@powershell -Command "Get-ChildItem -Path . -Filter '*.pyc' -Recurse | Remove-Item -Force"
+	@powershell -Command "Get-ChildItem -Path . -Filter '__pycache__' -Recurse | Remove-Item -Recurse -Force"
+else
 	@echo "Archiving .bk files to .legacy_hr..."
 	@mkdir -p .legacy_hr
 	@find . -maxdepth 2 -name "*.bk" -exec mv {} .legacy_hr/ \;
 	@echo "Cleaning Python cache files..."
 	@find . -name "*.pyc" -delete
 	@find . -name "__pycache__" -delete
+endif
 	@echo "Cleanup complete."

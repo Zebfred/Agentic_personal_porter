@@ -20,15 +20,15 @@ def is_retryable_exception(exception: BaseException) -> bool:
     We DO retry 429s, timeout errors, or general API faults.
     """
     if isinstance(exception, TokenLimitExceededError):
-        logger.error(f"[RETRY ABORTED] Token circuit breaker tripped. Not retrying.")
+        logger.error("[RETRY ABORTED] Token circuit breaker tripped. Not retrying.")
         return False
-    
+
     err_str = str(exception).lower()
-    
+
     # Identify typical rate limit / transient errors
     if "429" in err_str or "too many requests" in err_str or "rate limit" in err_str or "resource exhausted" in err_str:
         return True
-        
+
     # Default to True for generic exceptions just in case it's a transient network fault
     return True
 
@@ -56,7 +56,7 @@ def with_llm_retry(func: Callable[..., Coroutine[Any, Any, T]]) -> Callable[...,
 # Helper function for SYNC executions (like chain.invoke)
 def invoke_with_retry(callable_fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
     """Helper to execute synchronous functions (like .invoke()) with exponential backoff retries."""
-    
+
     @retry(
         wait=wait_exponential(multiplier=1, min=2, max=10),
         stop=stop_after_attempt(5),
@@ -66,5 +66,5 @@ def invoke_with_retry(callable_fn: Callable[..., T], *args: Any, **kwargs: Any) 
     )
     def _execute():
         return callable_fn(*args, **kwargs)
-        
+
     return _execute()

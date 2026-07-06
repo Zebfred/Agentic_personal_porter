@@ -9,24 +9,24 @@ from src.database.mongo_storage import SovereignMongoStorage
 def main():
     load_env_vars()
     logger.info("--- MongoDB Collections Overview ---")
-    
+
     try:
         storage = SovereignMongoStorage()
         db = storage.db
-        
+
         collections = db.list_collection_names()
         logger.info(f"{'Collection Name':<35} | {'Document Count':<15} | {'Last Update / Record Time':<30}")
         logger.info("-" * 85)
-        
+
         for coll_name in sorted(collections):
             coll = db[coll_name]
             # Use estimated_document_count for speed on large collections
             count = coll.estimated_document_count()
-            
+
             # To get an idea of last update, we'll pull the most recently inserted/updated doc
             # We sort by natural order or _id descending
             latest_doc = coll.find_one({}, sort=[('_id', -1)])
-            
+
             last_updated = "Unknown"
             if count == 0:
                 last_updated = "N/A (Empty)"
@@ -41,13 +41,13 @@ def main():
                         else:
                             last_updated = str(val)
                         break
-                
+
                 # Fallback to ObjectId generation time if it's a standard Mongo _id
                 if last_updated == "Unknown" and hasattr(latest_doc['_id'], 'generation_time'):
                     last_updated = str(latest_doc['_id'].generation_time)
-                
+
             logger.info(f"{coll_name:<35} | {count:<15} | {str(last_updated)[:30]:<30}")
-            
+
     except Exception as e:
         logger.info(f"Error accessing MongoDB: {e}")
 

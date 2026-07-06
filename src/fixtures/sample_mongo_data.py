@@ -6,20 +6,23 @@ from datetime import datetime
 # Path resolution to ensure we can reach database modules
 
 from src.database.mongo_storage import SovereignMongoStorage
+from src.utils.path_utils import get_project_root
 
 def sample_mongo_data(limit=5):
     """
     Pulls a sample of documents from the Raw and Formatted MongoDB collections
     to inspect their shape and data structure, dumping them to the specified directory.
     """
+    root = get_project_root()
     date_str = datetime.now().strftime("%Y-%m-%d")
     out_dir = root / "data" / "google_calendar" / "Mongo_sample"
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"--- 🔍 Sampling MongoDB Collections (Limit: {limit}) ---")
-    
+
     storage = SovereignMongoStorage()
-    
+
     # Fetch Raw Samples
     logger.info("\n--- 📦 RAW COLLECTION (Landing Zone) ---")
     raw_samples = list(storage.raw_col.find().limit(limit))
@@ -30,7 +33,7 @@ def sample_mongo_data(limit=5):
         with open(raw_file, 'w') as f:
             json.dump(raw_samples, f, indent=4, default=str)
         logger.info(f"✅ Saved {len(raw_samples)} raw events to: {raw_file}")
-        
+
     # Fetch Formatted Samples
     logger.info("\n--- 🎯 FORMATTED COLLECTION (Graph Ready) ---")
     formatted_samples = list(storage.formatted_col.find().limit(limit))

@@ -24,7 +24,7 @@ class SovereignCalendarSync:
         self.client = MongoClient(self.mongo_uri)
         self.db = self.client[MongoConfig.DB_NAME]
         self.raw_collection = self.db[MongoConfig.RAW_COLLECTION]
-        
+
         # Use the timeseries client for writing to the new architecture
         from src.database.mongo_client.calendar_timeseries import CalendarTimeseriesClient
         self.ts_client = CalendarTimeseriesClient()
@@ -55,10 +55,10 @@ class SovereignCalendarSync:
         """
         if not oldest_cursor:
             oldest_cursor = datetime.now(timezone.utc)
-            
+
         start_time = oldest_cursor - timedelta(days=30)
         end_time = oldest_cursor
-        
+
         logger.info(f"!!! Initiating Historical Pull from {start_time} to {end_time} for {user_email} !!!")
         ops_count = self._execute_pull(start_time, end_time, user_email, refresh_token)
         return ops_count, start_time
@@ -68,11 +68,11 @@ class SovereignCalendarSync:
         Internal execution logic for GCal -> MongoDB.
         """
         service = self.get_gcal_service(refresh_token)
-        
+
         # Ensure RFC3339 compliance for GCal API
         start_rfc3339 = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         end_rfc3339 = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        
+
         logger.info(f"--- Accessing GCal: Fetching events from {start_rfc3339} to {end_rfc3339} ---")
 
         ops_count = 0
@@ -83,7 +83,7 @@ class SovereignCalendarSync:
             try:
                 api_calls += 1
                 events_result = service.events().list(
-                    calendarId='primary', 
+                    calendarId='primary',
                     timeMin=start_rfc3339,
                     timeMax=end_rfc3339,
                     singleEvents=True,
@@ -93,9 +93,9 @@ class SovereignCalendarSync:
             except Exception as e:
                 logger.info(f"Error accessing Google Calendar API: {e}")
                 break
-            
+
             events = events_result.get('items', [])
-            
+
             if not events:
                 logger.info("No new events found.")
                 break
@@ -104,7 +104,7 @@ class SovereignCalendarSync:
             ts_events_batch = []
             for event in events:
                 event_id = event.get('id')
-                
+
                 # 1. Standard Landing Zone (For Downstream CrewAI sync pipeline)
                 payload = {
                     "gcal_id": event_id,
@@ -126,10 +126,10 @@ class SovereignCalendarSync:
                         upsert=True
                     )
                 )
-                
+
                 # 2. Native Time-Series Dual-Write
                 ts_events_batch.append(event)
-                
+
                 # Increment operation count
                 ops_count += 1
 
@@ -156,14 +156,14 @@ class SovereignCalendarSync:
         """
         total = self.raw_collection.count_documents({})
         staged = self.raw_collection.count_documents({"sync_status": "staged"})
-        
+
         ts_total = self.ts_client.timeseries_col.count_documents({})
-        
+
         logger.info("\n--- Dual-Track Landing Zone Status ---")
         logger.info(f"Total Standard Events Stored: {total}")
         logger.info(f"Events Pending Neo4j Sync: {staged}")
         logger.info(f"Total Native TS Events Stored: {ts_total}")
-        
+
         if total > 0:
             latest = self.raw_collection.find_one(sort=[("start", -1)])
             logger.info(f"Most Recent Event: {latest.get('summary')} ({latest.get('start')})")

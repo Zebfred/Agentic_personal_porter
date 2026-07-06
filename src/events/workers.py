@@ -16,7 +16,6 @@ Consumer Group: porter-workers
 Stream: stream:journal_events
 """
 import json
-import logging
 import os
 import signal
 import sys

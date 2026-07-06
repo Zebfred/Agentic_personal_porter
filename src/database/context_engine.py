@@ -69,7 +69,7 @@ class SovereignContextEngine:
         Refined for hero_ambition category matching.
         """
         category = actual.get('category', 'Unknown')
-        
+
         # 1. Fog of War Check
         if category == 'Unknown' or not category:
             duration = actual.get('duration_minutes', 0)
@@ -85,5 +85,5 @@ class SovereignContextEngine:
 
         if planned.get('category') == category:
             return "Forward Progress"
-        
+
         return "High-Friction Deviation"

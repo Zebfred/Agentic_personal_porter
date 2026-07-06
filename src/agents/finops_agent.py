@@ -17,7 +17,7 @@ class FinOpsTracer:
         self.username = username
         self.storage = SovereignMongoStorage()
         self.start_time = None
-        
+
     def start_trace(self):
         self.start_time = time.time()
         logger.info(f"[FinOps] Trace started for agent: {self.agent_name}")
@@ -28,7 +28,7 @@ class FinOpsTracer:
             return
 
         duration_ms = int((time.time() - self.start_time) * 1000)
-        
+
         trace_data = {
             "agent_name": self.agent_name,
             "username": self.username,
@@ -36,13 +36,13 @@ class FinOpsTracer:
             "token_count": token_count,
             "status": status,
         }
-        
+
         if error_msg:
             trace_data["error_msg"] = error_msg
-        
+
         if extra_metadata:
             trace_data["metadata"] = extra_metadata
-            
+
         try:
             trace_id = self.storage.save_telemetry_trace(trace_data)
             logger.info(f"[FinOps] Trace saved for {self.agent_name} (Status: {status}, Tokens: {token_count}, Time: {duration_ms}ms) -> ID: {trace_id}")
@@ -64,7 +64,7 @@ def with_finops_trace(agent_name: str):
 
             tracer = FinOpsTracer(agent_name=agent_name, username=username)
             tracer.start_trace()
-            
+
             try:
                 result = func(*args, **kwargs)
                 tracer.end_trace(status="success")

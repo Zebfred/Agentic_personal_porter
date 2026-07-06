@@ -23,15 +23,15 @@ class MongoConfig:
     RAW_COLLECTION = "raw_calendar_events"
     FORMATTED_COLLECTION = "formatted_calendar_events"
     DAILY_CATEGORIZED_EVENTS = "daily_categorized_events"
-    
+
     # New Event Schema Collections
     RAW_TIMESERIES_COLLECTION = "calendar_events_timeseries"
     INTENT_COLLECTION = "event_intentions"
     ACTUAL_COLLECTION = "event_actuals"
     UNIFIED_EVENTS_COLLECTION = "unified_events"
-    
+
     # Vector DB Collection for Agents
     VECTOR_DB_COLLECTION = "semantic_vectors"
-    
+
     # Agent Heartbeat/Health Logging
     AGENT_HEALTH_COLLECTION = "agent_health_log"

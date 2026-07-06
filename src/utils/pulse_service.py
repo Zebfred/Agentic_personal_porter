@@ -19,16 +19,16 @@ class PulseService:
         """
         # Ensure environment variables are loaded
         load_env_vars()
-        
+
         try:
             storage = SovereignMongoStorage()
             cal_sync = storage.get_system_status("calendar_sync")
             vec_sync = storage.get_system_status("vector_db_sync")
-            
+
             neo4j_node_count = 0
             neo4j_edge_count = 0
             latest_day_node = None
-            
+
             try:
                 driver = get_driver()
                 with driver.session() as session:
@@ -42,7 +42,7 @@ class PulseService:
                     if day_res: latest_day_node = day_res["date"]
             except Exception as e:
                 logger.error(f"Error querying Neo4j for Pulse: {e}")
-                
+
             db = storage.db
             mongo_counts = {
                 "raw_calendar_events": db[MongoConfig.RAW_COLLECTION].estimated_document_count(),
@@ -66,7 +66,7 @@ class PulseService:
                 "LANGCHAIN_PROJECT": langchain_project,
                 "OPENAI_API_KEY_CONFIGURED": bool(os.getenv("OPENAI_API_KEY"))
             }
-            
+
             # Pull Last 5 Traces from LangSmith
             recent_traces = []
             try:
@@ -89,7 +89,7 @@ class PulseService:
                         })
             except Exception as ls_err:
                 recent_traces.append({"error": f"Failed to fetch from LangSmith: {ls_err}"})
-                
+
             # Fetch recent FinOps Traces
             recent_finops_traces = []
             try:
@@ -98,7 +98,7 @@ class PulseService:
                     recent_finops_traces.append(doc)
             except Exception as fe:
                 recent_finops_traces.append({"error": f"Failed to fetch FinOps traces: {fe}"})
-                
+
             # Agent Health Monitor
             try:
                 from src.database.mongo_client.agent_health import AgentHeartbeatManager
@@ -106,13 +106,13 @@ class PulseService:
                 agent_health = health_manager.get_all_agent_statuses()
             except Exception as hm_err:
                 agent_health = {"error": f"Failed to fetch agent health: {hm_err}"}
-            
+
             # Calculate Sync Integrity (Simple Boolean for the Dashboard)
             cal_status = cal_sync.get("status", "unknown").lower() if cal_sync else "unknown"
             vec_status = vec_sync.get("status", "unknown").lower() if vec_sync else "unknown"
-            sync_integrity = "FAIL" if ("error" in cal_status or "failed" in cal_status or 
+            sync_integrity = "FAIL" if ("error" in cal_status or "failed" in cal_status or
                                         "error" in vec_status or "failed" in vec_status) else "OK"
-            
+
             pulse_data = {
                 "sync_integrity": sync_integrity,
                 "calendar_sync": cal_sync,

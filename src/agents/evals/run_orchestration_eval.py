@@ -13,7 +13,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-from src.utils.path_utils import load_env_vars
+from src.utils.path_utils import load_env_vars, get_project_root
 from src.utils.llm_factory import AgentLLMConfig
 from src.agents.evals.orchestration_harness import run_orchestration_eval
 from rich.console import Console
@@ -133,6 +133,7 @@ def main():
     args = parser.parse_args()
 
     load_env_vars()
+    root = get_project_root()
 
     # Determine which models to include
     include_gemini = True

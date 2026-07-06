@@ -38,12 +38,12 @@ def login():
 
     try:
         data = request.get_json()
-        
+
         if 'credential' not in data:
             return jsonify({"error": "Google ID token (credential) required"}), 400
-            
+
         token_credential = data['credential']
-        
+
         # Read secrets
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET")
@@ -59,8 +59,8 @@ def login():
         # Verify Google Token
         try:
             idinfo = id_token.verify_oauth2_token(
-                token_credential, 
-                google_requests.Request(), 
+                token_credential,
+                google_requests.Request(),
                 google_client_id
             )
         except ValueError as e:
@@ -92,7 +92,7 @@ def login():
         expiration = datetime.now(timezone.utc) + timedelta(hours=24)
         internal_token = jwt.encode(
             {
-                "role": role, 
+                "role": role,
                 "account_type": account_type,
                 "email": email,
                 "username": username,
@@ -102,9 +102,9 @@ def login():
             jwt_secret,
             algorithm="HS256"
         )
-        
+
         return jsonify({
-            "token": internal_token, 
+            "token": internal_token,
             "role": role,
             "account_type": account_type,
             "message": "Login successful"
@@ -125,10 +125,10 @@ def login_code():
 
     try:
         data = request.get_json()
-        
+
         if 'code' not in data:
             return jsonify({"error": "Google authorization code required"}), 400
-            
+
         auth_code = data['code']
         jwt_secret = os.environ.get("JWT_SECRET")
         if not jwt_secret:
@@ -137,13 +137,13 @@ def login_code():
         paths = get_auth_paths()
 
         try:
-            # Google sometimes returns extra scopes (like calendar.readonly). 
+            # Google sometimes returns extra scopes (like calendar.readonly).
             # We must relax strict checking so requests_oauthlib doesn't crash.
             os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
-            
+
             client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
             client_secret = os.environ.get("GOOGLE_CLIENT_USER_SECRET", "").strip("\"'")
-            
+
             if client_id and client_secret:
                 client_config = {
                     "web": {
@@ -176,8 +176,8 @@ def login_code():
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
-                credentials.id_token, 
-                google_requests.Request(), 
+                credentials.id_token,
+                google_requests.Request(),
                 google_client_id
             )
         except ValueError as e:
@@ -210,7 +210,7 @@ def login_code():
         expiration = datetime.now(timezone.utc) + timedelta(hours=24)
         internal_token = jwt.encode(
             {
-                "role": role, 
+                "role": role,
                 "account_type": account_type,
                 "email": email,
                 "username": username,
@@ -220,9 +220,9 @@ def login_code():
             jwt_secret,
             algorithm="HS256"
         )
-        
+
         return jsonify({
-            "token": internal_token, 
+            "token": internal_token,
             "role": role,
             "account_type": account_type,
             "message": "Login successful"
@@ -243,12 +243,12 @@ def nexus_login():
 
     try:
         data = request.get_json()
-        
+
         if 'credential' not in data:
             return jsonify({"error": "Google ID token (credential) required"}), 400
-            
+
         token_credential = data['credential']
-        
+
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         jwt_secret = os.environ.get("JWT_SECRET")
 
@@ -263,8 +263,8 @@ def nexus_login():
         # Verify Google Token
         try:
             idinfo = id_token.verify_oauth2_token(
-                token_credential, 
-                google_requests.Request(), 
+                token_credential,
+                google_requests.Request(),
                 google_client_id
             )
         except ValueError as e:
@@ -272,7 +272,7 @@ def nexus_login():
             return jsonify({"error": "Invalid token"}), 401
 
         email = idinfo.get('email', '')
-        
+
         # STRICT ORG CHECK
         if not email.endswith('@nexus-ds-ml-consulting.com'):
             logger.warning(f"SECURITY AUDIT: Unauthorized admin login attempt from {email} via {request.remote_addr}")
@@ -298,7 +298,7 @@ def nexus_login():
         expiration = datetime.now(timezone.utc) + timedelta(hours=24)
         internal_token = jwt.encode(
             {
-                "role": role, 
+                "role": role,
                 "account_type": account_type,
                 "email": email,
                 "exp": expiration,
@@ -307,11 +307,11 @@ def nexus_login():
             jwt_secret,
             algorithm="HS256"
         )
-        
+
         logger.info(f"SECURITY AUDIT: Nexus Guild Admin login via IP {request.remote_addr} for email {email}")
-        
+
         return jsonify({
-            "token": internal_token, 
+            "token": internal_token,
             "role": role,
             "account_type": account_type,
             "message": "Admin login successful"
@@ -332,10 +332,10 @@ def nexus_login_code():
 
     try:
         data = request.get_json()
-        
+
         if 'code' not in data:
             return jsonify({"error": "Google authorization code required"}), 400
-            
+
         auth_code = data['code']
         jwt_secret = os.environ.get("JWT_SECRET")
         if not jwt_secret:
@@ -346,7 +346,7 @@ def nexus_login_code():
         try:
             client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
             client_secret = os.environ.get("GOOGLE_CLIENT_USER_SECRET", "").strip("\"'")
-            
+
             if client_id and client_secret:
                 client_config = {
                     "web": {
@@ -379,8 +379,8 @@ def nexus_login_code():
         google_client_id = os.environ.get("GOOGLE_CLIENT_USER_LOGIN_ID", "").strip("\"'")
         try:
             idinfo = id_token.verify_oauth2_token(
-                credentials.id_token, 
-                google_requests.Request(), 
+                credentials.id_token,
+                google_requests.Request(),
                 google_client_id
             )
         except ValueError as e:
@@ -388,7 +388,7 @@ def nexus_login_code():
             return jsonify({"error": "Invalid token"}), 401
 
         email = idinfo.get('email', '')
-        
+
         # STRICT ORG CHECK
         if not email.endswith('@nexus-ds-ml-consulting.com'):
             logger.warning(f"SECURITY AUDIT: Unauthorized admin login attempt from {email} via {request.remote_addr}")
@@ -416,7 +416,7 @@ def nexus_login_code():
         expiration = datetime.now(timezone.utc) + timedelta(hours=24)
         internal_token = jwt.encode(
             {
-                "role": role, 
+                "role": role,
                 "account_type": account_type,
                 "email": email,
                 "exp": expiration,
@@ -425,11 +425,11 @@ def nexus_login_code():
             jwt_secret,
             algorithm="HS256"
         )
-        
+
         logger.info(f"SECURITY AUDIT: Nexus Guild Admin login via IP {request.remote_addr} for email {email}")
-        
+
         return jsonify({
-            "token": internal_token, 
+            "token": internal_token,
             "role": role,
             "account_type": account_type,
             "message": "Admin login successful"

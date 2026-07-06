@@ -21,16 +21,16 @@ def load_env_vars():
         Path("/.auth/.env"),
         Path("/.auth/Porter_auth_env")
     ]
-    
+
     loaded = False
     for env_path in possible_paths:
         if env_path.exists():
             load_dotenv(dotenv_path=env_path)
             loaded = True
             break
-            
+
     if not loaded:
-        # We'll use a print here instead of a raise so we don't 
+        # We'll use a print here instead of a raise so we don't
         # crash scripts that don't actually need the .env
         logger.info("⚠️ Warning: .env file not found at any expected path.")
 

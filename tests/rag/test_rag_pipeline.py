@@ -51,37 +51,37 @@ def test_end_to_end_pipeline(temp_data_dir):
     under what circumstances. It does not require a model of the environment
     and can handle problems with stochastic transitions and rewards.
     """
-    
+
     # Step 1: Chunk the text
     chunker = DocumentChunker(FixedSizeChunking(chunk_size=200, overlap=50))
     chunks = chunker.chunk_document(
         text=sample_text,
         title="Introduction to Reinforcement Learning"
     )
-    
+
     assert len(chunks) > 0
-    
+
     # Step 2: Generate embeddings
     embedder = SciBERTEmbedder()
     texts = [chunk['text'] for chunk in chunks]
     embeddings = embedder.embed_batch(texts)
-    
+
     assert embeddings.shape[0] == len(chunks)
-    
+
     # Step 3: Store in vector database
     vector_store = VectorStore(
         collection_name="test_pipeline",
         persist_directory=temp_data_dir
     )
-    
+
     # Add paper metadata to chunks
     for chunk in chunks:
         chunk['paper_title'] = "Introduction to Reinforcement Learning"
-    
+
     vector_store.add_chunks(chunks, embeddings)
-    
+
     assert vector_store.get_collection_size() == len(chunks)
-    
+
     # Step 4: Query
     if os.getenv('GROQ_API_KEY') or True: # Force test execution via mock
         from unittest.mock import patch, MagicMock
@@ -92,13 +92,13 @@ def test_end_to_end_pipeline(temp_data_dir):
             mock_message.content = "Q-learning is a model-free reinforcement learning algorithm."
             mock_client.invoke.return_value = mock_message
             MockChatGroq.return_value = mock_client
-            
+
             # Since we mock the client, we need to bypass any env checks inside RAGQueryEngine
             with patch.dict(os.environ, {"GROQ_API_KEY": "mocked_key"}):
                 engine = RAGQueryEngine(vector_store=vector_store, embedder=embedder)
-                
+
                 result = engine.answer_question("What is Q-learning?", top_k=2)
-                
+
                 assert 'answer' in result
                 assert 'sources' in result
                 assert len(result['sources']) > 0

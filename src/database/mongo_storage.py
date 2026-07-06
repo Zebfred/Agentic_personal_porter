@@ -3,12 +3,12 @@ logger = setup_logger(__name__)
 import os
 from pymongo import MongoClient, UpdateOne
 from datetime import datetime, timezone, timedelta
-    
+
 # Ensure we can import from the src directory when running from helper_scripts
 
 from src.config import MongoConfig
 #from src.constants import ACTUAL_CATEGORY_MAPPING
-from src.integrations.calendar_parser import parse_single_event 
+from src.integrations.calendar_parser import parse_single_event
 
 # --- Mongo Setup ---
 
@@ -23,7 +23,7 @@ class SovereignMongoStorage:
         self.client = MongoClient(MongoConfig.MONGO_URI)
         self.db = self.client[MongoConfig.DB_NAME]
         self.mongo_uri = MongoConfig.MONGO_URI
-        
+
         # Collection Pointers
         self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
         self.formatted_col = self.db[MongoConfig.FORMATTED_COLLECTION]
@@ -38,13 +38,13 @@ class SovereignMongoStorage:
     def _ensure_indexes(self):
         """Create compound indexes to speed up multi-tenant queries."""
         from pymongo import ASCENDING
-        
+
         # In the Timeseries (raw events), index on email + start time for quick window querying
         self.raw_col.create_index([("metadata.user_email", ASCENDING), ("start_time", ASCENDING)])
-        
+
         # In formatted collections, index on email + start time
         self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
-        
+
         # Intent and Actual collections for quick queries
         self.db['calendar_intent_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
         self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
@@ -61,36 +61,36 @@ class SovereignMongoStorage:
         """
         day_str = log_data.get("day") # Expected format: "YYYY-MM-DD"
         time_chunk = log_data.get("timeChunk")
-        
+
         if not day_str or not time_chunk:
             if correlation_id:
                 log_data["correlation_id"] = correlation_id
             result = self.journal_col.insert_one(log_data)
             return str(result.inserted_id)
-            
+
         try:
             # Parse ISO Date
             dt = datetime.strptime(day_str, "%Y-%m-%d")
             month_id = dt.strftime("%Y-%m")
-            
+
             # Get ISO week number formatted as Wxx
             iso_year, iso_week, iso_weekday = dt.isocalendar()
             week_id = f"W{iso_week:02d}"
-            
+
             # Prepare chunk data
             chunk_data = {k: v for k, v in log_data.items() if k not in ["day", "timeChunk"]}
             chunk_data["processed_at"] = datetime.now(timezone.utc)
             if correlation_id:
                 chunk_data["correlation_id"] = correlation_id
-            
+
             query = {"month_id": month_id, "user_id": user_id}
             update_path = f"weeks.{week_id}.{day_str}.chunks.{time_chunk}"
-            
+
             update = {"$set": {update_path: chunk_data}}
-            
+
             self.journal_col.update_one(query, update, upsert=True)
             return f"Updated {month_id}"
-            
+
         except ValueError:
             # Legacy string fallback (e.g. 'monday')
             log_data["processed_at"] = datetime.now(timezone.utc)
@@ -132,14 +132,14 @@ class SovereignMongoStorage:
         """
         j_query = {"user_id": user_id}
         e_query = {"user_id": user_id}
-        
+
         if correlation_id:
             j_query["correlation_id"] = correlation_id
             e_query["correlation_id"] = correlation_id
-            
+
         journals = list(self.freeform_journal_col.find(j_query, {"_id": 0}).sort("date", -1).limit(limit))
         expectations = list(self.db["weekly_expectations"].find(e_query, {"_id": 0}).sort("week_start_date", -1).limit(limit))
-        
+
         history = []
         for j in journals:
             history.append({
@@ -157,7 +157,7 @@ class SovereignMongoStorage:
                 "correlation_id": e.get("correlation_id", ""),
                 "updated_at": e.get("updated_at")
             })
-            
+
         # Sort combined history by date descending
         history.sort(key=lambda x: x["date"], reverse=True)
         return history[:limit]
@@ -182,14 +182,14 @@ class SovereignMongoStorage:
             month_id = dt.strftime("%Y-%m")
             iso_year, iso_week, iso_weekday = dt.isocalendar()
             week_id = f"W{iso_week:02d}"
-            
+
             query = {"month_id": month_id, "user_id": user_id}
-            
+
             set_updates = {}
             for k, v in status_updates.items():
                 update_path = f"weeks.{week_id}.{day_str}.chunks.{time_chunk}.sync_status.{k}"
                 set_updates[update_path] = v
-                
+
             self.journal_col.update_one(query, {"$set": set_updates})
         except ValueError:
             # Fallback for legacy
@@ -210,14 +210,14 @@ class SovereignMongoStorage:
         doc = self.journal_col.find_one({"month_id": year_month, "user_id": user_id}, {"_id": 0})
         if not doc:
             doc = {}
-            
+
         # Fetch reflections for this month to determine which days have summaries generated
         reflections_cursor = self.reflections_col.find(
-            {"day": {"$regex": f"^{year_month}-"}, "user_id": user_id}, 
+            {"day": {"$regex": f"^{year_month}-"}, "user_id": user_id},
             {"day": 1, "_id": 0}
         )
         doc["reflections"] = [r["day"] for r in reflections_cursor]
-        
+
         return doc
 
     def get_yearly_logs(self, year: str, user_id: str = "Hero") -> list:
@@ -228,19 +228,19 @@ class SovereignMongoStorage:
         pattern = f"^{year}-"
         cursor = self.journal_col.find({"month_id": {"$regex": pattern}, "user_id": user_id}, {"_id": 0})
         months_data = list(cursor)
-        
+
         # Fetch all reflections for this year to determine which days have summaries generated
         reflections_cursor = self.reflections_col.find(
-            {"day": {"$regex": f"^{year}-"}, "user_id": user_id}, 
+            {"day": {"$regex": f"^{year}-"}, "user_id": user_id},
             {"day": 1, "_id": 0}
         )
         reflections = [r["day"] for r in reflections_cursor]
-        
+
         # Inject reflections into the respective month docs
         for month_doc in months_data:
             m_id = month_doc.get("month_id")
             month_doc["reflections"] = [d for d in reflections if d.startswith(m_id)]
-            
+
         return months_data
 
     def save_agent_reflection(self, reflection_data: dict, correlation_id: str = None):
@@ -283,10 +283,10 @@ class SovereignMongoStorage:
         """
         if artifact_name.endswith('.json'):
             artifact_name = artifact_name[:-5]
-            
+
         doc = self.artifacts_col.find_one({"artifact_name": artifact_name, "username": username}, {"_id": 0})
         return doc.get("data") if doc else None
-        
+
     def save_hero_artifact(self, artifact_name: str, data: dict, username: str = "system"):
         """
         Saves or updates a JSON artifact in MongoDB scoped by username.
@@ -294,7 +294,7 @@ class SovereignMongoStorage:
         """
         if artifact_name.endswith('.json'):
             artifact_name = artifact_name[:-5]
-            
+
         self.artifacts_col.update_one(
             {"artifact_name": artifact_name, "username": username},
             {"$set": {"data": data, "updated_at": datetime.now(timezone.utc)}},
@@ -311,7 +311,7 @@ class SovereignMongoStorage:
             {"$set": {"data": value_dict}},
             upsert=True
         )
-        
+
     def get_system_status(self, key: str) -> dict:
         """
         Retrieves status metadata for a specific component.
@@ -325,7 +325,7 @@ class SovereignMongoStorage:
         """
         user = self.users_col.find_one({"email": email}, {"_id": 0})
         now = datetime.now(timezone.utc)
-        
+
         default_username = email.split('@')[0] if email else "unknown"
 
         if not user:
@@ -345,14 +345,14 @@ class SovereignMongoStorage:
             nexus_admin_email = os.environ.get("NEXUS_ADMIN_EMAIL", "")
             if nexus_admin_email and email == nexus_admin_email:
                 user["guild_invite_status"] = "accepted"
-                
+
             self.users_col.insert_one(user)
         else:
             # Migration check: if existing user doesn't have a username, generate one
             username = user.get("username")
             if not username:
                 username = default_username
-                
+
             self.users_col.update_one(
                 {"email": email},
                 {"$set": {
@@ -365,7 +365,7 @@ class SovereignMongoStorage:
             user["last_login"] = now
             user["username"] = username
             user["profile"] = profile_data
-            
+
         return user
 
     def update_username(self, email: str, new_username: str) -> bool:
@@ -385,7 +385,7 @@ class SovereignMongoStorage:
         update_doc = {"opt_in_calendar_sync": opt_in}
         if refresh_token is not None:
             update_doc["google_refresh_token"] = refresh_token
-            
+
         self.users_col.update_one(
             {"email": email},
             {"$set": update_doc}
@@ -442,7 +442,7 @@ class SovereignMongoStorage:
         Fetches the full user profile by email.
         """
         return self.users_col.find_one({"email": email}, {"_id": 0})
-        
+
     def update_guild_invite_status(self, email: str, status: str) -> bool:
         """
         Updates the user's guild invite status (e.g. 'accepted', 'declined').
@@ -460,9 +460,9 @@ class SovereignMongoStorage:
         """
         # Find raw events not yet formatted
         raw_events = list(self.raw_col.find({"sync_status": "staged"}))
-        
+
         logger.info("--- Processing Raw Events for Formatting ((bulk upsert) ---")
-        
+
         formatted_ops = []
         raw_ops = []
         success_count = 0
@@ -471,12 +471,12 @@ class SovereignMongoStorage:
             try:
                 # The logic for 'HOW' to parse is delegated to calendar_parser.py
                 fmt = parse_single_event(raw)
-                
+
                 if fmt:
                     formatted_ops.append(
                         UpdateOne(
-                            {"gcal_id": fmt.get('gcal_id')}, 
-                            {"$set": fmt}, 
+                            {"gcal_id": fmt.get('gcal_id')},
+                            {"$set": fmt},
                             upsert=True
                         )
                     )
@@ -491,28 +491,28 @@ class SovereignMongoStorage:
                             {"$set": {"metadata.sync_status": "formatted"}}
                         )
                     )
-                
+
                 success_count += 1
-        
+
                 if len(raw_ops) >= batch_size:
                     if formatted_ops:
                         self.formatted_col.bulk_write(formatted_ops, ordered=False)
                     if raw_ops:
                         self.raw_col.bulk_write(raw_ops, ordered=False)
-                            
+
                     # Clear the lists for the next batch
                     formatted_ops = []
                     raw_ops = []
                     logger.info(f"Beautifully processed batch... Total so far: {success_count}")
 
             except Exception as e:
-                logger.info(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")         
+                logger.info(f"Minor hiccup processing raw event {raw.get('_id')}: {e}")
 
         if formatted_ops:
             self.formatted_col.bulk_write(formatted_ops, ordered=False)
         if raw_ops:
             self.raw_col.bulk_write(raw_ops, ordered=False)
-                
+
         logger.info(f"Successfully formatted {success_count} events.")
         return success_count
 
@@ -532,7 +532,7 @@ class SovereignMongoStorage:
             {"gcal_id": {"$in": gcal_ids}},
             {
                 "$set": {
-                    "neo4j_synced": True, 
+                    "neo4j_synced": True,
                     "neo4j_last_sync": datetime.now(timezone.utc)
                 }
             }
@@ -541,13 +541,13 @@ class SovereignMongoStorage:
 # --- Execution Entry Point ---
 if __name__ == "__main__":
         # Ensure environment variables are loaded if running manually
-    #os.environ["MONGO_URI"] = 
-    
+    #os.environ["MONGO_URI"] =
+
     storage = SovereignMongoStorage()
-    
+
     logger.info(f"Sovereign Storage initiated at {datetime.now(timezone.utc)}")
     processed = storage.process_all_unstaged()
-    
+
     # Final Verification
     if processed > 0:
         logger.info(f"Ready for Graph Ingestion: {len(storage.get_formatted_for_neo4j())} events.")

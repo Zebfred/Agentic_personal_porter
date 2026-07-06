@@ -17,20 +17,20 @@ def inspect_paper(paper: arxiv.Result) -> Dict[str, Any]:
         'entry_id': paper.entry_id,
         'get_short_id': paper.get_short_id(),
     }
-    
+
     # Check for PDF URL in various possible attributes
     pdf_url_attrs = ['pdf_url', 'pdf_urls', 'link', 'links', 'pdf_link']
     for attr in pdf_url_attrs:
         if hasattr(paper, attr):
             value = getattr(paper, attr)
             inspection[attr] = value
-    
+
     # Check all attributes
     inspection['all_attributes'] = [attr for attr in dir(paper) if not attr.startswith('_')]
-    
+
     # Check if there are any link-related attributes
     inspection['link_attributes'] = [attr for attr in dir(paper) if 'link' in attr.lower() or 'url' in attr.lower() or 'pdf' in attr.lower()]
-    
+
     return inspection
 
 
@@ -39,30 +39,30 @@ def test_single_paper(arxiv_id: str):
     print(f"\n{'='*60}")
     print(f"Testing paper: {arxiv_id}")
     print('='*60)
-    
+
     try:
         client = arxiv.Client(
             page_size=100,
             delay_seconds=3.0,
             num_retries=3
         )
-        
+
         search = arxiv.Search(id_list=[arxiv_id])
         results = list(client.results(search))
-        
+
         if not results:
             print(f"❌ No results found for {arxiv_id}")
             return None
-        
+
         paper = results[0]
         print("✓ Successfully fetched paper")
         print(f"\nTitle: {paper.title}")
         print(f"Short ID: {paper.get_short_id()}")
         print(f"Entry ID: {paper.entry_id}")
-        
+
         # Inspect the paper object
         inspection = inspect_paper(paper)
-        
+
         print("\n📋 Available attributes with 'link', 'url', or 'pdf' in name:")
         for attr in inspection['link_attributes']:
             try:
@@ -70,7 +70,7 @@ def test_single_paper(arxiv_id: str):
                 print(f"  - {attr}: {value}")
             except Exception as e:
                 print(f"  - {attr}: <error accessing: {e}>")
-        
+
         print("\n🔍 PDF URL check:")
         if hasattr(paper, 'pdf_url'):
             pdf_url = paper.pdf_url
@@ -81,10 +81,10 @@ def test_single_paper(arxiv_id: str):
                 print("  ✗ PDF URL is None or empty")
         else:
             print("  ✗ 'pdf_url' attribute does not exist")
-        
+
         # Try alternative methods to get PDF URL
         print("\n🔍 Alternative PDF URL methods:")
-        
+
         # Method 1: Construct from entry_id
         if paper.entry_id:
             # Arxiv PDFs are typically at: https://arxiv.org/pdf/{id}.pdf
@@ -98,21 +98,21 @@ def test_single_paper(arxiv_id: str):
                 short_id = paper.get_short_id()
                 pdf_url_constructed = f"https://arxiv.org/pdf/{short_id}.pdf"
                 print(f"  Constructed from short_id: {pdf_url_constructed}")
-        
+
         # Method 2: Check links attribute if it exists
         if hasattr(paper, 'links'):
             print(f"  paper.links = {paper.links}")
-        
+
         # Method 3: Check if there's a _raw attribute with more data
         if hasattr(paper, '_raw'):
             print("  paper._raw exists (raw data available)")
-        
+
         # Print full inspection as JSON for debugging
         print("\n📄 Full inspection (JSON):")
         print(json.dumps(inspection, indent=2, default=str))
-        
+
         return paper
-        
+
     except arxiv.HTTPError as e:
         print(f"❌ HTTP Error: {e}")
         error_str = str(e)
@@ -133,14 +133,14 @@ def test_multiple_papers(arxiv_ids: list):
     print(f"\n{'='*60}")
     print(f"Testing {len(arxiv_ids)} papers")
     print('='*60)
-    
+
     results = []
     for arxiv_id in arxiv_ids:
         paper = test_single_paper(arxiv_id)
         results.append((arxiv_id, paper is not None))
         import time
         time.sleep(3)  # Be polite
-    
+
     print(f"\n{'='*60}")
     print("Summary:")
     print('='*60)
@@ -156,13 +156,13 @@ if __name__ == "__main__":
         "1602.01783",  # A3C
         "1801.01290",  # Soft Actor-Critic
     ]
-    
+
     print("Arxiv API Endpoint Diagnostic Tool")
     print("=" * 60)
-    
+
     # Test single paper first
     test_single_paper(test_ids[0])
-    
+
     # Uncomment to test all papers
     # test_multiple_papers(test_ids)
 

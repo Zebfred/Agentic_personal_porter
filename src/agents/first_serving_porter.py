@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
-from src.utils.llm_factory import AgentLLMConfig
 from src.utils.llm_resilience import get_resilient_llm
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.utils.token_circuit_breaker import (
@@ -155,12 +154,12 @@ def search_private_brain(query: str) -> str:
     emb_client = BGEM3EmbeddingsClient()
     vector = emb_client.get_embedding(query)
     weaviate = WeaviateExperimentalClient()
-    
+
     try:
         results = weaviate.search_private_brain(query_vector=vector, limit=3)
     except Exception as e:
         return f"[DATABASE RETURN] Failed to access private brain: {e}"
-        
+
     hits = []
     if results and "data" in results and "Get" in results["data"] and "PrivateBrainObj" in results["data"]["Get"]:
         docs = results["data"]["Get"]["PrivateBrainObj"]
@@ -168,7 +167,7 @@ def search_private_brain(query: str) -> str:
             text = d.get("text", "")
             source = f"{d.get('folder', 'unknown')}/{d.get('filename', 'Unknown Source')}"
             hits.append(f"- [Source: {source}] {text[:500]}...")
-            
+
     if not hits:
         return f"[DATABASE RETURN] No private memory found matching '{query}'."
     compiled = "\n\n".join(hits)

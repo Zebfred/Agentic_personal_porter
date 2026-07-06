@@ -17,7 +17,7 @@ def log_to_neo4j(log_data: dict, username: str, correlation_id: str = None) -> s
     driver = get_driver()
     with driver.session() as session:
         result_node = session.execute_write(_create_log_entry, log_data, username, correlation_id)
-        
+
         # another potential fix
         # We must check if result_node is not None before trying to access it.
         if result_node and 'activity' in result_node:
@@ -38,11 +38,11 @@ def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = N
     matches_intent = log_data.get('matchesIntent', False)
     is_valuable_detour = log_data.get('isValuableDetour', False)
     inventory_note = log_data.get('inventoryNote', '')
-    
+
     # Determine time of day from timeChunk for state tracking
     time_chunk = log_data.get('timeChunk', '')
     time_of_day = _extract_time_of_day(time_chunk)
-    
+
     query = (
         """
         // Find or create Hero
@@ -151,9 +151,9 @@ def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = N
         
         RETURN a, int, r
         """
-        
+
     )
-    
+
     result = tx.run(query,
                     username=username,
                     day=log_data.get('day'),
@@ -169,7 +169,7 @@ def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = N
                     timeOfDay=time_of_day,
                     correlation_id=correlation_id or ''
                    )
-    
+
     record = result.single()
     if record:
         return record.get('a')
@@ -213,18 +213,18 @@ def create_identity_graph(username, origin_story, ambitions):
     logger.info(user_id_graph)
     return user_id_graph
 
-def create_goal(username: str, description: str, category: str = "general", 
+def create_goal(username: str, description: str, category: str = "general",
                 priority: str = "medium", timeframe: str = "ongoing") -> dict:
     """
     Create a Goal node in Neo4j.
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.execute_write(_create_goal_tx, username, description, 
+        result = session.execute_write(_create_goal_tx, username, description,
                                       category, priority, timeframe)
     return result
 
-def _create_goal_tx(tx, username: str, description: str, category: str, 
+def _create_goal_tx(tx, username: str, description: str, category: str,
                    priority: str, timeframe: str):
     """Transaction function to create a goal."""
     query = (
@@ -242,7 +242,7 @@ def _create_goal_tx(tx, username: str, description: str, category: str,
         RETURN g
         """
     )
-    result = tx.run(query, username=username, description=description, 
+    result = tx.run(query, username=username, description=description,
                    category=category, priority=priority, timeframe=timeframe)
     record = result.single()
     return record.get('g') if record else None

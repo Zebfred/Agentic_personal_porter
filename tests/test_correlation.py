@@ -2,7 +2,6 @@
 Tests for the Correlation ID Generator.
 Validates deterministic behavior, format correctness, and edge cases.
 """
-import pytest
 from unittest.mock import patch
 from datetime import datetime, timezone
 
