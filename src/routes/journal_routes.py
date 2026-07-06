@@ -307,6 +307,7 @@ def save_freeform_journal():
         text = data.get("text")
         if not date_str or text is None:
             return jsonify({"error": "Missing date or text"}), 400
+
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)

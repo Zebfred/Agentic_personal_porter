@@ -81,6 +81,7 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
 
         final_text = ""
         total_tokens = 0
+        from src.utils.token_circuit_breaker import TokenLimitExceededError
 
         for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
             # ADK Token Circuit Breaker Logic
@@ -145,6 +146,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
 
         final_text = ""
         total_tokens = 0
+        from src.utils.token_circuit_breaker import TokenLimitExceededError
 
         for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
             # ADK Token Circuit Breaker Logic
