@@ -76,6 +76,10 @@ def execute_sovereign_consolidation():
         db[col].create_index([("gcal_id", 1)], unique=True, sparse=True)
         print(f" 📈 Applied unique constraint index [gcal_id] to collection: '{col}'")
 
+        # ⚡ Bolt Optimization: Add compound index for frequent temporal queries
+        db[col].create_index([("user_id", 1), ("time_slot.start", -1)])
+        print(f" ⚡ Applied compound temporal index [user_id, time_slot.start] to collection: '{col}'")
+
     # 5. Local Data Handshake Sanity Pass (Simulating Local Operation)
     print("\n🧪 Executing Local State Ingestion Test...")
     mock_id = f"mock_evt_{int(datetime.utcnow().timestamp())}"
