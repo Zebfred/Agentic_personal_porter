@@ -76,7 +76,7 @@ def save_log():
         logger.info(f"[LINEAGE] Generated correlation_id: {correlation_id}")
 
         # 1. Save pristine Frontend log to MongoDB Landing Zone (with lineage)
-        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict, correlation_id=correlation_id)
+        mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict, user_id=username, correlation_id=correlation_id)
 
         # 2. Save the complete log as a distinct node to Neo4j Identity Graph
         db_confirmation = "Failed"
@@ -404,8 +404,10 @@ def get_historical_logs():
             return jsonify({"error": "Missing month parameter (format: YYYY-MM)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_id = getattr(request, 'user_email', 'Hero')
-        month_data = mongo_storage.get_monthly_log(month, user_id=user_id)
+        user_email = getattr(request, 'user_email', 'Hero')
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        month_data = mongo_storage.get_monthly_log(month, user_id=username)
 
         return jsonify({
             "status": "success",
@@ -431,8 +433,10 @@ def get_yearly_logs_route():
             return jsonify({"error": "Missing year parameter (format: YYYY)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_id = getattr(request, 'user_email', 'Hero')
-        data = mongo_storage.get_yearly_logs(year, user_id=user_id)
+        user_email = getattr(request, 'user_email', 'Hero')
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        data = mongo_storage.get_yearly_logs(year, user_id=username)
 
         return jsonify({
             "status": "success",
@@ -502,9 +506,13 @@ def process_journal():
 
             # Save Reflection to dedicated collection
             mongo_storage = SovereignMongoStorage()
+            user_email = getattr(request, 'user_email', 'Hero')
+            user_doc = mongo_storage.get_user_by_email(user_email)
+            username = user_doc.get("username", "Hero") if user_doc else "Hero"
+            
             reflection_id = mongo_storage.save_agent_reflection({
                 "day": day,
-                "user_id": getattr(request, 'user_email', 'Hero'),
+                "user_id": username,
                 "reflection_text": result_text,
                 "metadata": {
                     "source": "daily_recon",
