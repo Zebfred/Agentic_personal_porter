@@ -10,5 +10,5 @@ $ErrorActionPreference = 'Stop'
 # Get absolute path to the directory containing this script
 $ScriptDir = $PSScriptRoot
 
-# Call the python checker script using the correct conda environment
-conda run -n agentic_porter python "$ScriptDir\check_our_agent_models.py"
+# Call the python checker script using uv (faster than conda run wrapper)
+uv run python "$ScriptDir\check_our_agent_models.py"

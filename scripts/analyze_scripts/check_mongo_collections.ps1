@@ -12,4 +12,4 @@ $ScriptDir = $PSScriptRoot
 
 Write-Host "Activating agentic_porter environment and gathering MongoDB statistics..."
 Write-Host "======================================================================="
-conda run -n agentic_porter python "$ScriptDir\mongo_collections_overview.py"
+uv run python "$ScriptDir\mongo_collections_overview.py"

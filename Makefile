@@ -35,6 +35,9 @@ else
 endif
 
 # --- Environment Management ---
+# NOTE: conda is ONLY used in the `install` target to bootstrap Python 3.12 +
+# Node.js. All runtime commands use `uv run` directly (~0.15s) instead of
+# `conda run -n ... uv run` (~1.85s) to avoid a ~1.7s per-invocation penalty.
 install: ## Create the conda environment and install all dependencies
 	conda create -n $(CONDA_ENV) python=3.12 nodejs -y
 	conda run -n $(CONDA_ENV) uv sync --dev
@@ -42,24 +45,24 @@ install: ## Create the conda environment and install all dependencies
 install-uv: ## Install dependencies using uv package manager
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "if (!(Get-Command uv -ErrorAction SilentlyContinue)) { Write-Host 'uv is not installed. Installing uv...'; Invoke-RestMethod https://astral.sh/uv/0.6.12/install.ps1 | Invoke-Expression }"
-	conda run -n $(CONDA_ENV) uv sync --dev
+	uv sync --dev
 else
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
-	conda run -n $(CONDA_ENV) uv sync --dev
+	uv sync --dev
 endif
 
 update: ## Update the conda environment dependencies using uv sync
-	conda run -n $(CONDA_ENV) uv sync --dev
+	uv sync --dev
 
 # --- Development & Execution ---
 # Run unit and integration tests
 dev: ## Start the backend in development mode (Flask server)
 	@echo "Starting development server on port $(PORT)..."
-	conda run -n $(CONDA_ENV) $(PYTHON) src/app.py
+	$(PYTHON) src/app.py
 
 run: build-css ## Start the backend in production mode (Gunicorn)
 	@echo "Starting production server on port $(PORT)..."
-	conda run -n $(CONDA_ENV) $(PYTHON) -m gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
+	$(PYTHON) -m gunicorn --bind 127.0.0.1:$(PORT) --workers 1 --threads 4 src.app:app
 
 test: ## Run the test suite using pytest
 ifeq ($(OS),Windows_NT)
@@ -75,7 +78,7 @@ ifeq ($(OS),Windows_NT)
 		} \
 		$$env:PROJECT_ID = $$proj_id; \
 		$$env:DISABLE_CLOUD_LOGGING = 'true'; \
-		conda run -n $(CONDA_ENV) uv run pytest tests/ \
+		uv run pytest tests/ \
 	"
 else
 	@proj_id="$(PROJECT_ID)"; \
@@ -86,21 +89,21 @@ else
 		echo "Error: PROJECT_ID is not set in environment or .auth/.env. Setup environment before running tests"; \
 		exit 1; \
 	fi; \
-	PROJECT_ID="$$proj_id" DISABLE_CLOUD_LOGGING=true conda run -n $(CONDA_ENV) uv run pytest tests/
+	PROJECT_ID="$$proj_id" DISABLE_CLOUD_LOGGING=true uv run pytest tests/
 endif
 # Run code quality checks (codespell, ruff, mypy)
-lint:
+lint: ## Run code quality checks (codespell, ruff, mypy)
 	@echo "Running code quality checks..."
-	conda run -n $(CONDA_ENV) uv sync --dev
-	conda run -n $(CONDA_ENV) uv run codespell -s
-	conda run -n $(CONDA_ENV) uv run ruff check . --diff
-	conda run -n $(CONDA_ENV) uv run mypy .
+	uv sync --dev
+	uv run codespell -s
+	uv run ruff check . --diff
+	uv run mypy .
 
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "$$env:PYTHONPATH='.'; conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py"
+	@powershell -Command "$$env:PYTHONPATH='.'; $(PYTHON) scripts/analyze_scripts/local_pulse_check.py"
 else
-	PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py
+	PYTHONPATH=. $(PYTHON) scripts/analyze_scripts/local_pulse_check.py
 endif
 
 trace-lineage: ## Trace a correlation ID across all data sources (Mongo, Neo4j, ChromaDB)
@@ -108,16 +111,16 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "\
 		$$env:PYTHONPATH='.'; \
 		if ('$(ID)' -eq '') { \
-			conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list \
+			$(PYTHON) scripts/analyze_scripts/trace_lineage.py --list \
 		} else { \
-			conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID) \
+			$(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID) \
 		} \
 	"
 else
 	@if [ -z "$(ID)" ]; then \
-		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list; \
+		PYTHONPATH=. $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list; \
 	else \
-		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID); \
+		PYTHONPATH=. $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID); \
 	fi
 endif
 
@@ -130,9 +133,9 @@ endif
 
 ingest-private-brain: ## Parse the Agentic_Private_Brain and push vectors to Weaviate Cloud
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "$$env:PYTHONPATH='.'; conda run -n $(CONDA_ENV) uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py"
+	@powershell -Command "$$env:PYTHONPATH='.'; uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py"
 else
-	PYTHONPATH=. conda run -n $(CONDA_ENV) uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
+	PYTHONPATH=. uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
 endif
 
 # --- Frontend Assets ---
