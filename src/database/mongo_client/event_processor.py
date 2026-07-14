@@ -207,9 +207,20 @@ class EventProcessorClient:
             ))
             event_uuids.append(event_uuid)
 
+        timeseries_ops = []
+        for raw_gcal_event in raw_gcal_events:
+            gcal_id = raw_gcal_event.get('id')
+            if gcal_id:
+                timeseries_ops.append(UpdateOne(
+                    {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
+                    {"$set": {"metadata.sync_status": "processed"}}
+                ))
+
         if intent_ops:
             self.intent_col.bulk_write(intent_ops, ordered=False)
         if unified_ops:
             self.unified_col.bulk_write(unified_ops, ordered=False)
+        if timeseries_ops:
+            self.timeseries_col.bulk_write(timeseries_ops, ordered=False)
 
         return event_uuids
