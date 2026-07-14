@@ -19,9 +19,19 @@ from src.routes.calendar_routes import fetch_calendar_events_for_date
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
 from src.database.mongo_client.uuid_manager import UUIDGenerator
+from src.database.neo4j_client.connection import get_driver
 
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
+
+def _handle_request_data():
+    """Helper to handle OPTIONS and extract JSON data."""
+    if request.method == 'OPTIONS':
+        return None, ('', 204)
+    data = request.get_json()
+    if not data:
+        return None, (jsonify({"error": "No JSON data received"}), 400)
+    return data, None
 
 @journal_bp.route('/api/save_log', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -29,12 +39,11 @@ def save_log():
     """
     Saves a log entry to MongoDB and Neo4j without triggering AI reflection.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         try:
             validated_data = JournalLogBase(**data)
@@ -48,14 +57,14 @@ def save_log():
             log_data_dict["sync_status"] = {"neo4j": False, "mongo_actuals": False, "unified": False}
         if "saga_status" not in log_data_dict:
             log_data_dict["saga_status"] = {
-                "status": "RECEIVED", 
+                "status": "RECEIVED",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "details": f"Journal entry received for day {log_data_dict.get('day')} chunk {log_data_dict.get('timeChunk')}"
             }
 
         # 1. Save pristine Frontend log to MongoDB Landing Zone
         mongo_storage = SovereignMongoStorage()
-        
+
         user_email = getattr(request, 'user_email', 'Hero')
         username = 'Hero'
         if user_email != 'Hero':
@@ -63,7 +72,7 @@ def save_log():
             username = user_doc.get("username", "Hero") if user_doc else "Hero"
 
         mongo_doc_id = mongo_storage.save_journal_entry(log_data_dict)
-        
+
         day_str = str(log_data_dict.get("day", "unknown_date"))
         time_chunk = str(log_data_dict.get("timeChunk", "unknown_time"))
 
@@ -80,26 +89,26 @@ def save_log():
         except Exception as e_neo:
             logger.warning(f"Failed to write to Neo4j: {e_neo}")
             mongo_storage.update_journal_sync_status(mongo_doc_id, day_str, time_chunk, {
-                "neo4j": False, 
+                "neo4j": False,
                 "neo4j_error": str(e_neo),
                 "saga_status.status": "FAILED",
                 "saga_status.details": f"Neo4j Injection Failed: {e_neo}"
             }, user_id=username)
-        
+
         # 3. Mach 3 Rework: Write strictly to event_actuals and unified_events as ground truth
         try:
             db = MongoConnectionManager.get_db()
             actual_col = db[MongoConfig.ACTUAL_COLLECTION]
             unified_col = db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
-            
+
             synthetic_gcal_id = f"manual_log_{day_str}_{time_chunk}_{mongo_doc_id}"
             event_uuid = UUIDGenerator.generate_for_event(synthetic_gcal_id, username)
-            
+
             intent_payload = {
                 "title": log_data_dict.get("intention", "Weekly Expectation"),
                 "description": log_data_dict.get("intention", "Weekly Expectation"),
             }
-            
+
             actual_payload = {
                 "title": log_data_dict.get("title", "Adventure Log Entry"),
                 "category": log_data_dict.get("category", "General"),
@@ -107,12 +116,12 @@ def save_log():
                 "status": "Verified Log",
                 "matches_intent": log_data_dict.get("matchesIntent", False)
             }
-            
+
             time_slot = {
                 "start": day_str,
                 "end": day_str
             }
-            
+
             actual_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
@@ -127,7 +136,7 @@ def save_log():
                 }},
                 upsert=True
             )
-            
+
             unified_col.update_one(
                 {"_id": event_uuid},
                 {"$set": {
@@ -158,16 +167,15 @@ def save_weekly_expectation():
     """
     Saves a Weekly Expectation mapping it to the (Week) node in Neo4j.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         week_start_date = data.get("week_start_date")
         expectation_text = data.get("expectation_text")
-        
+
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
@@ -179,7 +187,7 @@ def save_weekly_expectation():
         # Save to MongoDB weekly_expectations
         db = MongoConnectionManager.get_db()
         week_col = db["weekly_expectations"]
-        
+
         week_col.update_one(
             {"user_id": username, "week_start_date": week_start_date},
             {"$set": {
@@ -192,7 +200,7 @@ def save_weekly_expectation():
         # Inject to Neo4j (Week)-[:PLANNED_AS]->(Intention)
         neo4j_status = "Failed"
         try:
-            with NeoConfig.get_driver().session() as session:
+            with get_driver().session() as session:
                 query = """
                 MERGE (u:User {id: $username})
                 MERGE (w:Week {id: $week_start_date})
@@ -231,7 +239,7 @@ def get_weekly_expectation():
         week_start_date = request.args.get("week_start_date")
         if not week_start_date:
             return jsonify({"error": "Missing week_start_date"}), 400
-            
+
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
@@ -240,7 +248,7 @@ def get_weekly_expectation():
         db = MongoConnectionManager.get_db()
         week_col = db["weekly_expectations"]
         doc = week_col.find_one({"user_id": username, "week_start_date": week_start_date})
-        
+
         return jsonify({
             "status": "success",
             "data": {
@@ -313,12 +321,11 @@ def process_journal():
     Generates a daily reflection based on the day's logs.
     Saves the reflection to a dedicated collection.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         try:
             validated_data = DailyReflectionRequestSchema(**data)
@@ -355,8 +362,6 @@ def process_journal():
 
                     if events:
                         event_titles = [e.get('summary', 'Untitled') for e in events]
-                        calendar_context = f"\n\nCalendar Events for {day}: {', '.join(event_titles)}"
-                        #enhanced_journal_entry = journal_entry + calendar_context
                         logger.info(f"Added {len(events)} calendar events to journal context")
             except Exception as cal_err:
                 logger.warning(f"Calendar context failed: {cal_err}")
@@ -416,13 +421,13 @@ def edit_journal_event():
         elif action == 'reclassify':
             new_pillar = data.get('new_pillar')
             event_title = data.get('summary')
-            
+
             if not new_pillar or not event_title:
                 return jsonify({"error": "reclassify requires 'new_pillar' and 'summary'."}), 400
 
             # 1. Update the actual event
             mongo.formatted_col.update_one(
-                {"gcal_id": gcal_id}, 
+                {"gcal_id": gcal_id},
                 {"$set": {"pillar": new_pillar, "classification_verified": True}}
             )
 
@@ -431,11 +436,11 @@ def edit_journal_event():
             if cat_map:
                 intent_map = cat_map.get('intent_to_actual_mapping', {})
                 actual_target = intent_map.get(new_pillar)
-                
+
                 # If they used the raw name directly e.g. "Leisures_related"
                 if not actual_target and new_pillar in cat_map.get('actual_categorization_with_keywords', {}):
                     actual_target = new_pillar
-                
+
                 if actual_target:
                     target_bucket = cat_map['actual_categorization_with_keywords'].get(actual_target, {})
                     if 'General' in target_bucket:
@@ -446,7 +451,7 @@ def edit_journal_event():
                             logger.info(f"Appended '{event_title}' to {actual_target} General Bucket.")
 
             return jsonify({"status": "success", "message": f"Successfully mapped '{event_title}' to {new_pillar}."})
-            
+
         else:
             return jsonify({"error": f"Unknown action: {action}"}), 400
 
