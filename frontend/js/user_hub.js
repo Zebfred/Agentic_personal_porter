@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', message);
         chatInput.value = '';
         chatInput.disabled = true;
+
+        const originalText = sendButton.innerText;
+        sendButton.innerText = 'Sending...';
         sendButton.disabled = true;
 
         // Show a temporary "Thinking" indicator
@@ -110,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appendMessage('porter', 'Sorry, I encountered an issue connecting to my core logic module.');
         } finally {
             chatInput.disabled = false;
+            sendButton.innerText = originalText;
             sendButton.disabled = false;
             chatInput.focus();
         }
