@@ -55,6 +55,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "pymongo>=4.6.1",
     "pymupdf~=1.26.6",
+    "redis>=5.0.0",
     "pytest>=9.0.3",
     "python-dotenv>=1.2.2",
     "rich==14.3.4",
@@ -71,6 +72,7 @@ dependencies = [
     "cloudevents==1.12.0",
     "google-cloud-billing>=1.19.0",
     "functions-framework>=3.10.1",
+    "weaviate-client>=3.26.7,<4.0.0",
 ]
 
 [dependency-groups]
@@ -88,8 +90,18 @@ typeCheckingMode = "basic"
 [tool.ruff]
 src = ["."]
 
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = [
+    "E402",  # Module level import not at top of file
+    "E701",  # Multiple statements on one line (colon)
+    "F841",  # Local variable is assigned to but never used
+    "E501",  # Line too long
+]
+
+
 [tool.codespell]
-skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
+skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture,./uv.lock"
 ignore-words-list = "rouge"
 
 [tool.mypy]

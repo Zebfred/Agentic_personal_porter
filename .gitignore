@@ -25,9 +25,11 @@ token.pickle
 token.json
 credentials.json
 *.json
+!package.json
 
 # Ignore sensitive data
 data/*
+!data/category_mapping.example.json
 *.bin
 src/data/chroma_db/*
 tailwindcss
@@ -36,6 +38,12 @@ node_modules/
 
 #Ignore Scratch work
 scratch/*
+scripts/scratch/*
+
+#ignore backups
+.legacy_hr/*
+
+
 #Potentially Sensitive documentation
 Documentation/issues_and_audit/*
 Documentation/Outdated_Doc/*
@@ -43,7 +51,9 @@ Documentation/notes/*
 Documentation/Completed_Tasks/*
 Documentation/Current_work/*
 
+#
 # Sensitive helper scripts removed from git history (2026-04-17).
 # These files read from .auth/.env and must never be re-committed.
 **/check_status.py
 **/sync_gcp_secrets.sh
+**/sync_gcp_secrets.ps1

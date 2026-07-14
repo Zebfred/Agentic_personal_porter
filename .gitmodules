@@ -1,0 +1,6 @@
+[submodule "Documentation/Agentic_Private_Brain"]
+	path = Agentic_Private_Brain
+	url = git@github.com:Zebfred/Agentic_Private_Brain.git
+[submodule "Agentic_Private_Brain"]
+	path = Agentic_Private_Brain
+	url = https://github.com/Zebfred/Agentic_Private_Brain.git
