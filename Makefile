@@ -1,5 +1,10 @@
 # --- Makefile for Agentic Personal Porter ---
-SHELL := /bin/bash
+# Cross-platform SHELL detection: use bash on Unix, cmd on Windows
+ifeq ($(OS),Windows_NT)
+    SHELL := cmd.exe
+else
+    SHELL := /bin/bash
+endif
 
 # Variables
 CONDA_ENV = agentic_porter
@@ -19,9 +24,15 @@ endif
 .PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse sync-brain ingest-private-brain trace-lineage
 
 help: ## Show this help message with available commands
+ifeq ($(OS),Windows_NT)
+	@echo Agentic Personal Porter Management Commands:
+	@echo.
+	@powershell -Command "Get-Content $(MAKEFILE_LIST) | Select-String '^[a-zA-Z_-]+:.*?## ' | ForEach-Object { $$_ -match '^([a-zA-Z_-]+):.*?## (.*)$$' | Out-Null; Write-Host ('{0,-20} {1}' -f $$Matches[1], $$Matches[2]) }"
+else
 	@echo "Agentic Personal Porter Management Commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
+endif
 
 # --- Environment Management ---
 install: ## Create the conda environment and install all dependencies
@@ -29,8 +40,13 @@ install: ## Create the conda environment and install all dependencies
 	conda run -n $(CONDA_ENV) uv sync --dev
 
 install-uv: ## Install dependencies using uv package manager
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "if (!(Get-Command uv -ErrorAction SilentlyContinue)) { Write-Host 'uv is not installed. Installing uv...'; Invoke-RestMethod https://astral.sh/uv/0.6.12/install.ps1 | Invoke-Expression }"
+	conda run -n $(CONDA_ENV) uv sync --dev
+else
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
 	conda run -n $(CONDA_ENV) uv sync --dev
+endif
 
 update: ## Update the conda environment dependencies using uv sync
 	conda run -n $(CONDA_ENV) uv sync --dev
@@ -81,20 +97,43 @@ lint:
 	conda run -n $(CONDA_ENV) uv run mypy .
 
 pulse: ## Execute the local system health diagnostic
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "$$env:PYTHONPATH='.'; conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py"
+else
 	PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/local_pulse_check.py
+endif
 
 trace-lineage: ## Trace a correlation ID across all data sources (Mongo, Neo4j, ChromaDB)
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "\
+		$$env:PYTHONPATH='.'; \
+		if ('$(ID)' -eq '') { \
+			conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list \
+		} else { \
+			conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID) \
+		} \
+	"
+else
 	@if [ -z "$(ID)" ]; then \
 		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py --list; \
 	else \
 		PYTHONPATH=. conda run -n $(CONDA_ENV) $(PYTHON) scripts/analyze_scripts/trace_lineage.py $(ID); \
 	fi
+endif
 
 sync-brain: ## Automate committing and pushing updates to the Agentic_Private_Brain submodule
+ifeq ($(OS),Windows_NT)
+	@powershell -ExecutionPolicy Bypass -File Agentic_Private_Brain/deployment_scripts/sync_brain.ps1
+else
 	@./Agentic_Private_Brain/deployment_scripts/sync_brain.sh
+endif
 
 ingest-private-brain: ## Parse the Agentic_Private_Brain and push vectors to Weaviate Cloud
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "$$env:PYTHONPATH='.'; conda run -n $(CONDA_ENV) uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py"
+else
 	PYTHONPATH=. conda run -n $(CONDA_ENV) uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
+endif
 
 # --- Frontend Assets ---
 build-css: ## Build and minify Tailwind CSS assets
@@ -113,7 +152,11 @@ docker-run: ## Run the Docker container locally (requires .auth/.env)
 
 docker-stop: ## Stop any running containers for this project
 	@echo "Stopping $(IMAGE_NAME) containers..."
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "docker ps -q --filter ancestor=$(IMAGE_NAME) | ForEach-Object { docker stop $$_ } 2>$$null; exit 0"
+else
 	docker stop $$(docker ps -q --filter ancestor=$(IMAGE_NAME)) 2>/dev/null || true
+endif
 
 deploy:
 ifeq ($(OS),Windows_NT)
