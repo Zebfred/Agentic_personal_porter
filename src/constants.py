@@ -98,6 +98,14 @@ class _LazyMapping:
         return get_category_mapping()[key]
     def __contains__(self, key):
         return key in get_category_mapping()
+    def __iter__(self):
+        return iter(get_category_mapping())
+    def __len__(self):
+        return len(get_category_mapping())
+    def __bool__(self):
+        return bool(get_category_mapping())
+    def __eq__(self, other):
+        return get_category_mapping() == other
     def get(self, key, default=None):
         return get_category_mapping().get(key, default)
     def keys(self):
