@@ -1,7 +1,6 @@
 from src.utils.logging_config import setup_logger
 import os
 
-from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
@@ -20,11 +19,9 @@ from src.agents.context_loader import get_context
 
 logger = setup_logger(__name__)
 # DB and Embedding Imports
-# Load Environment Vars
+# Load Environment Vars (centralized — load_env_vars() handles dotenv internally)
 load_env_vars()
 raw_api_key = os.getenv("GROQ_API_KEY")
-env_path = get_auth_file(".env")
-load_dotenv(dotenv_path=env_path)
 
 
 # 2. Defines Tools

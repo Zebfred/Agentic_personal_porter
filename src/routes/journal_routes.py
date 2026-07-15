@@ -228,7 +228,7 @@ def save_weekly_expectation():
             from src.database.neo4j_client.connection import get_driver
             with get_driver().session() as session:
                 query = """
-                MERGE (u:User {id: $username})
+                MERGE (u:Hero {id: $username})
                 MERGE (w:Week {id: $week_start_date})
                 MERGE (u)-[:EXPERIENCED]->(w)
                 MERGE (i:Intention {type: "Weekly Expectation", week: $week_start_date})
