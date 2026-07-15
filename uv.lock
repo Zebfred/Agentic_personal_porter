@@ -56,7 +56,6 @@ dependencies = [
     { name = "pyjwt" },
     { name = "pymongo" },
     { name = "pymupdf" },
-    { name = "pytest" },
     { name = "python-dotenv" },
     { name = "redis" },
     { name = "rich" },
@@ -78,6 +77,7 @@ dev = [
     { name = "codespell" },
     { name = "mypy" },
     { name = "pylint" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 
@@ -126,7 +126,6 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.10.1" },
     { name = "pymongo", specifier = ">=4.6.1" },
     { name = "pymupdf", specifier = "~=1.26.6" },
-    { name = "pytest", specifier = ">=9.0.3" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "redis", specifier = ">=5.0.0" },
     { name = "rich", specifier = "==14.3.4" },
@@ -148,6 +147,7 @@ dev = [
     { name = "codespell", specifier = ">=2.4.2" },
     { name = "mypy", specifier = ">=2.0.0" },
     { name = "pylint", specifier = ">=3.0.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.12" },
 ]
 
