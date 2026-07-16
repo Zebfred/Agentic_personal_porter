@@ -104,8 +104,8 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                         st = parser.parse(start_iso)
                         et = parser.parse(end_iso)
                         duration_minutes = int((et - st).total_seconds() / 60)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning(f"Failed to parse event dates for {gcal_id}: {e}")
                 
                 # Simplification: we forward 'start', 'duration_minutes', 'title', 'gcal_id'
                 events_subset.append({
