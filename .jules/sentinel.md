@@ -44,3 +44,7 @@
 **Vulnerability:** Found multiple instances of `except Exception: pass` and bare excepts silently ignoring start parsing or other exceptions.
 **Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
 **Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
+## 2026-07-15 - Bare Except Statements Silently Hiding Application Logic Errors
+**Vulnerability:** Found an instance of `except Exception:` and a bare except silently ignoring start parsing exceptions in `src/agents/gtky_base_classifier.py`.
+**Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
+**Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
