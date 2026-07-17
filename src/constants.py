@@ -117,13 +117,4 @@ class _LazyMapping:
     def __repr__(self):
         return repr(get_category_mapping())
 
-loaded = False
 ACTUAL_CATEGORY_MAPPING = _LazyMapping()
-                    logger.warning(f"Error reading local category mapping fallback file {filepath}: {file_err}")
-
-        if not loaded:
-            logger.warning("category_mapping artifact not found in MongoDB or local files. Using empty fallback.")
-            ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}
-except Exception as e:
-    logger.error(f"Error loading category mapping: {e}")
-    ACTUAL_CATEGORY_MAPPING = {"intent_to_actual_mapping": {}, "actual_categorization_with_keywords": {}, "colors": {}}
