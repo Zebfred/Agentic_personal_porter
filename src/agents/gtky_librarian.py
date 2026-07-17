@@ -34,7 +34,7 @@ class GTKYLibrarian(GTKYBaseClassifier):
             for epoch in data['origin_story']['epochs']:
                 # Skip empty epochs if they haven't been authored yet
                 if not epoch['name']: continue
-                
+
                 session.run("""
                     MERGE (h:Hero {hero: $username})
                     MERGE (e:Epoch {name: $name})

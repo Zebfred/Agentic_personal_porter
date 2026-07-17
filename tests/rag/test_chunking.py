@@ -23,10 +23,10 @@ def test_fixed_size_chunking_initialization():
 def test_fixed_size_chunking_basic():
     """Test basic fixed-size chunking."""
     chunker = FixedSizeChunking(chunk_size=100, overlap=20)
-    
+
     text = "A " * 200  # Create text longer than chunk_size
     chunks = chunker.chunk(text)
-    
+
     assert len(chunks) > 0
     assert all('text' in chunk for chunk in chunks)
     assert all('chunk_index' in chunk for chunk in chunks)
@@ -34,12 +34,12 @@ def test_fixed_size_chunking_basic():
 def test_fixed_size_chunking_with_metadata():
     """Test fixed-size chunking with metadata."""
     chunker = FixedSizeChunking(chunk_size=100, overlap=20)
-    
+
     text = "A " * 200
     metadata = {'title': 'Test Paper', 'section_header': 'Introduction'}
-    
+
     chunks = chunker.chunk(text, metadata=metadata)
-    
+
     assert len(chunks) > 0
     assert all('metadata' in chunk for chunk in chunks)
     assert all(chunk['metadata']['title'] == 'Test Paper' for chunk in chunks)
@@ -62,15 +62,15 @@ def test_fast_semantic_chunking_basic():
         chunk_size=500,
         similarity_threshold=0.3
     )
-    
+
     text = """
     This is the first sentence. This is the second sentence.
     This is the third sentence. This is the fourth sentence.
     This is the fifth sentence. This is the sixth sentence.
     """
-    
+
     chunks = chunker.chunk(text)
-    
+
     assert len(chunks) > 0
     assert all('text' in chunk for chunk in chunks)
     assert all('num_sentences' in chunk for chunk in chunks)
@@ -93,16 +93,16 @@ def test_science_detail_semantic_chunking_basic():
         chunk_size=500,
         similarity_threshold=0.3
     )
-    
+
     text = """
     Reinforcement learning is a type of machine learning. 
     The agent learns through interaction with the environment.
     Q-learning is a model-free algorithm. 
     Policy gradients optimize the policy directly.
     """
-    
+
     chunks = chunker.chunk(text)
-    
+
     assert len(chunks) > 0
     assert all('text' in chunk for chunk in chunks)
     assert all('num_sentences' in chunk for chunk in chunks)
@@ -117,18 +117,18 @@ def test_document_chunker_with_sections():
     """Test DocumentChunker with section structure."""
     strategy = FixedSizeChunking(chunk_size=100, overlap=20)
     chunker = DocumentChunker(strategy)
-    
+
     sections = [
         {'header': 'Introduction', 'content': 'A ' * 150},
         {'header': 'Methodology', 'content': 'B ' * 150}
     ]
-    
+
     chunks = chunker.chunk_document(
         text="",
         title="Test Paper",
         sections=sections
     )
-    
+
     assert len(chunks) > 0
     # Check that section headers are preserved
     assert any('Introduction' in chunk.get('text', '') for chunk in chunks)

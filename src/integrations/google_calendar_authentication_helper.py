@@ -16,13 +16,13 @@ def get_auth_paths():
     # Move up three levels: integrations -> src -> project_root
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(current_dir))
-    
+
     auth_dir = os.path.join(project_root, '.auth')
-    
+
     # Ensure the .auth directory exists
     if not os.path.exists(auth_dir):
         os.makedirs(auth_dir)
-        
+
     return {
         "credentials": os.path.join(auth_dir, 'credentials.json'),
         "token": os.path.join(auth_dir, 'token.json')
@@ -59,7 +59,7 @@ def get_calendar_credentials(scopes=None):
                     f"Missing credentials file at {paths['credentials']}. "
                     "Please place your Google Cloud credentials.json there."
                 )
-            
+
             flow = InstalledAppFlow.from_client_secrets_file(
                 paths["credentials"], target_scopes
             )
@@ -79,21 +79,21 @@ def get_calendar_credentials_for_user(refresh_token: str, scopes=None):
     import json
     paths = get_auth_paths()
     target_scopes = scopes if scopes else SCOPES
-    
+
     if not os.path.exists(paths["credentials"]):
         raise FileNotFoundError(
             f"Missing credentials file at {paths['credentials']}. "
             "Cannot refresh user token without client secrets."
         )
-        
+
     with open(paths["credentials"], 'r') as f:
         client_config = json.load(f)
-        
+
     # Handle both 'web' and 'installed' types of credentials.json
     client_info = client_config.get('web') or client_config.get('installed')
     if not client_info:
         raise ValueError("Invalid credentials.json format")
-        
+
     creds = Credentials(
         token=None,
         refresh_token=refresh_token,
@@ -102,7 +102,7 @@ def get_calendar_credentials_for_user(refresh_token: str, scopes=None):
         client_secret=client_info.get('client_secret'),
         scopes=target_scopes
     )
-    
+
     # Force a refresh to get an access token
     creds.refresh(Request())
     return creds

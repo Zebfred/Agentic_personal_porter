@@ -57,6 +57,37 @@ document.addEventListener('DOMContentLoaded', () => {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     };
 
+    // Initial dynamic welcome message
+    appendMessage('porter', '⏳ Booting consciousness...');
+    
+    const loadWelcomeMessage = async () => {
+        try {
+            const fetchFn = window.Auth && window.Auth.fetchWithAuth ? window.Auth.fetchWithAuth : fetch;
+            const res = await fetchFn('/api/chat/welcome');
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Remove the loading message
+                const msgs = chatContainer.querySelectorAll('.flex.gap-4');
+                if (msgs.length > 0) msgs[msgs.length - 1].remove();
+
+                if (data.response) {
+                    appendMessage('porter', data.response);
+                } else {
+                    appendMessage('porter', "Greetings! Systems are online, but I couldn't generate a personalized greeting. Let me know if you need to update any core motivations.");
+                }
+            } else {
+                throw new Error("Failed to load greeting");
+            }
+        } catch (e) {
+            const msgs = chatContainer.querySelectorAll('.flex.gap-4');
+            if (msgs.length > 0) msgs[msgs.length - 1].remove();
+            appendMessage('porter', "⚠️ Core systems are online, but the LLM engine seems to be unresponsive for greetings. Please check your API keys or infrastructure.");
+        }
+    };
+    
+    setTimeout(loadWelcomeMessage, 300);
+
     const sendMessage = async () => {
         const message = chatInput.value.trim();
         if (!message) return;
@@ -65,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', message);
         chatInput.value = '';
         chatInput.disabled = true;
+
+        const originalText = sendButton.innerText;
+        sendButton.innerText = 'Sending...';
         sendButton.disabled = true;
 
         // Show a temporary "Thinking" indicator
@@ -110,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appendMessage('porter', 'Sorry, I encountered an issue connecting to my core logic module.');
         } finally {
             chatInput.disabled = false;
+            sendButton.innerText = originalText;
             sendButton.disabled = false;
             chatInput.focus();
         }
@@ -236,11 +271,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Verified history
+            let verCount = 0;
             const verRes = await fetchFn('/api/calendar/verified_history');
             if (verRes.ok) {
                 const data = await verRes.json();
                 verContainer.innerHTML = '';
                 if(data.records && data.records.length > 0) {
+                     verCount = data.records.length;
                      data.records.forEach(r => {
                           verContainer.innerHTML += `
                             <div class="border bg-gray-50 border-emerald-100 rounded p-2 text-sm">
@@ -251,6 +288,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                      verContainer.innerHTML = '<div class="text-gray-400 text-sm italic">No history yet.</div>';
                 }
+            }
+            
+            // Poke user if there's absolutely no verifications to review
+            if (batchGcalIds.length === 0 && verCount === 0) {
+                unvContainer.innerHTML = `
+                    <div class="bg-blue-50 border border-blue-200 rounded p-4 text-center mt-2 shadow-sm">
+                        <span class="text-2xl mb-2 block">📝</span>
+                        <p class="text-sm text-blue-800 font-bold mb-2">No verifications needed right now!</p>
+                        <p class="text-xs text-blue-600 mb-3">Have you logged your time chunks for today?</p>
+                        <a href="/adventure_time_log" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded-lg transition shadow">Go to Time Log</a>
+                    </div>
+                `;
             }
             
             if(btnApprove) {
@@ -315,7 +364,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Fetch Weekly Trajectory
+    const loadWeeklyTrajectory = async () => {
+        const trajectoryList = document.getElementById('weekly-trajectory-list');
+        if (!trajectoryList) return;
+        
+        try {
+            const fetchFn = window.Auth && window.Auth.fetchWithAuth ? window.Auth.fetchWithAuth : fetch;
+            const res = await fetchFn('/api/journal/history?limit=10');
+            if (res.ok) {
+                const data = await res.json();
+                const expectations = (data.data || []).filter(item => item.type === 'expectation');
+                
+                if (expectations.length > 0) {
+                    const latest = expectations[0];
+                    trajectoryList.innerHTML = `
+                        <li class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                            <div class="text-sm text-indigo-900 whitespace-pre-wrap leading-relaxed">${escapeHTML(latest.text)}</div>
+                            <div class="mt-3 flex justify-between items-center border-t border-indigo-200 pt-2">
+                                <span class="text-xs font-bold text-indigo-500 uppercase tracking-wide">Week of ${latest.date}</span>
+                                ${latest.correlation_id ? `<span class="text-xs font-mono bg-indigo-200 text-indigo-800 px-2 py-0.5 rounded opacity-75">🔗 ${latest.correlation_id.substring(0,8)}</span>` : ''}
+                            </div>
+                        </li>
+                    `;
+                } else {
+                    trajectoryList.innerHTML = `
+                        <li class="bg-gray-50 p-4 rounded-xl border border-gray-200 text-center shadow-sm">
+                            <p class="text-sm text-gray-600 mb-3">No trajectory defined for this week.</p>
+                            <a href="/adventure_journal" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-4 rounded-lg transition text-sm shadow">Define Weekly Expectation</a>
+                        </li>
+                    `;
+                }
+            }
+        } catch (e) {
+            trajectoryList.innerHTML = '<li class="text-red-500 text-sm">Failed to load trajectory.</li>';
+        }
+    };
+
     setTimeout(loadArtifactScans, 500);
+    setTimeout(loadWeeklyTrajectory, 600);
     setTimeout(loadAdventureLog, 700);
     setTimeout(loadVerificationDashboard, 800);
 });

@@ -12,22 +12,22 @@ def seed_mongo():
     try:
         ms = SovereignMongoStorage()
         logger.info(f"Connected to DB: {ms.db.name}")
-        
+
         artifacts_to_seed = ['hero_ambition.json', 'hero_origin.json']
-        
+
         for art in artifacts_to_seed:
             path = os.path.join('data', 'hero_artifacts', art)
             if not os.path.exists(path):
                 logger.info(f"File not found: {path}")
                 continue
-                
+
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-                
+
             logger.info(f"Loaded {art}, attempting to save to MongoDB...")
             ms.save_hero_artifact(art, data)
             logger.info(f"Successfully saved {art} to MongoDB!")
-            
+
     except Exception as e:
         logger.info(f"ERROR: {str(e)}")
         import traceback

@@ -2,7 +2,7 @@ from .api_models import JournalLogBase, JournalRequestSchema, CalendarRequestSch
 
 __all__ = [
     'JournalLogBase',
-    'JournalRequestSchema', 
+    'JournalRequestSchema',
     'CalendarRequestSchema',
     'DailyReflectionRequestSchema',
     'DailyReflectionLogData'

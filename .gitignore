@@ -13,7 +13,6 @@ __pycache__/
 *.bk*
 *.backup
 .ipynb_checkpoints/
-.legacy_hr/*
 *.egg-info/
 
 # Ignore sensitive information (e.g., configuration files with credentials)
@@ -40,15 +39,11 @@ node_modules/
 scratch/*
 scripts/scratch/*
 
-#ignore backups
-.legacy_hr/*
-
-
 #Potentially Sensitive documentation
 Documentation/issues_and_audit/*
 Documentation/Outdated_Doc/*
 Documentation/notes/*
-Documentation/Completed_Tasks/*
+Documentation/Completed_Tasks/
 Documentation/Current_work/*
 
 #

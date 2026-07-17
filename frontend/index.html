@@ -50,18 +50,7 @@
                         First-Serving Porter</h3>
                     <div id="porter-chat-container"
                         class="bg-white rounded-xl border border-gray-200 p-4 shadow-inner mb-4 chat-container flex flex-col gap-4">
-                        <div class="flex gap-4">
-                            <div
-                                class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-xl flex-shrink-0">
-                                🤖</div>
-                            <div class="bg-gray-100 rounded-2xl rounded-tl-none p-4 text-gray-800">
-                                <p class="mb-2">Greetings! I've analyzed your current <strong>Identity Graph</strong>.
-                                </p>
-                                <p class="text-sm border-t pt-2 mt-2 text-gray-600 italic">I noticed your <span
-                                        class="font-bold text-blue-600">Origin Story</span> is missing the section
-                                    detailing your primary motivations. Would you like to fill that out now?</p>
-                            </div>
-                        </div>
+                        <!-- Chat messages injected by JS -->
                     </div>
                     <div class="flex gap-2">
                         <label for="porter-chat-input" class="sr-only">Talk with your Porter</label>
@@ -77,13 +66,9 @@
                 <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-yellow-400">
                     <h3 class="text-xl font-bold text-gray-800 mb-2 flex items-center gap-2"><span>📂</span> Missing
                         Artifact Scans</h3>
-                    <p class="text-gray-600 mb-4">Your Porter has detected incomplete data models.</p>
                     <div id="dynamic-artifact-scans" class="space-y-4">
-                        <!-- Dynamic gap items go here -->
                         <div class="text-sm text-gray-500 italic flex items-center gap-2">
-                            <div
-                                class="animate-spin h-3 w-3 border-2 border-yellow-500 border-t-transparent rounded-full">
-                            </div> Loading GTKY Architect Scan...
+                            <div class="animate-spin h-3 w-3 border-2 border-yellow-500 border-t-transparent rounded-full"></div> Loading GTKY Architect Scan...
                         </div>
                     </div>
                 </section>
@@ -128,19 +113,8 @@
                 <!-- Daily/Weekly Goals Snapshot -->
                 <section class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-indigo-500">
                     <h3 class="text-xl font-bold text-gray-800 mb-4">Current Week Trajectory</h3>
-                    <ul class="space-y-3">
-                        <li class="flex items-start gap-3">
-                            <input type="checkbox" id="goal-1" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
-                            <label for="goal-1" class="text-sm text-gray-700 cursor-pointer">Map out Database connections</label>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <input type="checkbox" id="goal-2" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
-                            <label for="goal-2" class="text-sm text-gray-700 cursor-pointer">Finalize Hub overhaul</label>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <input type="checkbox" id="goal-3" class="mt-1 w-4 h-4 text-indigo-600 rounded cursor-pointer">
-                            <label for="goal-3" class="text-sm text-gray-700 cursor-pointer">Audit Socratic Mirror prompts</label>
-                        </li>
+                    <ul id="weekly-trajectory-list" class="space-y-3">
+                        <li class="text-sm text-gray-500 italic">Loading expectations...</li>
                     </ul>
                 </section>
 

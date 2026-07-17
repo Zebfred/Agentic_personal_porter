@@ -19,7 +19,7 @@ import time
 
 class PaperScraper:
     """Scraper for downloading RL papers from various sources."""
-    
+
     def __init__(self, papers_dir: str = "data/papers", metadata_file: str = "data/papers_metadata.json"):
         """
         Initialize the paper scraper.
@@ -34,20 +34,20 @@ class PaperScraper:
         self.metadata = self._load_metadata()
         # Create a client instance for the arxiv API
         self.arxiv_client = arxiv.Client()
-    
+
     def _load_metadata(self) -> List[Dict]:
         """Load existing metadata if available."""
         if self.metadata_file.exists():
             with open(self.metadata_file, 'r') as f:
                 return json.load(f)
         return []
-    
+
     def _save_metadata(self):
         """Save metadata to JSON file."""
         with open(self.metadata_file, 'w') as f:
             json.dump(self.metadata, f, indent=2, default=str)
-    
-    def scrape_arxiv(self, 
+
+    def scrape_arxiv(self,
                      query: str = "reinforcement learning",
                      max_results: int = 30,
                      sort_by: arxiv.SortCriterion = arxiv.SortCriterion.SubmittedDate,
@@ -66,7 +66,7 @@ class PaperScraper:
         """
         print(f"Searching arxiv.org for: {query}")
         print(f"Max results: {max_results}")
-        
+
         # 1. Create the Search object (this doesn't make a request)
         search = arxiv.Search(
             query=query,
@@ -74,7 +74,7 @@ class PaperScraper:
             sort_by=sort_by,
             sort_order=sort_order
         )
-        
+
         downloaded = []
         # 2. Use the client to get the results from the search
         try:
@@ -91,7 +91,7 @@ class PaperScraper:
                 if any(p['arxiv_id'].startswith(arxiv_id) for p in self.metadata):
                     print(f"Skipping {arxiv_id} - already downloaded")
                     continue
-                
+
                 # Download PDF
                 pdf_path = self._download_pdf(paper, arxiv_id)
                 if pdf_path:
@@ -109,19 +109,19 @@ class PaperScraper:
                     self.metadata.append(paper_metadata)
                     downloaded.append(paper_metadata)
                     print(f"Downloaded: {paper.title[:60]}...")
-                    
+
                     # Be polite to arxiv servers
                     time.sleep(1)
-                    
+
             except Exception as e:
                 print(f"Error processing paper {paper.entry_id}: {e}")
                 continue
-        
+
         # Save metadata
         self._save_metadata()
         print(f"\nDownloaded {len(downloaded)} new papers from arxiv")
         return downloaded
-    
+
     def _download_pdf(self, paper: arxiv.Result, arxiv_id: str) -> Optional[Path]:
         """
         Download PDF for a given arxiv paper.
@@ -143,20 +143,20 @@ class PaperScraper:
             print(f"Downloading from: {pdf_url}")
             response = requests.get(pdf_url, stream=True, timeout=30)
             response.raise_for_status()
-            
+
             # Use the simple arxiv_id (e.g., 1312.5602v1) for the filename
             pdf_filename = f"{arxiv_id.replace('/', '_')}.pdf"
             pdf_path = self.papers_dir / pdf_filename
-            
+
             with open(pdf_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            
+
             return pdf_path
         except Exception as e:
             print(f"Error downloading PDF for {arxiv_id} from {pdf_url}: {e}")
             return None
-    
+
     def get_foundational_rl_papers(self) -> List[Dict]:
         """
         Get a curated list of foundational RL papers.
@@ -176,9 +176,9 @@ class PaperScraper:
             "1706.03762",  # Attention Is All You Need (Transformer)
             # ... (add more from the original list if desired)
         ]
-        
+
         downloaded = []
-        
+
         # Check existing metadata to avoid re-downloading
         existing_ids = set()
         for p in self.metadata:
@@ -207,7 +207,7 @@ class PaperScraper:
         for paper in results:
             try:
                 arxiv_id = paper.get_short_id() # e.g., 1312.5602v1
-                
+
                 pdf_path = self._download_pdf(paper, arxiv_id)
                 if pdf_path:
                     paper_metadata = {
@@ -226,11 +226,11 @@ class PaperScraper:
                     time.sleep(1) # Be polite
                 else:
                     print(f"Paper {arxiv_id} not found on arxiv (this shouldn't happen in batch)")
-                    
+
             except Exception as e:
                 print(f"Error downloading paper {arxiv_id}: {e}")
                 continue
-        
+
         self._save_metadata()
         print(f"\nDownloaded {len(downloaded)} foundational RL papers")
         return downloaded
@@ -239,13 +239,13 @@ class PaperScraper:
 def main():
     """Main function to run the scraper."""
     scraper = PaperScraper()
-    
+
     # First, get foundational papers
     print("=" * 60)
     print("Downloading Foundational RL Papers")
     print("=" * 60)
     foundational = scraper.get_foundational_rl_papers()
-    
+
     # Then, search for additional recent papers
     print("\n" + "=" * 60)
     print("Searching for Additional Recent RL Papers")
@@ -254,7 +254,7 @@ def main():
         query="reinforcement learning AND (deep learning OR neural networks)",
         max_results=10
     )
-    
+
     print(f"\nTotal papers in database: {len(scraper.metadata)}")
 
 

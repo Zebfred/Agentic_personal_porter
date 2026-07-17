@@ -41,7 +41,7 @@ class TokenCircuitBreakerHandler(BaseCallbackHandler):
                 if self.total_tokens_spent > self.max_tokens:
                     logger.error(f"[CIRCUIT BROKEN] Agent exceeded {self.max_tokens} tokens! Total used: {self.total_tokens_spent}. Force halting the run loop.")
                     raise TokenLimitExceededError(f"Agent trapped in hallucination loop. Exceeded API safety cap of {self.max_tokens} tokens.")
-        
+
     def reset(self):
         """Allows resetting the breaker for sequential discrete runs."""
         self.total_tokens_spent = 0

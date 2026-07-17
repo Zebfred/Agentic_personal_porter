@@ -9,10 +9,10 @@ def get_context(username="Hero"):
     engine = SovereignContextEngine()
     hero_context = engine.get_hero_snapshot(username=username)
     engine.close()
-    
+
     # Load the JSON Artifacts
     architect = GTKYIdentityArchitect()
     hero_context['ambition'] = architect.get_ambition()
     hero_context['detriments'] = architect.get_detriments()
-    
+
     return hero_context

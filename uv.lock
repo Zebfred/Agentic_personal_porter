@@ -78,6 +78,7 @@ dev = [
     { name = "codespell" },
     { name = "mypy" },
     { name = "pylint" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 
@@ -148,6 +149,7 @@ dev = [
     { name = "codespell", specifier = ">=2.4.2" },
     { name = "mypy", specifier = ">=2.0.0" },
     { name = "pylint", specifier = ">=3.0.0" },
+    { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.12" },
 ]
 

@@ -42,19 +42,19 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str | None = Non
         from src.database.mongo_storage import SovereignMongoStorage
         from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user, get_calendar_credentials
         from googleapiclient.discovery import build
-        
+
         if email and email != "system_script@localhost":
             mongo = SovereignMongoStorage()
             user_doc = mongo.users_col.find_one({"email": email})
             if not user_doc or "google_refresh_token" not in user_doc:
                 logger.warning(f"No refresh token available for user {email}. Cannot fetch personalized events.")
                 return []
-            
+
             creds = get_calendar_credentials_for_user(user_doc["google_refresh_token"])
         else:
             # Fall back to global credentials for system state
             creds = get_calendar_credentials()
-            
+
         service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
 
         target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
@@ -157,7 +157,7 @@ def get_unverified_audits():
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
-            
+
         from src.agents.audit_inspector import AuditInspector
         inspector = AuditInspector()
         records = inspector.batch_unverified_records(user_email=user_email)
@@ -176,7 +176,7 @@ def get_verified_history():
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
-            
+
         from src.agents.audit_inspector import AuditInspector
         inspector = AuditInspector()
         records = inspector.get_recently_verified_records(user_email=user_email, limit=10)
@@ -195,12 +195,12 @@ def approve_audits():
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
-            
+
         data = request.json
         gcal_ids = data.get('gcal_ids', [])
         if not gcal_ids:
             return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
-            
+
         from src.agents.audit_inspector import AuditInspector
         inspector = AuditInspector()
         modified = inspector.approve_batch(gcal_ids, user_email=user_email)
@@ -219,28 +219,28 @@ def get_adventure_log():
         from src.database.mongo_storage import SovereignMongoStorage
         from src.config import MongoConfig
         mongo = SovereignMongoStorage()
-        
+
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
-        
+
         # Calculate full suite of metrics for the Hub
         intentions_count = mongo.db["event_intentions"].count_documents({"user_id": user_email})
-        
+
         actuals_count = mongo.db["event_actuals"].count_documents({"user_id": user_email}) + \
                         mongo.db["unified_events"].count_documents({"user_id": user_email})
-        
+
         unclassified_count = mongo.db[MongoConfig.RAW_TIMESERIES_COLLECTION].count_documents({
             "metadata.user_email": user_email,
             "metadata.sync_status": "staged"
         })
-        
+
         matched_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
-        
+
         total_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email})
         valuable_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "valuable"})
         detrimental_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "detrimental"})
-        
+
         if valuable_detours == 0 and detrimental_detours == 0 and total_detours > 0:
             valuable_detours = total_detours
 
@@ -271,7 +271,7 @@ def user_sync_calendar():
         user_email = getattr(request, 'user_email', None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
-            
+
         run_sync_pipeline(target_user_email=user_email)
         return jsonify({"message": f"Calendar sync completed successfully for {user_email}."})
     except Exception as e:
@@ -309,7 +309,7 @@ def push_to_gcal():
             mongo = SovereignMongoStorage()
             mongo.raw_col.delete_one({"gcal_id": gcal_id})
             mongo.formatted_col.delete_one({"gcal_id": gcal_id})
-            
+
             return jsonify({"status": "success", "message": "Event annihilated from Google Cloud and Mongo."})
 
         elif action == 'update':
@@ -320,14 +320,14 @@ def push_to_gcal():
                 if new_title:
                     event['summary'] = new_title
                 updated_event = service.events().update(calendarId='primary', eventId=gcal_id, body=event).execute()
-                
+
                 # Update Mongo Native Collection
                 from src.database.mongo_storage import SovereignMongoStorage
                 mongo = SovereignMongoStorage()
                 if new_title:
                     mongo.raw_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
                     mongo.formatted_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
-                    
+
                 return jsonify({"status": "success", "message": "Event updated successfully on Google Cloud."})
             except Exception as e:
                 return jsonify({"error": f"Failed to update GCal Event: {e}"}), 500

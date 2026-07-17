@@ -19,7 +19,8 @@ trigger: always_on
 8. **Verification Requirement:** Upon an agent's task completion, a verification script, test, or Checklist MUST be used if applicable to their task or domain.
 9. **Mandatory Cleanup:** Upon an agent's task completion, the agent MUST independently move any lingering `.bk` files into the `.legacy_hr` directory rather than leaving them scattered in active directories.
 10. **Conda run:** Using conda activate agentic_porter to use the conda env set up for this project 
-11. **Export Artifacts:** Upon task completion, the agent MUST automatically copy the finalized `task.md` and `walkthrough.md` artifacts into the `Documentation/Completed_Tasks/` directory. The files should be renamed to include the current date and a descriptive name, using the format `YYYY-MM-DD_Task_Name_Task.md` and `YYYY-MM-DD_Task_Name_Walkthrough.md`.
+11. **Export Artifacts (Private Brain):** Upon task completion, the agent MUST automatically copy the finalized `task.md` and `walkthrough.md` artifacts into the `Agentic_Private_Brain/Completed_Tasks/` directory. The files should be renamed to include the current date and a descriptive name, using the format `YYYY-MM-DD_Task_Name_Task.md` and `YYYY-MM-DD_Task_Name_Walkthrough.md`.
+12. **Sync Private Brain:** After finalizing artifacts or writing new deployment scripts into the private brain, the agent MUST execute `make sync-brain` to ensure the changes are committed to the private remote repository.
 
 ### Examples:
 - ✅ `Documentation/IMPLEMENTATION_SUMMARY.md`
@@ -50,11 +51,16 @@ trigger: always_on
 - RAG system: `rag_system/`
 - Scripts: `scripts/`
 - Tests: `tests/`
-- Documentation: `Documentation/`
+- Documentation: `Documentation/` (project docs, architecture, strategy)
+- Completed Tasks: `Agentic_Private_Brain/Completed_Tasks/` (task/walkthrough artifacts)
 
 ## Code Style
 
 ## Building and Running
+
+### Tailwind CSS Version
+- Use **Tailwind CSS v4** (via `@tailwindcss/cli`) for compiling frontend stylesheets.
+- The build target is `make build-css` (which executes `npm run build:css` to compile `./frontend/css/input.css` to `./frontend/css/style.css`).
 
 ## Environment manager use conda
 
@@ -62,8 +68,13 @@ trigger: always_on
 - **uv:** Python package manager (using workspaces)
 - **Google Cloud SDK:** For interacting with GCP services
 - **make:** For running common development tasks
+- **Weaviate:** Vector database client (`weaviate-client`) for managing private brain vectors and semantic lookups.
+
+### Private Brain & Vector Search
+- Use the **Weaviate** database for semantic lookup and indexing of the private brain knowledge bases. Avoid raw file reads where Weaviate vector lookup is applicable.
 
 Project dependencies are managed via `uv` in the `pyproject.toml` workspace.
+
 
 ### Python:
 - Use type hints where appropriate

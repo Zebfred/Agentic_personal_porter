@@ -11,7 +11,7 @@ class GTKYHistorian(GTKYBaseClassifier):
     historical Google Calendar events and generating "Golden Objects"
     based on the user's Origin Story and Ambitions.
     """
-    
+
     def classify_historical_batch(self, historical_events: List[Dict], username: str = "system") -> List[Dict]:
         """
         Processes a batch of historical raw events, bundles them with Hero Context,

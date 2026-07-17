@@ -12,7 +12,7 @@ def wipe_graph():
     """
     logger.info("WARNING: You are about to delete ALL nodes and relationships in the Neo4j database.")
     confirmation = input("Type 'WIPE' to confirm: ")
-    
+
     if confirmation != "WIPE":
         logger.info("Operation cancelled.")
         return
@@ -30,7 +30,7 @@ def wipe_graph():
             result = session.run("MATCH (n) DETACH DELETE n RETURN count(n) as deleted_count")
             summary = result.single()
             deleted = summary["deleted_count"] if summary else 0
-            
+
             logger.info(f"Graph wipe successful. Deleted {deleted} nodes.")
     except Exception as e:
         logger.info(f"Error wiping graph: {e}")

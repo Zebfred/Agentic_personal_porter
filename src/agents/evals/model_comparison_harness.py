@@ -54,9 +54,12 @@ def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
         List of AgentLLMConfig from the verified file, or None if not found.
     """
     import json
+    from src.utils.path_utils import get_project_root
+    root = get_project_root()
     candidates_path = root / "scratch" / "verified_candidates.json"
     if not candidates_path.exists():
         return None
+
 
     try:
         with open(candidates_path) as f:

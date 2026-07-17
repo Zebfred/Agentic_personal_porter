@@ -22,7 +22,15 @@ def temp_vector_store():
     )
     yield store
     # Cleanup
-    shutil.rmtree(temp_dir)
+    # Clear client references and run GC to release file locks on Windows
+    store.collection = None
+    store.client = None
+    import gc
+    gc.collect()
+    try:
+        shutil.rmtree(temp_dir)
+    except PermissionError:
+        pass
 
 def test_vector_store_initialization(temp_vector_store):
     """Test VectorStore initialization."""
@@ -45,10 +53,10 @@ def test_add_chunks(temp_vector_store):
             'chunk_index': 1
         }
     ]
-    
+
     embeddings = np.array([chunk['embedding'] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
-    
+
     assert temp_vector_store.get_collection_size() == 2
 
 def test_search(temp_vector_store):
@@ -62,14 +70,14 @@ def test_search(temp_vector_store):
             'chunk_index': 0
         }
     ]
-    
+
     embeddings = np.array([chunk['embedding'] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
-    
+
     # Search
     query_embedding = np.random.rand(768)
     results = temp_vector_store.search(query_embedding, top_k=1)
-    
+
     assert isinstance(results, list)
 
 def test_clear_collection(temp_vector_store):
@@ -84,11 +92,11 @@ def test_clear_collection(temp_vector_store):
     ]
     embeddings = np.array([chunk['embedding'] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
-    
+
     assert temp_vector_store.get_collection_size() > 0
-    
+
     # Clear
     temp_vector_store.clear_collection()
-    
+
     assert temp_vector_store.get_collection_size() == 0
 

@@ -16,3 +16,7 @@
 
 **Learning:** When using `ruff` to verify linting or formatting, never use the `--fix` flag on the entire `src/` directory (e.g., `uv run ruff check src --fix`), as it introduces widespread, out-of-scope architectural or formatting changes that violate strict operation boundaries.
 **Action:** Run linting without `--fix` or apply fixes only to explicitly modified files.
+
+## 2025-02-23 - Batch Updates in Timeseries Collection (Event Processor)
+**Learning:** When replacing sequential `update_one`/`update_many` calls inside a loop with bulk operations, it is easy to accidentally drop updates for auxiliary collections (like `timeseries_col` closing the loop) if they aren't explicitly migrated to a corresponding ops array.
+**Action:** Ensure all sequential operations from the original single-event routing method are mapped exactly to their batch counterpart `bulk_write` operations, otherwise backend integrity breaks.

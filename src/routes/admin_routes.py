@@ -107,24 +107,24 @@ def impersonate_user():
     try:
         data = request.get_json()
         target_email = data.get('target_email')
-        
+
         if not target_email:
             return jsonify({"error": "target_email is required"}), 400
-            
+
         from src.database.mongo_storage import SovereignMongoStorage
         import jwt
         import os
         from datetime import datetime, timezone, timedelta
-        
+
         storage = SovereignMongoStorage()
         user_doc = storage.users_col.find_one({"email": target_email})
-        
+
         if not user_doc:
             return jsonify({"error": f"User {target_email} not found in database"}), 404
-            
+
         profile_data = user_doc.get("profile", {})
         jwt_secret = os.environ.get("JWT_SECRET")
-        
+
         if not jwt_secret:
             logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
             return jsonify({"error": "Server configuration error"}), 500
@@ -133,7 +133,7 @@ def impersonate_user():
         expiration = datetime.now(timezone.utc) + timedelta(hours=2) # Shorter duration for impersonation
         internal_token = jwt.encode(
             {
-                "role": "user", 
+                "role": "user",
                 "account_type": "hero",
                 "email": target_email,
                 "exp": expiration,
@@ -144,11 +144,11 @@ def impersonate_user():
             jwt_secret,
             algorithm="HS256"
         )
-        
+
         logger.info(f"SECURITY AUDIT: Admin {getattr(request, 'user_email', 'unknown')} initiated impersonation of {target_email}")
-        
+
         return jsonify({
-            "token": internal_token, 
+            "token": internal_token,
             "role": "user",
             "account_type": "hero",
             "message": f"Successfully impersonating {target_email}"

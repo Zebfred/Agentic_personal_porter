@@ -55,7 +55,7 @@ def test_build_context(mock_vector_store, mock_embedder):
             vector_store=mock_vector_store,
             embedder=mock_embedder
         )
-        
+
         chunks = [
             {
                 'text': 'First chunk text.',
@@ -72,9 +72,9 @@ def test_build_context(mock_vector_store, mock_embedder):
                 }
             }
         ]
-        
+
         context = engine._build_context(chunks)
-        
+
         assert 'Paper 1' in context
         assert 'Paper 2' in context
         assert 'First chunk text' in context
@@ -87,12 +87,12 @@ def test_construct_prompt(mock_vector_store, mock_embedder):
             vector_store=mock_vector_store,
             embedder=mock_embedder
         )
-        
+
         query = "What is reinforcement learning?"
         context = "Context about RL..."
-        
+
         prompt = engine._construct_prompt(query, context)
-        
+
         assert query in prompt
         assert context in prompt
         assert 'expert' in prompt.lower()
@@ -105,7 +105,7 @@ def test_extract_sources(mock_vector_store, mock_embedder):
             vector_store=mock_vector_store,
             embedder=mock_embedder
         )
-        
+
         chunks = [
             {
                 'text': 'Test text.',
@@ -116,9 +116,9 @@ def test_extract_sources(mock_vector_store, mock_embedder):
                 'distance': 0.1
             }
         ]
-        
+
         sources = engine._extract_sources(chunks)
-        
+
         assert len(sources) > 0
         assert sources[0]['paper_title'] == 'Paper 1'
 

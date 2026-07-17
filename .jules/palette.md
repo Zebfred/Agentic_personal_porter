@@ -14,3 +14,6 @@
 ## 2024-05-19 - Ensure textareas have labels
 **Learning:** Textareas generated dynamically in JavaScript (like the gap-input textarea in user_hub.js) lacked associated labels, making them invisible to screen readers or confusing for assistive tech.
 **Action:** Always ensure every `<textarea>` element, not just `<input>` elements, has an explicit `<label>` with a matching `for` attribute. Use `.sr-only` if the label shouldn't be visually displayed.
+## 2024-05-19 - Missing loading states on async actions
+**Learning:** Found that long-running async actions (like the chat feature in `user_hub.js`) lacked visual loading feedback, allowing users to rapidly double-click buttons resulting in duplicate API requests and no perceived performance response.
+**Action:** Always verify that interactive buttons that trigger async `fetch` requests temporarily update their text (e.g., "Sending...") or display a spinner, and add the `disabled` attribute to prevent double-submission while awaiting a response. Restore the original state within a `finally` block to ensure errors don't permanently disable the interface.

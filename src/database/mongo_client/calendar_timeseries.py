@@ -14,7 +14,7 @@ class CalendarTimeseriesClient:
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         collection_name = MongoConfig.RAW_TIMESERIES_COLLECTION
-        
+
         # Initialize native MongoDB Time-Series collection if missing
         if collection_name not in self.db.list_collection_names():
             try:
@@ -29,7 +29,7 @@ class CalendarTimeseriesClient:
                 logger.info(f"Created native Time-Series collection: {collection_name}")
             except Exception as e:
                 logger.info(f"Ensuring Time-Series collection exist failed/skipped: {e}")
-                
+
         self.timeseries_col = self.db[collection_name]
         self.processor = EventProcessorClient()
 
@@ -41,12 +41,12 @@ class CalendarTimeseriesClient:
         gcal_id = gcal_event.get('id')
         if not gcal_id:
             return False
-            
+
         # Parse Google Calendar start time to python datetime for timeField
         start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
         if not start_raw:
             return False
-            
+
         try:
             if start_raw.endswith('Z'):
                 start_raw = start_raw.replace('Z', '+00:00')
@@ -54,7 +54,7 @@ class CalendarTimeseriesClient:
         except Exception as e:
             logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
             start_dt = datetime.now(timezone.utc)
-            
+
         payload = {
             "start_time": start_dt,
             "metadata": {
@@ -66,14 +66,14 @@ class CalendarTimeseriesClient:
             "raw_data": gcal_event,
             "porter_ingested_at": datetime.now(timezone.utc)
         }
-        
+
         # Insert as a true timeseries historical event audit log
         try:
             self.timeseries_col.insert_one(payload)
         except Exception as e:
             logger.info(f"Failed to insert timeseries event for gcal_id {gcal_id}: {e}")
             return False
-        
+
         # Trigger downstream processor to split into schemas
         try:
            self.processor.process_and_route_event(gcal_event, user_email)

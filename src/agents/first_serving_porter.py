@@ -1,16 +1,16 @@
 from src.utils.logging_config import setup_logger
 import os
 
-from dotenv import load_dotenv
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
-from src.utils.llm_factory import AgentLLMConfig
+from src.utils.llm_resilience import get_resilient_llm
 from src.utils.path_utils import load_env_vars, get_auth_file
 from src.utils.token_circuit_breaker import (
     TokenCircuitBreakerHandler,
     TokenLimitExceededError,
 )
+from src.utils.retry_utils import invoke_with_retry
 from src.utils.monitoring import FirstServingMonitoringHandler
 from src.integrations.embeddings_client import BGEM3EmbeddingsClient
 from src.database.vector_database.chromadb_client import ChromaExperimentalClient
@@ -19,11 +19,9 @@ from src.agents.context_loader import get_context
 
 logger = setup_logger(__name__)
 # DB and Embedding Imports
-# Load Environment Vars
+# Load Environment Vars (centralized — load_env_vars() handles dotenv internally)
 load_env_vars()
 raw_api_key = os.getenv("GROQ_API_KEY")
-env_path = get_auth_file(".env")
-load_dotenv(dotenv_path=env_path)
 
 
 # 2. Defines Tools
@@ -145,6 +143,36 @@ def chroma_vibe_check(query: str) -> str:
 
 @PorterToolFactory.register_tool
 @tool
+def search_private_brain(query: str) -> str:
+    """Use this to query the User's private notes, historical audits, and previously completed agent tasks.
+    This is essentially your 'long term memory' of what the system has accomplished.
+    """
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Private Brain for query: '{query}'")
+    emb_client = BGEM3EmbeddingsClient()
+    vector = emb_client.get_embedding(query)
+    weaviate = WeaviateExperimentalClient()
+
+    try:
+        results = weaviate.search_private_brain(query_vector=vector, limit=3)
+    except Exception as e:
+        return f"[DATABASE RETURN] Failed to access private brain: {e}"
+
+    hits = []
+    if results and "data" in results and "Get" in results["data"] and "PrivateBrainObj" in results["data"]["Get"]:
+        docs = results["data"]["Get"]["PrivateBrainObj"]
+        for d in docs:
+            text = d.get("text", "")
+            source = f"{d.get('folder', 'unknown')}/{d.get('filename', 'Unknown Source')}"
+            hits.append(f"- [Source: {source}] {text[:500]}...")
+
+    if not hits:
+        return f"[DATABASE RETURN] No private memory found matching '{query}'."
+    compiled = "\n\n".join(hits)
+    return f"[DATABASE RETURN] Private Memory matches:\n{compiled}"
+
+
+@PorterToolFactory.register_tool
+@tool
 def fetch_unverified_audits(user_email: str = "Hero") -> str:
     """Use this to pull any categorized events that the human has not verified yet.
     You will use this to generate the presentation bundle for the Verification Dashboard.
@@ -189,8 +217,7 @@ def get_porter_agent(
     ambition_context: str,
     detriments_context: str,
 ):
-    config = AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile")
-    llm = config.get_chat_model(verbose=True)
+    llm = get_resilient_llm(task="first_serving_porter", verbose=True)
     tools = PorterToolFactory.get_tools()
     system_prompt = f"""I. Role Identity
 You are the First_Serving Porter, the Chief of Staff and primary orchestrator of the Agentic Porter Ecosystem. Your sole mission is to serve as the bridge between the User's Hero Intent (stored in the Neo4j Identity Graph) and the Ground Truth (actual time and action data).
@@ -238,7 +265,8 @@ def run_first_serving_porter(
     config = {"callbacks": [breaker, monitor]}
     logger.info("\n--- Invoking First-Serving Porter ---\n")
     try:
-        result = agent.invoke(
+        result = invoke_with_retry(
+            agent.invoke,
             {"messages": [HumanMessage(content=user_input)]}, config=config
         )
         health_manager.end_agent_run(run_id, status="success")

@@ -14,7 +14,7 @@ class TimeKeeperAgent:
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         self.ts_col = self.db[MongoConfig.RAW_TIMESERIES_COLLECTION]
-        
+
     def get_events_in_range(self, start_date_iso: str, end_date_iso: str) -> List[Dict]:
         """
         Query the rolling historical timeseries block within a specific window.
@@ -26,7 +26,7 @@ class TimeKeeperAgent:
         except Exception as e:
             logger.info(f"TimeKeeper Date Parsing Error: {e}")
             return []
-            
+
         pipeline = [
             {"$match": {
                 "start_time": {"$gte": start_dt, "$lte": end_dt}
@@ -34,9 +34,9 @@ class TimeKeeperAgent:
             {"$sort": {"start_time": 1}},
             {"$limit": 50}
         ]
-        
+
         records = list(self.ts_col.aggregate(pipeline))
-        
+
         for r in records:
              if "_id" in r:
                  r["_id"] = str(r["_id"])
@@ -51,16 +51,16 @@ class TimeKeeperAgent:
         from src.database.mongo_client.agent_health import AgentHeartbeatManager
         health_manager = AgentHeartbeatManager()
         run_id = health_manager.start_agent_run("time_keeper_agent", {"action": "summarize_day", "date_iso": date_iso})
-        
+
         try:
             start_dt = parser.parse(date_iso).replace(hour=0, minute=0, second=0)
             end_dt = start_dt + timedelta(days=1)
-            
+
             events = self.get_events_in_range(start_dt.isoformat(), end_dt.isoformat())
             if not events:
                 health_manager.end_agent_run(run_id, status="success", result_summary="No events found.")
                 return f"No temporal events resolved for {date_iso}."
-                
+
             summaries = [f"- {e.get('raw_data', {}).get('summary', 'Unknown Event')} at {e.get('start_time')}" for e in events]
             health_manager.end_agent_run(run_id, status="success", result_summary=f"Found {len(events)} events.")
             return f"TimeKeeper Summary for {date_iso}:\n" + "\n".join(summaries)

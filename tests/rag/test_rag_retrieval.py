@@ -18,20 +18,20 @@ def test_retrieval(collection_name="rl_papers"):
     logger.info("="*70)
     logger.info("RAG Retrieval Test (Embedding + Vector Search)")
     logger.info("="*70)
-    
+
     # Initialize components
     logger.info("\n1. Initializing components...")
     embedder = SciBERTEmbedder()
     vector_store = VectorStore(collection_name=collection_name)
-    
+
     collection_size = vector_store.get_collection_size()
     if collection_size == 0:
         logger.info(f"\n⚠️  Vector store '{collection_name}' is empty!")
         logger.info("   Run: python build_rag_index.py")
         return
-    
+
     logger.info(f"   ✓ Vector store contains {collection_size} chunks")
-    
+
     # Test queries - Basic Theory
     basic_theory_queries = [
         {
@@ -55,7 +55,7 @@ def test_retrieval(collection_name="rl_papers"):
             "expected_topics": ["replay", "buffer", "experience"]
         }
     ]
-    
+
     # Test queries - Relating Theory to Code Development
     theory_to_code_queries = [
         {
@@ -84,7 +84,7 @@ def test_retrieval(collection_name="rl_papers"):
             "category": "Theory to Code"
         }
     ]
-    
+
     # Test queries - Teaching Theory to People of Any Level
     adaptive_teaching_queries = [
         {
@@ -118,56 +118,56 @@ def test_retrieval(collection_name="rl_papers"):
             "level": "intermediate"
         }
     ]
-    
+
     all_test_queries = [
         ("Basic Theory Queries", basic_theory_queries),
         ("Relating Theory to Code Development", theory_to_code_queries),
         ("Teaching Theory to People of Any Level", adaptive_teaching_queries)
     ]
-    
+
     logger.info("\n2. Testing retrieval...")
     logger.info("="*70)
-    
+
     total_tests = sum(len(queries) for _, queries in all_test_queries)
     test_counter = 0
-    
+
     for section_name, test_queries in all_test_queries:
         logger.info(f"\n{'='*70}")
         logger.info(f"SECTION: {section_name.upper()}")
         logger.info('='*70)
-        
+
         for test in test_queries:
             test_counter += 1
             query = test["query"]
             category = test.get("category", "Basic Theory")
             level = test.get("level", "")
-            
+
             logger.info(f"\n[Test {test_counter}/{total_tests}] [{category}]")
             if level:
                 logger.info(f"Level: {level}")
             logger.info(f"Query: {query}")
             logger.info("-" * 70)
-            
+
             # Generate query embedding
             query_embedding = embedder.embed(query)
-            
+
             # Search
             results = vector_store.search(query_embedding, top_k=5)
-            
+
             logger.info(f"\nRetrieved {len(results)} chunks:\n")
-            
+
             for j, result in enumerate(results, 1):
                 similarity = 1 - result['distance'] if result['distance'] is not None else 0
                 paper_title = result['metadata'].get('paper_title', 'Unknown Paper')
                 section = result['metadata'].get('section_header', 'Unknown Section')
                 text = result['text']
-                
+
                 logger.info(f"  [{j}] Similarity: {similarity:.4f}")
                 logger.info(f"      Paper: {paper_title}")
                 logger.info(f"      Section: {section}")
                 logger.info(f"      Text preview: {text[:200]}...")
                 logger.info()
-            
+
             # Analysis for expected failures
             if category == "Theory to Code":
                 logger.info("  ⚠️  EXPECTED LIMITATION: Current system retrieves theory but")
@@ -175,9 +175,9 @@ def test_retrieval(collection_name="rl_papers"):
             elif category == "Adaptive Teaching":
                 logger.info("  ⚠️  EXPECTED LIMITATION: Current system doesn't adapt explanation")
                 logger.info(f"      complexity to {level} level - uses same retrieval for all levels.")
-            
+
             logger.info("="*70)
-    
+
     logger.info("\n✓ Retrieval tests completed!")
     logger.info("\nNote: To test full RAG (with LLM answers), set GROQ_API_KEY and run:")
     logger.info("     python test_rag_manual.py")

@@ -19,10 +19,10 @@ class GTKYIdentityArchitect:
         self.origin_file = self.artifacts_dir / "hero_origin.json"
         self.ambition_file = self.artifacts_dir / "hero_ambition.json"
         self.detriments_file = root / ".auth" / "hero_detriments.json"
-        
+
     def _read_json(self, filepath: Path) -> dict:
         filename = filepath.name
-        
+
         # 1. Mongo is Source of Truth
         try:
             mongo = SovereignMongoStorage()
@@ -47,7 +47,7 @@ class GTKYIdentityArchitect:
         except Exception as e:
             logger.info(f"Error parsing {filepath}: {e}")
             return {}
-            
+
     def append_new_learnings(self, artifact_name: str, raw_update_summary: str) -> str:
         """
         Takes raw textual learnings from the Porter and attempts to logically inject them
@@ -64,18 +64,18 @@ class GTKYIdentityArchitect:
              active_name = "hero_ambition.json"
         else:
              return "I do not recognize that artifact."
-             
+
         if not data:
              return "Data model is empty, cannot append."
-             
+
         if "pending_porter_updates" not in data:
              data["pending_porter_updates"] = []
-             
+
         data["pending_porter_updates"].append({
              "timestamp": "Latest Porter Sync",
              "raw_update": raw_update_summary
         })
-        
+
         try:
              mongo = SovereignMongoStorage()
              mongo.save_hero_artifact(active_name, data, self.username)
@@ -95,7 +95,7 @@ class GTKYIdentityArchitect:
         data = self.get_origin_story()
         if not data or "origin_story" not in data:
              return "No origin story base found to scan."
-             
+
         missing_prompts = []
         epochs = data.get("origin_story", {}).get("epochs", [])
         for ep in epochs:
@@ -105,10 +105,10 @@ class GTKYIdentityArchitect:
                       missing_prompts.append(f"- Empty slot in epoch: '{name}'. Candidate focus: {ep.get('experience candidate', [])}")
                  elif exp.get('title') and (not exp.get('description') or exp.get('description') == ""):
                       missing_prompts.append(f"- Details needed for event: '{exp.get('title')}' in '{name}'.")
-                      
+
         if not missing_prompts:
              return "Origin story is currently fully mapped out."
-             
+
         out = "I noticed some gaps in your Origin Story timeline that need filling. Can you tell me more about:\n"
         out += "\n".join(missing_prompts[:3]) # Only ask about 3 at a time to reduce cognitive load
         return out
