@@ -7,6 +7,7 @@
 
 # Ignore log files and temporary files
 *.log
+logs/
 tmp/
 temp/
 __pycache__/
@@ -14,6 +15,7 @@ __pycache__/
 *.backup
 .ipynb_checkpoints/
 *.egg-info/
+.legacy_hr/
 
 # Ignore sensitive information (e.g., configuration files with credentials)
 .auth/
@@ -36,6 +38,7 @@ venv/
 node_modules/
 
 #Ignore Scratch work
+scratch/
 scripts/scratch/*
 scripts/analyze_scripts/sync_gcp_secrets.*
 
