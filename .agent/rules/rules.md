@@ -73,3 +73,6 @@ trigger: always_on
 * **Definition of Done:** Task completion strictly requires running a verification script, test suite, or completing a checklist.
 * **Test Hygiene:** Run tests before committing major changes. Update tests when modifying functionality. Keep test files organized in the `tests/` directory.
 * **Git Workflow:** Create feature branches for significant changes, use descriptive commit messages, and test thoroughly before merging to main.
+
+### GitHub Actions Security
+* **Pin Actions to SHA:** Always pin GitHub Actions to an immutable 40-character commit SHA (e.g., `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` instead of `@v4`) to protect the CI pipeline against supply chain attacks where tag references can be maliciously updated. Always add a comment noting the version name (e.g. `# v4.2.2`).
