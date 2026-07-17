@@ -40,22 +40,26 @@ class CategorizationResult(BaseModel):
 
 from google.adk.runners import InMemoryRunner
 
-def _create_adk_runner(agent_name: str, instruction: str) -> InMemoryRunner:
+def _create_adk_runner(
+    agent_name: str,
+    instruction: str,
+    model_name: str = "groq/llama-3.3-70b-versatile"
+) -> InMemoryRunner:
     """
     Factory function to instantiate the ADK LiteLlm, Agent, and InMemoryRunner.
 
     Args:
         agent_name (str): The logical name of the agent.
         instruction (str): The system prompt/instruction for the agent.
+        model_name (str): The name of the ADK model to instantiate.
 
     Returns:
         InMemoryRunner: The configured runner ready to execute.
     """
     from google.adk.agents.llm_agent import Agent
-    from google.adk.runners import InMemoryRunner
     from google.adk.models.lite_llm import LiteLlm
 
-    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
+    adk_model = LiteLlm(model=model_name)
     agent = Agent(
         name=agent_name,
         model=adk_model,
@@ -203,7 +207,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
                     if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == "GTKY_Librarian":
+                        if getattr(response, 'author', '') == runner.agent.name:
                             final_text = part.text
         return final_text
 
