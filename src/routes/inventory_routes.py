@@ -41,7 +41,7 @@ def get_inventory():
     try:
         from src.database.neo4j_client import get_all_detours
         from src.database.mongo_storage import SovereignMongoStorage
-        
+
         user_email = getattr(request, 'user_email', 'Hero')
         if user_email != 'Hero':
             mongo_storage = SovereignMongoStorage()
@@ -49,7 +49,7 @@ def get_inventory():
             username = user_doc.get("username", "Hero") if user_doc else "Hero"
         else:
             username = 'Hero'
-            
+
         detours = get_all_detours(username=username)
 
         response_data = {
@@ -76,7 +76,7 @@ def scan_artifacts():
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(request.user_email)
         username = user_doc.get("username", "system") if user_doc else "system"
-        
+
         architect = GTKYIdentityArchitect(username=username)
         scan_results = architect.scan_for_missing_origin()
         return jsonify({"status": "success", "results": scan_results})
@@ -130,7 +130,7 @@ def manage_artifact(artifact_name):
                         "message": f"Update your {artifact_name.replace('.json', '')}! Proper Instructions coming soon.",
                         "data": {}
                     }
-                
+
                 # Save the new template for the user so it persists
                 mongo_storage.save_hero_artifact(artifact_name, data, username)
 

@@ -2,7 +2,7 @@ from src.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 import os
 from datetime import datetime
-    
+
 # Ensure we can import from the src directory when running from helper_scripts
 
 from src.constants import ACTUAL_CATEGORY_MAPPING
@@ -31,10 +31,10 @@ class SovereignGraphInjector:
             user_email = os.environ.get("NEXUS_ADMIN_EMAIL", "")
         if not user_email:
             raise ValueError("user_email is required: pass it explicitly or set NEXUS_ADMIN_EMAIL env var.")
-        
+
         intent_events = []
         actual_events = []
-        
+
         # Pre-process the events in Python to attach the TimeChunk and route them
         for raw_event in formatted_events:
             # Unpack unified_events schema
@@ -42,7 +42,7 @@ class SovereignGraphInjector:
             actual_data = raw_event.get("actual", {}) # May not exist yet if only intent
             time_slot = raw_event.get("time_slot", {})
             metadata = raw_event.get("metadata", {})
-            
+
             event = {
                 "gcal_id": metadata.get("gcal_id", str(raw_event.get("_id", ""))),
                 "title": intent_data.get("title", "Untitled"),
@@ -53,7 +53,7 @@ class SovereignGraphInjector:
                 # We assume these are intents initially unless actual data exists
                 "record_type": "Actual" if actual_data else "Intent"
             }
-            
+
             # If it has actual data, overlay it
             if actual_data:
                 event["title"] = actual_data.get("title", event["title"])
@@ -65,7 +65,7 @@ class SovereignGraphInjector:
             pillar = event.get("pillar", "Uncategorized")
             # Translate "Career related" to "Career Goal" using your dynamic map
             event["graph_intent_target"] = self.REVERSE_INTENT_MAP.get(pillar, pillar)
-            
+
             # Convert start time to Python datetime object for the time chunk generator
             start_iso = event.get("start")
             if start_iso:
@@ -78,7 +78,7 @@ class SovereignGraphInjector:
                     event["time_chunk_id"] = None
             else:
                 event["time_chunk_id"] = None
-                
+
             # Route to correct track
             if event.get("record_type") == "Actual":
                 actual_events.append(event)
@@ -162,12 +162,12 @@ class SovereignGraphInjector:
                     result_i = session.run(intent_query, user_email=user_email, events=intent_events)
                     summary_i = result_i.single()
                     injected_count += (summary_i["count"] if summary_i else 0)
-                
+
                 if actual_events:
                     result_a = session.run(actual_query, user_email=user_email, events=actual_events)
                     summary_a = result_a.single()
                     injected_count += (summary_a["count"] if summary_a else 0)
-                    
+
             return injected_count
         except Exception as e:
             logger.info(f"![GRAPH ERROR]: Failed to inject events: {e}")

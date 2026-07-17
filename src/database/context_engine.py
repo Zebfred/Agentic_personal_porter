@@ -1,7 +1,6 @@
-from dotenv import load_dotenv
-
-load_dotenv()
-
+# NOTE: dotenv is loaded centrally by src.utils.path_utils.load_env_vars()
+# at app startup. Do NOT call load_dotenv() here.
+import os
 from src.database.neo4j_client.connection import get_driver
 
 class SovereignContextEngine:
@@ -32,7 +31,7 @@ class SovereignContextEngine:
         # (h:Hero)-[:DIRECTED_BY]->(art:Artifacts)
         query = """
         MATCH (h:Hero)-[:DIRECTED_BY]->(art:Artifacts)
-        WHERE h.hero CONTAINS $username
+        WHERE h.hero = $username
         OPTIONAL MATCH (art)-[:GUIDED_BY]->(p:Principle)
         OPTIONAL MATCH (art)-[:HAS_INTENT]->(i:Intent)
         RETURN 
@@ -69,7 +68,7 @@ class SovereignContextEngine:
         Refined for hero_ambition category matching.
         """
         category = actual.get('category', 'Unknown')
-        
+
         # 1. Fog of War Check
         if category == 'Unknown' or not category:
             duration = actual.get('duration_minutes', 0)
@@ -85,5 +84,5 @@ class SovereignContextEngine:
 
         if planned.get('category') == category:
             return "Forward Progress"
-        
+
         return "High-Friction Deviation"

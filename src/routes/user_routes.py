@@ -27,7 +27,7 @@ def get_profile():
         user_doc = storage.get_user_by_email(user_email)
         if not user_doc:
             return jsonify({"error": "User not found"}), 404
-            
+
         # Don't return sensitive stuff if any
         return jsonify({
             "email": user_doc.get("email"),
@@ -53,20 +53,20 @@ def update_username():
 
     data = request.get_json()
     new_username = data.get("username")
-    
+
     if not new_username or len(new_username.strip()) < 3:
         return jsonify({"error": "Username must be at least 3 characters"}), 400
 
     try:
         storage = SovereignMongoStorage()
-        
+
         # Uniqueness check to prevent cross-tenant graph contamination
         existing_user = storage.users_col.find_one({"username": new_username.strip()})
         if existing_user and existing_user.get("email") != user_email:
             return jsonify({"error": "Username already taken"}), 409
-            
+
         success = storage.update_username(user_email, new_username.strip())
-        
+
         if success:
             return jsonify({
                 "message": "Username updated successfully.",
@@ -74,7 +74,7 @@ def update_username():
             })
         else:
             return jsonify({"error": "Failed to update username"}), 500
-            
+
     except Exception as e:
         logger.error(f"Error updating username for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
@@ -91,7 +91,7 @@ def update_invite_status():
 
     data = request.get_json()
     action = data.get("action")
-    
+
     if action not in ["accept", "decline"]:
         return jsonify({"error": "Invalid action. Must be 'accept' or 'decline'"}), 400
 
@@ -99,7 +99,7 @@ def update_invite_status():
         storage = SovereignMongoStorage()
         status = "accepted" if action == "accept" else "declined"
         success = storage.update_guild_invite_status(user_email, status)
-        
+
         if success:
             logger.info(f"User {user_email} {status} the Nexus Guild invitation.")
             return jsonify({
@@ -108,7 +108,7 @@ def update_invite_status():
             })
         else:
             return jsonify({"error": "Failed to update invitation status"}), 500
-            
+
     except Exception as e:
         logger.error(f"Error updating invite for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
@@ -125,14 +125,14 @@ def update_analytics_opt_in():
 
     data = request.get_json()
     opt_in = data.get("opt_in")
-    
+
     if opt_in is None:
         return jsonify({"error": "opt_in boolean required"}), 400
 
     try:
         storage = SovereignMongoStorage()
         success = storage.toggle_privacy_opt_in(user_email, bool(opt_in))
-        
+
         if success:
             return jsonify({
                 "message": "Privacy preferences updated.",
@@ -140,7 +140,7 @@ def update_analytics_opt_in():
             })
         else:
             return jsonify({"error": "Failed to update privacy preferences"}), 500
-            
+
     except Exception as e:
         logger.error(f"Error updating privacy opt-in for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500

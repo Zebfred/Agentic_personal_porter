@@ -1,0 +1,11 @@
+{
+  "name": "agentic-personal-porter",
+  "version": "1.0.0",
+  "description": "Frontend styling for Agentic Personal Porter",
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/css/input.css -o ./frontend/css/style.css --minify"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0"
+  }
+}

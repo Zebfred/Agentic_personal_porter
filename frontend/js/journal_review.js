@@ -24,18 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (syncGcalBtn) {
-        syncGcalBtn.addEventListener('click', () => {
-            alert("This feature pushes current edits direct to the Google Cloud workspace via bi-directional sync! (WIP: Will iterate events shortly if authorized)");
-        });
-    }
-
     fetchReviewData(selectedDate);
     
     function fetchReviewData(dateStr) {
-        // We call the newly minted adventure log which returns Socratic Delta over X days
-        // Right now our backend logic takes days_back, so passing the date string handles it.
-        Auth.fetchWithAuth(`/api/calendar/adventure_log?date=${dateStr}`)
+        // Fetch intentions and actuals
+        Auth.fetchWithAuth(`/api/journal/review_data?date=${dateStr}`)
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success' && data.data) {

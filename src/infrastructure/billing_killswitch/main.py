@@ -44,7 +44,7 @@ log_level_num = getattr(logging, log_level, logging.INFO)
 logging_client = None
 
 # Calling `setup_logging()` intercepts Python's standard `logging` module
-# and attaches a Cloud Logging handler to it. This automatically 
+# and attaches a Cloud Logging handler to it. This automatically
 # sends all standard logger output (like logger.info) to GCP.
 if os.environ.get("DISABLE_CLOUD_LOGGING", "false").lower() != "true":
     logging_client = google.cloud.logging.Client()
@@ -92,7 +92,7 @@ def _parse_and_validate_message(cloud_event: CloudEvent) -> dict | None:
     if not billing_account_id:
         logger.error("No billingAccountId found in message payload.")
         return None
-    
+
     if not budget_id:
         logger.error("No budgetId found in message attributes.")
         return None
@@ -145,14 +145,14 @@ def disable_billing_for_projects(cloud_event: CloudEvent):
 
     for project_id in project_ids:
         project_name = f"projects/{project_id}"
-        
-        # Determine whether billing is enabled for the project. 
+
+        # Determine whether billing is enabled for the project.
         # Returns True if enabled, False if disabled, and None if an error occurred.
         billing_enabled = _is_billing_enabled_for_project(project_name)
-        
+
         if billing_enabled is True:
             logger.info(f"Budget '{budget_name}': Disabling billing for {project_id}...")
-            
+
             if simulate_deactivation:
                 logger.info(f"SIMULATION MODE: Billing would have been disabled for project {project_id} "
                             f"for budget {budget_name}.")
@@ -185,7 +185,7 @@ def _is_billing_enabled_for_project(project_name: str) -> bool | None:
                        f"Error message: {e}")
         return None
 
-    
+
 def _disable_billing_for_project(project_name: str) -> None:
     """Disable billing for a project by removing its billing account.
 

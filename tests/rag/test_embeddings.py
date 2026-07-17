@@ -18,40 +18,40 @@ def test_scibert_embedder_initialization():
 def test_embed_single_text():
     """Test embedding a single text."""
     embedder = SciBERTEmbedder()
-    
+
     text = "This is a test sentence about reinforcement learning."
     embedding = embedder.embed(text)
-    
+
     assert isinstance(embedding, np.ndarray)
     assert embedding.shape[0] == embedder.get_embedding_dim()
 
 def test_embed_batch():
     """Test embedding a batch of texts."""
     embedder = SciBERTEmbedder()
-    
+
     texts = [
         "First sentence about machine learning.",
         "Second sentence about deep learning.",
         "Third sentence about neural networks."
     ]
-    
+
     embeddings = embedder.embed_batch(texts)
-    
+
     assert embeddings.shape[0] == len(texts)
     assert embeddings.shape[1] == embedder.get_embedding_dim()
 
 def test_embed_chunks():
     """Test embedding chunks."""
     embedder = SciBERTEmbedder()
-    
+
     chunks = [
         {'text': 'First chunk text.'},
         {'text': 'Second chunk text.'},
         {'text': 'Third chunk text.'}
     ]
-    
+
     chunks_with_embeddings = embedder.embed_chunks(chunks)
-    
+
     assert len(chunks_with_embeddings) == len(chunks)
     assert all('embedding' in chunk for chunk in chunks_with_embeddings)
 
@@ -59,7 +59,7 @@ def test_get_embedding_dim():
     """Test getting embedding dimension."""
     embedder = SciBERTEmbedder()
     dim = embedder.get_embedding_dim()
-    
+
     assert isinstance(dim, int)
     assert dim > 0
     # SciBERT should have 768 dimensions

@@ -114,7 +114,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             
-            const cell = createDayCell(dateStr, day, false, hasData, dayData);
+            let hasReflection = false;
+            if (monthDoc.reflections && monthDoc.reflections.includes(dateStr)) {
+                hasReflection = true;
+            }
+            
+            const cell = createDayCell(dateStr, day, false, hasData, dayData, hasReflection);
             monthlyGridContainer.appendChild(cell);
         }
 
@@ -127,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const createDayCell = (dateStr, dayNum, isPadding, hasData = false, dayData = null) => {
+    const createDayCell = (dateStr, dayNum, isPadding, hasData = false, dayData = null, hasReflection = false) => {
         const cell = document.createElement('div');
         cell.className = 'day-cell bg-surface hover:bg-surface-hover flex flex-col p-2 transition group rounded-xl shadow-sm border border-border min-h-[120px]';
         
@@ -142,15 +147,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date();
         const isToday = (today.getFullYear() === activeYear && today.getMonth() === activeMonth && today.getDate() === dayNum);
         
+        const headerContainer = document.createElement('div');
+        headerContainer.className = 'flex justify-between items-start mb-1';
+        
+        // Left side badge
+        const badgeSpan = document.createElement('span');
+        if (hasReflection) {
+            badgeSpan.className = 'text-green-500 font-bold text-lg leading-none';
+            badgeSpan.innerHTML = '✅';
+            badgeSpan.title = "Sovereign Report Generated";
+        } else {
+            badgeSpan.className = 'w-4 h-4'; // spacer
+        }
+        
+        // Right side date number
         const dateEl = document.createElement('span');
-        dateEl.className = 'text-sm font-medium self-end mb-1 z-10 ' + (isToday ? 'bg-primary text-on-primary rounded-full w-6 h-6 flex items-center justify-center shadow-md' : 'text-main');
+        dateEl.className = 'text-sm font-medium z-10 ' + (isToday ? 'bg-primary text-on-primary rounded-full w-6 h-6 flex items-center justify-center shadow-md' : 'text-main');
         dateEl.textContent = dayNum;
-        cell.appendChild(dateEl);
+        
+        headerContainer.appendChild(badgeSpan);
+        headerContainer.appendChild(dateEl);
+        cell.appendChild(headerContainer);
 
-        if (hasData) {
+        if (hasData || hasReflection) {
             cell.classList.add('cursor-pointer');
             cell.addEventListener('click', () => {
-                openDayModal(dateStr, dayData);
+                openDayModal(dateStr, dayData || {chunks: {}});
             });
 
             const chunkContainer = document.createElement('div');
@@ -179,10 +201,70 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Modal Logic ---
-    const openDayModal = (dateStr, dayData) => {
+    const openDayModal = async (dateStr, dayData) => {
         modalDateTitle.textContent = new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         modalBody.innerHTML = '';
         
+        // 1. Render Sovereign Reflection if exists
+        const reflectionContainer = document.createElement('div');
+        reflectionContainer.id = "modal-reflection-container";
+        reflectionContainer.className = "mb-6 hidden bg-indigo-50 border border-indigo-100 rounded-xl p-4";
+        reflectionContainer.innerHTML = `
+            <h4 class="text-indigo-900 font-bold mb-2 flex items-center gap-2">
+                <span>👑</span> Sovereign Daily Report
+            </h4>
+            <div id="modal-reflection-content" class="text-sm text-indigo-800 whitespace-pre-wrap">Loading...</div>
+        `;
+        modalBody.appendChild(reflectionContainer);
+        
+        // Fetch reflection
+        try {
+            const res = await Auth.fetchWithAuth(`/api/journal/reflection?date=${dateStr}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.data && data.data.reflection_text) {
+                    let textHtml = escapeHTML(data.data.reflection_text).replace(/\\n/g, '<br>');
+                    if (data.data.correlation_id) {
+                        textHtml += `<div class="mt-3 text-right"><span class="text-xs font-mono bg-indigo-200 text-indigo-800 px-2 py-1 rounded">🔗 ${data.data.correlation_id.substring(0,12)}...</span></div>`;
+                    }
+                    reflectionContainer.querySelector('#modal-reflection-content').innerHTML = textHtml;
+                    reflectionContainer.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load reflection for modal", e);
+        }
+
+        // 2. Render Freeform Journal if exists
+        const freeformContainer = document.createElement('div');
+        freeformContainer.id = "modal-freeform-container";
+        freeformContainer.className = "mb-6 hidden bg-blue-50 border border-blue-100 rounded-xl p-4";
+        freeformContainer.innerHTML = `
+            <h4 class="text-blue-900 font-bold mb-2 flex items-center gap-2">
+                <span>📝</span> Journal Log
+            </h4>
+            <div id="modal-freeform-content" class="text-sm text-blue-800 whitespace-pre-wrap">Loading...</div>
+        `;
+        modalBody.appendChild(freeformContainer);
+        
+        try {
+            const res = await Auth.fetchWithAuth(`/api/journal/freeform?date=${dateStr}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'success' && data.data && data.data.text) {
+                    let textHtml = escapeHTML(data.data.text).replace(/\\n/g, '<br>');
+                    if (data.data.correlation_id) {
+                        textHtml += `<div class="mt-3 text-right"><span class="text-xs font-mono bg-blue-200 text-blue-800 px-2 py-1 rounded">🔗 ${data.data.correlation_id.substring(0,12)}...</span></div>`;
+                    }
+                    freeformContainer.querySelector('#modal-freeform-content').innerHTML = textHtml;
+                    freeformContainer.classList.remove('hidden');
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load freeform journal for modal", e);
+        }
+
+        // 3. Render Time Chunks
         const chunks = dayData.chunks || {};
         const timeOrdered = ['late-night', 'early-morning', 'late-morning', 'afternoon', 'evening', 'early-night'];
         const chunkLabels = {
@@ -194,16 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
             'early-night': 'Early Night'
         };
 
-        let foundAny = false;
+        let foundAny = Object.keys(chunks).length > 0;
         
         timeOrdered.forEach(chunkId => {
             const chunk = chunks[chunkId];
             if (chunk) {
-                foundAny = true;
                 const activityVal = chunk.activityTitle || chunk.actual || "No actual recorded";
                 
                 const card = document.createElement('div');
-                card.className = "bg-gray-50 p-4 rounded-lg border border-gray-200";
+                card.className = "bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4 relative";
                 
                 let highlightClass = "";
                 if (chunk.isValuableDetour) highlightClass = "border-l-4 border-l-yellow-400";
@@ -215,7 +296,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-2">
                         <strong class="text-sm text-gray-700 tracking-wider uppercase">${chunkLabels[chunkId]}</strong>
-                        <span class="text-xs bg-white border px-2 py-1 rounded shadow-sm text-gray-600 font-bold">FOG: ${chunk.brainFog || 0}%</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs bg-white border px-2 py-1 rounded shadow-sm text-gray-600 font-bold">FOG: ${chunk.brainFog || 0}%</span>
+                            <button class="edit-chunk-btn text-xs text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded border border-blue-200 shadow-sm transition">Edit</button>
+                        </div>
                     </div>
                     <div class="space-y-1 text-sm text-gray-800">
                         <p><span class="opacity-50">Intended:</span> ${escapeHTML(chunk.intention)}</p>
@@ -229,13 +313,90 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (chunk.isDetrimentalDetour && chunk.detrimentNote) {
                     card.innerHTML += `<div class="mt-2 text-xs bg-red-50 text-red-800 p-2 rounded border border-red-200"><strong>Detrimental:</strong> ${escapeHTML(chunk.detrimentNote)}</div>`;
                 }
+                
+                // Add Edit Form (Hidden by default)
+                const editForm = document.createElement('div');
+                editForm.className = "hidden mt-4 pt-4 border-t border-gray-200";
+                editForm.innerHTML = `
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Intention</label>
+                            <input type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.intention || '')}" data-field="intention">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Actual</label>
+                            <input type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.actual || '')}" data-field="actual">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase">Brain Fog (0-100)</label>
+                            <input type="number" class="w-full border p-1.5 rounded text-sm" value="${chunk.brainFog || 0}" data-field="brainFog">
+                        </div>
+                        <div class="flex gap-4 text-sm">
+                            <label class="flex items-center gap-1"><input type="checkbox" data-field="isValuableDetour" ${chunk.isValuableDetour ? 'checked' : ''}> Valuable Detour</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" data-field="isDetrimentalDetour" ${chunk.isDetrimentalDetour ? 'checked' : ''}> Detrimental Detour</label>
+                        </div>
+                        <div class="flex justify-end gap-2">
+                            <button class="cancel-edit-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-bold">Cancel</button>
+                            <button class="save-edit-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold">Save Changes</button>
+                        </div>
+                    </div>
+                `;
+                card.appendChild(editForm);
+                
+                // Edit Listeners
+                card.querySelector('.edit-chunk-btn').addEventListener('click', () => {
+                    editForm.classList.remove('hidden');
+                });
+                card.querySelector('.cancel-edit-btn').addEventListener('click', () => {
+                    editForm.classList.add('hidden');
+                });
+                card.querySelector('.save-edit-btn').addEventListener('click', async () => {
+                    const btn = card.querySelector('.save-edit-btn');
+                    btn.textContent = "Saving...";
+                    btn.disabled = true;
+                    
+                    const payload = {
+                        day: dateStr,
+                        timeChunk: chunkId,
+                        intention: editForm.querySelector('[data-field="intention"]').value,
+                        actual: editForm.querySelector('[data-field="actual"]').value,
+                        brainFog: parseInt(editForm.querySelector('[data-field="brainFog"]').value) || 0,
+                        isValuableDetour: editForm.querySelector('[data-field="isValuableDetour"]').checked,
+                        isDetrimentalDetour: editForm.querySelector('[data-field="isDetrimentalDetour"]').checked,
+                        // Preserve correlation id if it was there
+                        correlation_id: chunk.correlation_id || null
+                    };
+                    
+                    try {
+                        const response = await Auth.fetchWithAuth('/api/save_log', {
+                            method: 'POST',
+                            body: JSON.stringify(payload)
+                        });
+                        if (response.ok) {
+                            // Reload grid
+                            yearlyDataCache = {};
+                            loadMonthData(activeYear, activeMonth);
+                            closeDayModal();
+                        } else {
+                            alert("Failed to save changes.");
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        alert("Error saving chunk.");
+                    } finally {
+                        btn.textContent = "Save Changes";
+                        btn.disabled = false;
+                    }
+                });
 
                 modalBody.appendChild(card);
             }
         });
 
-        if (!foundAny) {
-            modalBody.innerHTML = '<p class="text-gray-500 italic">Data structure malformed or empty.</p>';
+        if (!foundAny && (!reflectionContainer.classList.contains('hidden') || !freeformContainer.classList.contains('hidden'))) {
+            // we have reflection or journal but no chunks, it's fine.
+        } else if (!foundAny) {
+            modalBody.innerHTML += '<p class="text-gray-500 italic mt-4">No chunks logged for this day.</p>';
         }
 
         dayModal.classList.remove('hidden');

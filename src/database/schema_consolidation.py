@@ -15,13 +15,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 
 def execute_sovereign_consolidation():
     print("✨ Initiating System Collection Consolidation Protocol...")
-    
+
     # 1. Establish Mongo Storage client via base environment variables
     mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     try:
         client = MongoClient(mongo_uri, serverSelectionTimeoutMS=2000)
         # Check deployment connection context immediately
-        client.server_info() 
+        client.server_info()
         db = client["porter_collections"]
         print(f"✅ Connected to Local Landing Zone substrate at: {mongo_uri}")
     except errors.ServerSelectionTimeoutError:
@@ -36,7 +36,7 @@ def execute_sovereign_consolidation():
         "daily_categorized_events",
         "formatted_calendar_events"
     ]
-    
+
     existing_collections = db.list_collection_names()
     print(f"🔍 Discovered existing state collections: {existing_collections}")
 
@@ -51,7 +51,7 @@ def execute_sovereign_consolidation():
     # 3. Enforce Native Time-Series Collections for the Local Temporal Substrate
     print("\n🏗️ Building High-Fidelity Time-Series Constraints...")
     ts_collection = "calendar_events_timeseries"
-    
+
     if ts_collection not in db.list_collection_names():
         try:
             db.create_collection(
@@ -83,7 +83,7 @@ def execute_sovereign_consolidation():
     # 5. Local Data Handshake Sanity Pass (Simulating Local Operation)
     print("\n🧪 Executing Local State Ingestion Test...")
     mock_id = f"mock_evt_{int(datetime.utcnow().timestamp())}"
-    
+
     mock_intention = {
         "gcal_id": mock_id,
         "title": "Deep RL System Architecture Focus",
@@ -92,7 +92,7 @@ def execute_sovereign_consolidation():
         "processed_at": datetime.utcnow().isoformat(),
         "record_type": "Intention"
     }
-    
+
     try:
         # Idempotent database check
         db["event_intentions"].update_one(

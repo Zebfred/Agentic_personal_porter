@@ -10,7 +10,7 @@ from src.integrations.google_calendar_authentication_helper import get_calendar_
 from src.utils.path_utils import load_env_vars
 load_env_vars()
 
-# This defines what our app is allowed to do. 
+# This defines what our app is allowed to do.
 # Using read-write access to enable syncing actual activities back to calendar
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
@@ -38,4 +38,4 @@ def get_calendar_service():
     except Exception as e:
         logger.error(f"Failed to build calendar service: {e}")
         raise
-    
+

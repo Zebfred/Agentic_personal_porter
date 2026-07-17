@@ -16,15 +16,15 @@ def get_all_detours(username: str):
     """
     with driver.session() as session:
         result = session.execute_read(lambda tx: list(tx.run(query, username=username)))
-        
+
         detours = []
         for record in result:
             labels = record["labels"]
             detour_type = "valuable" if "ValuableDetour" in labels else "detrimental" if "DetrimentalDetour" in labels else "unknown"
-            
+
             detours.append({
-                "inventoryNote": record["inventoryNote"], 
-                "title": record["title"], 
+                "inventoryNote": record["inventoryNote"],
+                "title": record["title"],
                 "type": detour_type,
                 "timestamp": str(record["timestamp"])
             })
@@ -59,9 +59,9 @@ def _get_patterns_tx(tx, username: str):
         """
     )
     result = tx.run(query, username=username)
-    return [{"intention": record["intention"], 
-             "actual": record["actual"], 
-             "frequency": record["frequency"]} 
+    return [{"intention": record["intention"],
+             "actual": record["actual"],
+             "frequency": record["frequency"]}
             for record in result]
 
 def get_goal_progress(username: str, goal_id: str = None) -> dict:
@@ -161,7 +161,7 @@ def get_full_graph_topology(limit: int = 500) -> dict:
     driver = get_driver()
     nodes = []
     edges = []
-    
+
     # Run a unified query that finds nodes and their relationships
     # We use elementId() because Neo4j 5 integer IDs exceed JavaScript's MAX_SAFE_INTEGER
     # causing catastrophic ID collision when parsed by the frontend.
@@ -174,13 +174,13 @@ def get_full_graph_topology(limit: int = 500) -> dict:
            elementId(r) AS rel_id, type(r) AS rel_type,
            elementId(m) AS tgt_id, labels(m)[0] AS tgt_label, properties(m) AS tgt_props
     """
-    
+
     with driver.session() as session:
         result = session.execute_read(lambda tx: list(tx.run(query, limit=limit)))
-        
+
         # Track inserted to avoid duplicates
         node_tracker = set()
-        
+
         for record in result:
             src_id = record["src_id"]
             if src_id not in node_tracker:
@@ -191,7 +191,7 @@ def get_full_graph_topology(limit: int = 500) -> dict:
                     "group": record["src_label"]
                 })
                 node_tracker.add(src_id)
-                
+
             tgt_id = record["tgt_id"]
             if tgt_id is not None and tgt_id not in node_tracker:
                 nodes.append({
@@ -201,7 +201,7 @@ def get_full_graph_topology(limit: int = 500) -> dict:
                     "group": record["tgt_label"]
                 })
                 node_tracker.add(tgt_id)
-                
+
             if record["rel_id"] is not None:
                 edges.append({
                     "id": record["rel_id"],
@@ -209,6 +209,6 @@ def get_full_graph_topology(limit: int = 500) -> dict:
                     "to": tgt_id,
                     "label": record["rel_type"]
                 })
-                
+
     return {"nodes": nodes, "edges": edges}
 

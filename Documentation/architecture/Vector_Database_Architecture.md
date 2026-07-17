@@ -13,7 +13,7 @@ Because cost limits and exact performance needs are still solidifying, we are do
 3.  **Pinecone (Serverless Starter)**: Retained as a scalable backup option if local instances degrade under load.
 
 ## Batch Processing Architecture
-To avoid constant database waking and token thrashing, the `vector_batch_sync_all.py` script pulls recent document batches from the MongoDB landing zone (the `journal_entries` and `agent_reflections` collections). 
+To avoid constant database waking and token thrashing, the `vector_batch_sync_all.py` script pulls recent document batches from the MongoDB landing zone (the `journal_time_entries` and `agent_reflections` collections). 
 Vector embeddings are compiled and injected strictly twice a day:
 - **Noon (12:00 PM)**
 - **Midnight (12:00 AM)**
@@ -39,3 +39,12 @@ While BGE-M3 serves the immediate workflow, future development will explicitly s
 | **nomic-embed** | 0.1B | `e2-micro` | Ultra-Budget. Might even fit in GCP's "Free Tier". |
 | **Qwen3-0.6B** | 0.6B | `e2-standard-2` | Similar to BGE-M3; high context window (32k). **(Reserved for future deep-understanding agents)** |
 | **Qwen2-7B** | 7B | `n1-standard-4` | Expensive. CPU is too slow (seconds per sentence), requiring an NVIDIA T4 GPU. Est. Cost: ~$250-$300/month (Must use Spot VMs to stay under $100). Dismissed for now due to cost. |
+
+## Future Upgrade: Private Brain Pruning Mechanism
+As the Agentic Private Brain (Weaviate & ChromaDB) accumulates historical daily journal entries, reflections, and events, it requires a robust pruning mechanism to prevent token bloat, storage growth, and retrieval pollution. 
+
+The next planned upgrade will establish:
+1. **Age-Based Decay:** Implementing a policy to delete or archive semantic vectors older than a threshold (e.g., 90 days), moving them to long-term cold storage.
+2. **Relevance Filtering:** Storing a utility or importance score for each vector. Vectors with low utility scores (such as redundant/repetitive entries) will be systematically pruned.
+3. **Consolidation / Summarization:** Periodically executing an agent task to summarize clusters of old vectors into a single, high-density "semantic epoch" node in the vector space, replacing multiple fine-grained historical entries.
+

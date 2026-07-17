@@ -11,7 +11,7 @@ class AgentHeartbeatManager:
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         self.collection = self.db[MongoConfig.AGENT_HEALTH_COLLECTION]
-        
+
     def start_agent_run(self, agent_name: str, context: dict = None, username: str = None) -> str:
         """
         Registers that an agent has started running.
@@ -30,17 +30,17 @@ class AgentHeartbeatManager:
             "error_msg": None,
             "username": username or "system"
         }
-        
+
         self.collection.insert_one(payload)
         return run_id
-        
+
     def end_agent_run(self, run_id: str, status: str, result_summary: str = None, error_msg: str = None):
         """
         Finalizes an agent run, calculating duration and logging success/failure.
         status should typically be "success" or "fail".
         """
         end_time = datetime.now(timezone.utc)
-        
+
         # Fetch start time to calculate duration
         record = self.collection.find_one({"_id": run_id})
         duration = None
@@ -50,7 +50,7 @@ class AgentHeartbeatManager:
             if start_time.tzinfo is None:
                 start_time = start_time.replace(tzinfo=timezone.utc)
             duration = (end_time - start_time).total_seconds()
-            
+
         update_payload = {
             "$set": {
                 "status": status,
@@ -60,9 +60,9 @@ class AgentHeartbeatManager:
                 "error_msg": error_msg
             }
         }
-        
+
         self.collection.update_one({"_id": run_id}, update_payload)
-        
+
     def get_all_agent_statuses(self) -> dict:
         """
         Returns a dictionary mapping agent_name to their most recent execution status.
@@ -79,9 +79,9 @@ class AgentHeartbeatManager:
                 "error_msg": {"$first": "$error_msg"}
             }}
         ]
-        
+
         results = self.collection.aggregate(pipeline)
-        
+
         status_dict = {}
         for r in results:
             agent_name = r["_id"]
@@ -92,5 +92,5 @@ class AgentHeartbeatManager:
                 "duration_seconds": r.get("duration_seconds"),
                 "error_msg": r.get("error_msg")
             }
-            
+
         return status_dict

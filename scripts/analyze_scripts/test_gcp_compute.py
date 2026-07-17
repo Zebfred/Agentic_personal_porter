@@ -17,10 +17,10 @@ def run_tests():
     logger.info("==================================================")
     logger.info("🚀 GCP Compute Client Verification Test")
     logger.info("==================================================")
-    
+
     logger.info("\n[1] Initializing GCP Compute Client (Using Application Default Credentials)...")
     client = GCPComputeClient()
-    
+
     if not client.service:
         logger.info("❌ FAILED: Could not initialize Google Cloud Credentials.")
         logger.info("    Ensure you have run `gcloud auth application-default login` natively on your machine.")
@@ -30,14 +30,14 @@ def run_tests():
     logger.info(f"\n[2] Polling instantaneous status of {instance_name}...")
     status = client.get_instance_status(instance_name)
     logger.info(f"    Current Status:  => [ {status} ] <=")
-    
+
     if len(sys.argv) > 1:
         command = sys.argv[1].lower()
         if command == "wake":
             logger.info(f"\n[3] INITIATING WAKE SEQUENCE for {instance_name}...")
             success = client.wake_instance(instance_name, block_until_running=True)
             logger.info(f"    Result: {'✅ SUCCESS' if success else '❌ FAILED'}")
-            
+
         elif command == "sleep":
             logger.info(f"\n[3] INITIATING SLEEP SEQUENCE for {instance_name}...")
             success = client.sleep_instance(instance_name)

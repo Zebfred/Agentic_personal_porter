@@ -107,7 +107,7 @@ class TestRouteMapping:
         # Flask adds a default /static/<path:filename> route; we expect ~45 total
         rule_count = len(list(app.url_map.iter_rules()))
         assert rule_count >= 30, f"Expected >=30 routes, got {rule_count}. Routes may be missing."
-        assert rule_count <= 70, f"Expected <=70 routes, got {rule_count}. Possible duplicates."
+        assert rule_count <= 85, f"Expected <=85 routes, got {rule_count}. Possible duplicates."
 
 # ======================================================================
 #  Auth Middleware Tests
@@ -194,11 +194,11 @@ class TestLogin:
             "given_name": "Test"
         }
         mock_storage.return_value.get_or_create_user.return_value = {"username": "testuser"}
-        
+
         # We need to set a dummy GOOGLE_CLIENT_ID in the environment for the test to pass
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
         os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-guild.com"
-        
+
         response = client.post(
             '/api/login',
             json={"credential": "mocked_google_jwt_token"}
@@ -221,10 +221,10 @@ class TestLogin:
             "given_name": "Admin"
         }
         mock_storage.return_value.get_or_create_user.return_value = {"username": "adminuser"}
-        
+
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
         os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-ds-ml-consulting.com"
-        
+
         response = client.post(
             '/api/nexus/login',
             json={"credential": "mocked_google_jwt_token"}
@@ -240,7 +240,7 @@ class TestLogin:
     def test_login_with_invalid_credential(self, mock_verify, client):
         """Invalid Google JWT should return 401."""
         mock_verify.side_effect = ValueError("Invalid token")
-        
+
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
 
         response = client.post(

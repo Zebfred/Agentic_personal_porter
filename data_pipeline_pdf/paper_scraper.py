@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 Paper scraper for downloading RL papers from arxiv.org and conference sites.
 
@@ -18,7 +19,7 @@ import random
 
 class PaperScraper:
     """Scraper for downloading RL papers from various sources."""
-    
+
     def __init__(self, papers_dir: str = "data/papers", metadata_file: str = "data/papers_metadata.json"):
         """
         Initialize the paper scraper.
@@ -38,20 +39,20 @@ class PaperScraper:
             delay_seconds=3.0,  # 3 second delay between requests
             num_retries=5  # Retry up to 5 times
         )
-    
+
     def _load_metadata(self) -> List[Dict]:
         """Load existing metadata if available."""
         if self.metadata_file.exists():
             with open(self.metadata_file, 'r') as f:
                 return json.load(f)
         return []
-    
+
     def _save_metadata(self):
         """Save metadata to JSON file."""
         with open(self.metadata_file, 'w') as f:
             json.dump(self.metadata, f, indent=2, default=str)
-    
-    def scrape_arxiv(self, 
+
+    def scrape_arxiv(self,
                      query: str = "reinforcement learning",
                      max_results: int = 30,
                      sort_by: arxiv.SortCriterion = arxiv.SortCriterion.SubmittedDate,
@@ -70,7 +71,7 @@ class PaperScraper:
         """
         print(f"Searching arxiv.org for: {query}")
         print(f"Max results: {max_results}")
-        
+
         # create search object
         search = arxiv.Search(
             query=query,
@@ -78,7 +79,7 @@ class PaperScraper:
             sort_by=sort_by,
             sort_order=sort_order
         )
-        
+
         downloaded = []
 
         # 2. Use the client to get the results from the search
@@ -96,7 +97,7 @@ class PaperScraper:
                 if any(p['arxiv_id'].startswith(arxiv_id) for p in self.metadata):
                     print(f"Skipping {arxiv_id} - already downloaded")
                     continue
-                
+
                 # Download PDF
                 pdf_path = self._download_pdf(paper, arxiv_id)
                 if pdf_path:
@@ -114,19 +115,19 @@ class PaperScraper:
                     self.metadata.append(paper_metadata)
                     downloaded.append(paper_metadata)
                     print(f"Downloaded: {paper.title[:60]}...")
-                    
+
                     # Be polite to arxiv servers
                     time.sleep(1)
-                    
+
             except Exception as e:
                 print(f"Error processing paper {paper.entry_id}: {e}")
                 continue
-        
+
         # Save metadata
         self._save_metadata()
         print(f"\nDownloaded {len(downloaded)} new papers from arxiv")
         return downloaded
-    
+
     def _fetch_paper_with_retry(self, arxiv_id: str, max_retries: int = 5) -> Optional[arxiv.Result]:
         """
         Fetch a single paper from arxiv with retry logic and exponential backoff.
@@ -142,19 +143,19 @@ class PaperScraper:
             try:
                 search = arxiv.Search(id_list=[arxiv_id])
                 results = list(self.arxiv_client.results(search))
-                
+
                 if results:
                     return results[0]
                 else:
                     print(f"  Paper {arxiv_id} not found in arxiv")
                     return None
-                    
+
             except arxiv.HTTPError as e:
                 # HTTPError may have status_code as attribute or in args
                 status_code = getattr(e, 'status_code', None)
                 if status_code is None and hasattr(e, 'args') and len(e.args) >= 3:
                     status_code = e.args[2]  # status_code is typically the 3rd argument
-                
+
                 # Extract status code from error message if needed
                 if status_code is None:
                     error_str = str(e)
@@ -162,7 +163,7 @@ class PaperScraper:
                         status_code = 429
                     elif '503' in error_str:
                         status_code = 503
-                
+
                 if status_code == 429:  # Too Many Requests
                     wait_time = (2 ** attempt) + random.uniform(0, 1)  # Exponential backoff
                     print(f"  Rate limited (429). Waiting {wait_time:.1f} seconds before retry {attempt + 1}/{max_retries}...")
@@ -178,7 +179,7 @@ class PaperScraper:
                         time.sleep(wait_time)
                     else:
                         return None
-                        
+
             except Exception as e:
                 print(f"  Error fetching paper {arxiv_id}: {e}")
                 if attempt < max_retries - 1:
@@ -186,9 +187,9 @@ class PaperScraper:
                     time.sleep(wait_time)
                 else:
                     return None
-        
+
         return None
-    
+
     def _download_pdf(self, paper: arxiv.Result, arxiv_id: str) -> Optional[Path]:
         """
         Download PDF for a given arxiv paper.
@@ -203,14 +204,14 @@ class PaperScraper:
         try:
             # Try to get PDF URL from paper object
             pdf_url = None
-            
+
             # Method 1: Use _get_pdf_url() method if available (most reliable)
             if hasattr(paper, '_get_pdf_url'):
                 try:
                     pdf_url = paper._get_pdf_url()
                 except Exception:
                     pass
-            
+
             # Method 2: Extract from links attribute (contains PDF link)
             if not pdf_url and hasattr(paper, 'links') and paper.links:
                 for link in paper.links:
@@ -224,11 +225,11 @@ class PaperScraper:
                         if '/pdf/' in link.href:
                             pdf_url = link.href
                             break
-            
+
             # Method 3: Check pdf_url attribute (usually None but check anyway)
             if not pdf_url and hasattr(paper, 'pdf_url'):
                 pdf_url = paper.pdf_url
-            
+
             # Method 4: Construct from entry_id if still no URL
             if not pdf_url and hasattr(paper, 'entry_id') and paper.entry_id:
                 entry_id = paper.entry_id
@@ -243,12 +244,12 @@ class PaperScraper:
                     if len(parts) >= 2:
                         paper_id = parts[-1]  # Get the ID part
                         pdf_url = f"https://arxiv.org/pdf/{paper_id}.pdf"
-            
+
             # Method 5: Construct from short_id as last resort
             if not pdf_url:
                 short_id = paper.get_short_id() if hasattr(paper, 'get_short_id') else arxiv_id
                 pdf_url = f"https://arxiv.org/pdf/{short_id}.pdf"
-            
+
             if not pdf_url:
                 print(f"  Could not determine PDF URL for {arxiv_id}")
                 return None
@@ -256,15 +257,15 @@ class PaperScraper:
             print(f"  Downloading from: {pdf_url}")
             response = requests.get(pdf_url, stream=True, timeout=30)
             response.raise_for_status()
-            
+
             # Use the simple arxiv_id (e.g., 1312.5602v1) for the filename
             pdf_filename = f"{arxiv_id.replace('/', '_')}.pdf"
             pdf_path = self.papers_dir / pdf_filename
-            
+
             with open(pdf_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            
+
             return pdf_path
         except requests.exceptions.RequestException as e:
             print(f"  Error downloading PDF for {arxiv_id}: {e}")
@@ -272,7 +273,7 @@ class PaperScraper:
         except Exception as e:
             print(f"  Unexpected error downloading PDF for {arxiv_id}: {e}")
             return None
-    
+
     def get_foundational_rl_papers(self) -> List[Dict]:
         """
         Get a curated list of foundational RL papers.
@@ -322,7 +323,7 @@ class PaperScraper:
             "1911.08265",  # Mastering Atari, Go, Chess and Shogi
             "2009.01325",  # MuZero: Mastering Go, chess, shogi and Atari
         ]
-        
+
         downloaded = []
         # Check existing metadata to avoid re-downloading
         existing_ids = set()
@@ -342,21 +343,21 @@ class PaperScraper:
 
         print(f"Fetching {len(ids_to_fetch)} foundational papers...")
         print("Note: Fetching papers one at a time to respect arxiv rate limits...")
-        
+
         # Fetch papers one at a time to avoid rate limiting
         for i, base_id in enumerate(ids_to_fetch, 1):
             try:
                 print(f"\n[{i}/{len(ids_to_fetch)}] Fetching paper {base_id}...")
-                
+
                 # Fetch single paper with retry logic
                 paper = self._fetch_paper_with_retry(base_id)
-                
+
                 if not paper:
                     print(f"  Failed to fetch paper {base_id} after retries")
                     continue
-                
+
                 arxiv_id = paper.get_short_id()  # e.g., 1312.5602v1
-                
+
                 # Download PDF
                 pdf_path = self._download_pdf(paper, arxiv_id)
                 if pdf_path:
@@ -377,20 +378,20 @@ class PaperScraper:
                     print(f"  ✓ Downloaded: {paper.title[:60]}...")
                 else:
                     print(f"  ✗ Failed to download PDF for {arxiv_id}")
-                
+
                 # Be polite to arxiv servers - wait between papers
                 if i < len(ids_to_fetch):  # Don't wait after last paper
                     wait_time = 3.0 + random.uniform(0, 2)  # 3-5 seconds
                     print(f"  Waiting {wait_time:.1f} seconds before next request...")
                     time.sleep(wait_time)
-                    
+
             except Exception as e:
                 print(f"  ✗ Error processing paper {base_id}: {e}")
                 # Wait even on error to avoid hammering the server
                 if i < len(ids_to_fetch):
                     time.sleep(3.0)
                 continue
-        
+
         # Final save (already saved incrementally, but ensure it's saved)
         self._save_metadata()
         print(f"\n✓ Successfully downloaded {len(downloaded)} foundational RL papers")
@@ -402,13 +403,13 @@ class PaperScraper:
 def main():
     """Main function to run the scraper."""
     scraper = PaperScraper()
-    
+
     # First, get foundational papers
     print("=" * 60)
     print("Downloading Foundational RL Papers")
     print("=" * 60)
     foundational = scraper.get_foundational_rl_papers()
-    
+
     # Then, search for additional recent papers
     print("\n" + "=" * 60)
     print("Searching for Additional Recent RL Papers")
@@ -417,7 +418,7 @@ def main():
         query="reinforcement learning AND (deep learning OR neural networks)",
         max_results=10
     )
-    
+
     print(f"\nTotal papers in database: {len(scraper.metadata)}")
 
 

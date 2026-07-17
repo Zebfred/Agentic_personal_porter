@@ -10,7 +10,7 @@ from datetime import datetime
 from rich.console import Console
 
 from src.agents.evals.model_comparison_harness import run_categorization_eval
-from src.utils.path_utils import load_env_vars
+from src.utils.path_utils import load_env_vars, get_project_root
 
 console = Console()
 
@@ -19,6 +19,8 @@ def main():
 
     Supports --gemini-only and --groq-only flags to limit scope.
     """
+    root = get_project_root()
+
     parser = argparse.ArgumentParser(description="Agentic Porter Baseline Evaluation")
     parser.add_argument("--gemini-only", action="store_true", help="Only test Tier 1 Gemini API models")
     parser.add_argument("--groq-only", action="store_true", help="Only test baseline Groq models")

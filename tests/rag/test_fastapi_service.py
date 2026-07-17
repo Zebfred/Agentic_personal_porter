@@ -40,15 +40,15 @@ def test_query_endpoint(client):
     """Test query endpoint."""
     if not os.getenv('GROQ_API_KEY'):
         pytest.skip("GROQ_API_KEY not set")
-    
+
     response = client.post(
         "/query",
         json={"query": "What is reinforcement learning?", "top_k": 3}
     )
-    
+
     # Should either succeed, fail gracefully, or return 404 if the vector store is empty
     assert response.status_code in [200, 404, 500]
-    
+
     if response.status_code == 200:
         data = response.json()
         assert "answer" in data
@@ -60,7 +60,7 @@ def test_rebuild_index_endpoint_no_papers(client):
     # Test with invalid strategy
     response = client.post("/rebuild_index?chunking_strategy=invalid")
     assert response.status_code == 400
-    
+
     # Test with valid strategy but missing file
     # This will return 404 if file doesn't exist, 500 if other error
     response = client.post("/rebuild_index?chunking_strategy=fixed")
@@ -69,12 +69,12 @@ def test_rebuild_index_endpoint_no_papers(client):
 def test_query_request_model():
     """Test QueryRequest model validation."""
     from rag_system.rag_service import QueryRequest
-    
+
     # Valid request
     request = QueryRequest(query="Test query", top_k=5)
     assert request.query == "Test query"
     assert request.top_k == 5
-    
+
     # Default top_k
     request = QueryRequest(query="Test query")
     assert request.top_k == 5

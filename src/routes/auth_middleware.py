@@ -64,13 +64,13 @@ def require_api_key(f):
                 email_claim = decoded.get("email")
                 if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
                     return jsonify({"error": "Invalid email format in token"}), 401
-                
+
                 # Inject identity into request context for downstream routes
                 request.user_email = email_claim
                 request.user_role = decoded.get("role", "user")
                 request.user_account_type = decoded.get("account_type", "hero")
-                
-                # We no longer hard-reject non-admins here. 
+
+                # We no longer hard-reject non-admins here.
                 # Endpoint-level @require_role decorators will handle fine-grained authorization.
                 return f(*args, **kwargs)
             except jwt.ExpiredSignatureError:

@@ -16,7 +16,7 @@ class AuditInspector:
         self.daily_col = self.db[MongoConfig.DAILY_CATEGORIZED_EVENTS]
         self.actual_col = self.db[MongoConfig.ACTUAL_COLLECTION]
         self.unified_col = self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION]
-        
+
     def batch_unverified_records(self, user_email: str) -> List[Dict]:
         """
         Retrieves all recent categorizations that lack human-in-the-loop verification
@@ -25,20 +25,20 @@ class AuditInspector:
         from src.database.mongo_client.agent_health import AgentHeartbeatManager
         health_manager = AgentHeartbeatManager()
         run_id = health_manager.start_agent_run("audit_inspector", {"action": "batch_unverified_records"})
-        
+
         try:
             # Fetch up to 10 unverified
             records = list(self.daily_col.find({"status": "Pending Verification", "user_email": user_email}).limit(10))
-            
+
             # Ensure ObjectId is scrubbed for JSON serialization back to the frontend
             for r in records:
                  if "_id" in r:
                      r["_id"] = str(r["_id"])
-                     
+
                  # Provide default confidence if not present from legacy data
                  if "confidence_score" not in r:
                      r["confidence_score"] = 0
-                     
+
             # Sort lowest confidence first
             records.sort(key=lambda x: x["confidence_score"])
             health_manager.end_agent_run(run_id, status="success", result_summary=f"Found {len(records)} unverified.")
@@ -70,24 +70,24 @@ class AuditInspector:
         actual_ops = []
         unified_ops = []
         daily_ops = []
-        
+
         for r in records:
             gcal_id = r.get("gcal_id")
             event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
             duration_mins = r.get("duration_minutes", 60)
-            
+
             actual_payload = {
                 "title": r.get("title", "Untitled"),
                 "category": r.get("pillar"),
                 "energy_spent": duration_mins,
                 "status": "Verified"
             }
-            
+
             time_slot = {
                 "start": r.get("start"),
                 "end": r.get("end", r.get("start")) # Mock end if missing
             }
-            
+
             # Map into Actual collection
             actual_ops.append(UpdateOne(
                 {"_id": event_uuid},
@@ -103,7 +103,7 @@ class AuditInspector:
                 }},
                 upsert=True
             ))
-            
+
             # Update Unified Collection
             unified_ops.append(UpdateOne(
                 {"_id": event_uuid},
@@ -111,7 +111,7 @@ class AuditInspector:
                     "actual": actual_payload
                 }}
             ))
-            
+
             # Mark daily event as verified
             daily_ops.append(UpdateOne(
                 {"_id": r["_id"]},
@@ -126,5 +126,5 @@ class AuditInspector:
         if daily_ops:
             res = self.daily_col.bulk_write(daily_ops, ordered=False)
             modified_count = res.modified_count
-            
+
         return modified_count

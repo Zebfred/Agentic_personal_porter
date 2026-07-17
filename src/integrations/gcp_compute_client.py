@@ -61,7 +61,7 @@ class GCPComputeClient:
             try:
                 request = self.service.instances().start(project=self.project_id, zone=zone, instance=instance)
                 response = request.execute()
-                
+
                 if block_until_running:
                     logger.info("Blocking until instance reports RUNNING...")
                     retries = 0
@@ -77,7 +77,7 @@ class GCPComputeClient:
             except Exception as e:
                 logger.error(f"Failed to start instance {instance}: {e}")
                 return False
-        
+
         logger.warning(f"Instance {instance} is in transitional state: {status}. Doing nothing.")
         return False
 
@@ -85,7 +85,7 @@ class GCPComputeClient:
         """ Issues a stop command to aggressively save infrastructure costs. """
         if not self.service:
             return False
-            
+
         status = self.get_instance_status(instance, zone)
         if status == "RUNNING":
             logger.info(f"Instance {instance} is RUNNING. Issuing Stop command...")
@@ -96,6 +96,6 @@ class GCPComputeClient:
             except Exception as e:
                 logger.error(f"Failed to stop instance {instance}: {e}")
                 return False
-        
+
         logger.info(f"Instance {instance} is already in state: {status}. No stop command needed.")
         return True

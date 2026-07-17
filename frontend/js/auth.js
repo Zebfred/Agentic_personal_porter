@@ -55,8 +55,28 @@ const Auth = {
     
     // Check auth state on page load. Call this at the top of protected pages.
     enforceAuth: () => {
-        // If we're not on the login page and not authenticated, redirect
-        if (!window.location.pathname.includes('login.html') && !Auth.isAuthenticated()) {
+        if (window.location.pathname.includes('login.html')) return;
+
+        const token = Auth.getToken();
+        if (!token) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        // Decode the JWT payload and validate expiration proactively.
+        // Without this, an expired token lets the page render but every
+        // API call silently 401s — leaving the user on a dead session.
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            if (payload.exp && (payload.exp * 1000) < Date.now()) {
+                console.warn('JWT expired. Redirecting to login.');
+                Auth.clearToken();
+                window.location.href = 'login.html';
+            }
+        } catch (e) {
+            // Malformed token — force re-login
+            console.warn('Malformed JWT detected. Redirecting to login.');
+            Auth.clearToken();
             window.location.href = 'login.html';
         }
     },

@@ -11,6 +11,10 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask
 from flask_cors import CORS
 
+# --- Load environment variables ---
+from src.utils.path_utils import load_env_vars
+load_env_vars()
+
 # --- Critical security checks ---
 PORTER_API_KEY = os.environ.get("PORTER_API_KEY")
 if not PORTER_API_KEY:
