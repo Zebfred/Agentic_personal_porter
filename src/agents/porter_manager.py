@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, START, END
 
 
-from src.utils.path_utils import load_env_vars, get_auth_file
+from src.utils.path_utils import load_env_vars
 from src.database.mongo_storage import SovereignMongoStorage
 from src.utils.token_circuit_breaker import TokenLimitExceededError
 from src.database.mongo_client.agent_health import AgentHeartbeatManager
@@ -38,8 +38,42 @@ class CategorizationResult(BaseModel):
     Reason: str = Field(description="1-sentence strict analytical reason")
     Confidence_Score: int = Field(description="an integer from 0 to 100 representing how certain you are of this pillar mapping")
 
+from google.adk.runners import InMemoryRunner
+
+def _create_adk_runner(agent_name: str, instruction: str) -> InMemoryRunner:
+    """
+    Factory function to instantiate the ADK LiteLlm, Agent, and InMemoryRunner.
+
+    Args:
+        agent_name (str): The logical name of the agent.
+        instruction (str): The system prompt/instruction for the agent.
+
+    Returns:
+        InMemoryRunner: The configured runner ready to execute.
+    """
+    from google.adk.agents.llm_agent import Agent
+    from google.adk.runners import InMemoryRunner
+    from google.adk.models.lite_llm import LiteLlm
+
+    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
+    agent = Agent(
+        name=agent_name,
+        model=adk_model,
+        instruction=instruction
+    )
+    return InMemoryRunner(agent=agent, app_name="porter")
+
 # Node Functions
 def setup_node(state: ReflectionState) -> ReflectionState:
+    """
+    Initializes the state for the LangGraph workflow by fetching recent calendar actuals.
+
+    Args:
+        state (ReflectionState): The current state containing the username and initial payload.
+
+    Returns:
+        ReflectionState: The updated state with fetched 'actuals_str'.
+    """
     logger.info("Initializing Agentic Porter Sovereign Sync (LangGraph)...")
     username = state["username"]
     hero_context = get_context(username=username)
@@ -54,25 +88,25 @@ def setup_node(state: ReflectionState) -> ReflectionState:
     return {"actuals_str": actuals_str}
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
+    """
+    Uses an ADK LlmAgent to categorize the frontend intention/actual payload against the 9 Core Pillars.
+
+    Args:
+        state (ReflectionState): The current state containing the journal entry and recent actuals.
+
+    Returns:
+        ReflectionState: The updated state with the 'recon_result' (a JSON string).
+    """
     import json
     import asyncio
-    from google.adk.agents.llm_agent import Agent
-    from google.adk.runners import InMemoryRunner
-    from google.adk.models.lite_llm import LiteLlm
     from google.genai import types
 
     logger.info("Categorizer Node: Using ADK LlmAgent (Llama 3.3 70b)")
 
-    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
-    agent = Agent(
-        name="The_Categorizer",
-        model=adk_model,
-        instruction="You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
-    )
+    instruction = "You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
+    runner = _create_adk_runner(agent_name="The_Categorizer", instruction=instruction)
 
     query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{state['actuals_str']}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
-
-    runner = InMemoryRunner(agent=agent, app_name="porter")
 
     @with_llm_retry
     async def run_adk():
@@ -94,7 +128,7 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
                     if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == agent.name:
+                        if getattr(response, 'author', '') == "The_Categorizer":
                             final_text = part.text
         return final_text
 
@@ -106,38 +140,48 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
         data = json.loads(result_text)
         recon_str = f"```json\n{{\n  \"Pillar\": \"{data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{data.get('Reason', '')}\",\n  \"Confidence_Score\": {data.get('Confidence_Score', 0)}\n}}\n```"
     except Exception as e:
+        logger.warning(f"Failed to parse ADK Categorizer response: {e}")
         recon_str = f"```json\n{{\n  \"Pillar\": \"Parse Error\",\n  \"Reason\": \"Failed to parse ADK Categorizer response: {str(e)}\",\n  \"Confidence_Score\": 0\n}}\n```"
 
     return {"recon_result": recon_str}
 
 def should_curate(state: ReflectionState) -> str:
+    """
+    Conditional edge logic to determine if the Curator node should be invoked.
+
+    Args:
+        state (ReflectionState): The current state.
+
+    Returns:
+        str: The name of the next node to route to ("curator_node" or "save_results_node").
+    """
     log_data = state.get("log_data")
     if log_data and log_data.get('isValuableDetour'):
         return "curator_node"
     return "save_results_node"
 
 def curator_node(state: ReflectionState) -> ReflectionState:
+    """
+    Uses an ADK LlmAgent to process 'Valuable Detours' and log acquired inventory skills.
+
+    Args:
+        state (ReflectionState): The current state containing the log data and username.
+
+    Returns:
+        ReflectionState: The updated state with the 'curator_result' appended string.
+    """
     import asyncio
-    from google.adk.agents.llm_agent import Agent
-    from google.adk.runners import InMemoryRunner
-    from google.adk.models.lite_llm import LiteLlm
     from google.genai import types
 
     logger.info("Curator Node: Using ADK LlmAgent (Llama 3.3 70b)")
 
-    adk_model = LiteLlm(model="groq/llama-3.3-70b-versatile")
-    agent = Agent(
-        name="GTKY_Librarian",
-        model=adk_model,
-        instruction="You are 'GTKY Librarian (The Curator of Truth)'. Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide The Categorizer with the most accurate 'Actuals' possible.\n\nGoal: Identify 'The Fog of War' in daily logs and log 'Valuable Detours' to the User Inventory."
-    )
+    instruction = "You are 'GTKY Librarian (The Curator of Truth)'. Your duty is fidelity. When ingesting GCal data, look for 'The Fog of War' (unlabeled blocks). Your goal isn't to judge, but to provide The Categorizer with the most accurate 'Actuals' possible.\n\nGoal: Identify 'The Fog of War' in daily logs and log 'Valuable Detours' to the User Inventory."
+    runner = _create_adk_runner(agent_name="GTKY_Librarian", instruction=instruction)
 
     log_data = state.get("log_data") or {}
     inventory_note = log_data.get('inventoryNote', 'Gained unforeseen experience.')
 
     query = f"{state['username']} has declared the recent activity a 'Valuable Detour'.\nHis note: '{inventory_note}'\nEvaluate this new 'acquired skill' against his overall Origin Story.\nExpected output: A concise 2-sentence summary of the new skill appended to the end of the Recon Report under an 'Acquired Inventory' header."
-
-    runner = InMemoryRunner(agent=agent, app_name="porter")
 
     @with_llm_retry
     async def run_adk():
@@ -159,7 +203,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
                     if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == agent.name:
+                        if getattr(response, 'author', '') == "GTKY_Librarian":
                             final_text = part.text
         return final_text
 
@@ -169,6 +213,15 @@ def curator_node(state: ReflectionState) -> ReflectionState:
     return {"curator_result": curator_str}
 
 def save_results_node(state: ReflectionState) -> ReflectionState:
+    """
+    Aggregates the recon and curator results, saves them to a Markdown file, and stores them in MongoDB.
+
+    Args:
+        state (ReflectionState): The final state containing all processed results.
+
+    Returns:
+        ReflectionState: The updated state with the 'final_output' string.
+    """
     recon_result = state.get("recon_result", "")
     curator_result = state.get("curator_result", "")
 
@@ -199,7 +252,7 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
         storage.save_agent_reflection(reflection_data)
         logger.info(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
     except Exception as e:
-        logger.info(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
+        logger.warning(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
 
     return {"final_output": final_output}
 
@@ -247,7 +300,7 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return "ERROR: Socratic Categorizer experienced a logic loop and was forcefully halted by the Token Circuit Breaker to preserve API limits."
     except Exception as e:
-        logger.info(f"\n[RUNTIME ERROR] {e}")
+        logger.error(f"\n[RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return f"ERROR: Unexpected Backend Error during Categorization: {e}"
 
