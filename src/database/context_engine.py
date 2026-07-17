@@ -1,7 +1,9 @@
 # NOTE: dotenv is loaded centrally by src.utils.path_utils.load_env_vars()
 # at app startup. Do NOT call load_dotenv() here.
-import os
+import logging
 from src.database.neo4j_client.connection import get_driver
+
+logger = logging.getLogger(__name__)
 
 class SovereignContextEngine:
     """
@@ -23,6 +25,7 @@ class SovereignContextEngine:
             with self.driver.session() as session:
                 return session.execute_read(self._fetch_context, username)
         except Exception as e:
+            logger.error(f"Error fetching hero snapshot: {e}")
             return {"error": str(e), "principles": [], "intentions": []}
 
     @staticmethod

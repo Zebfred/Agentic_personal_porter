@@ -5,7 +5,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, ToolMessage
 from src.utils.llm_resilience import get_resilient_llm
-from src.utils.path_utils import load_env_vars, get_auth_file
+from src.utils.path_utils import load_env_vars
 from src.utils.token_circuit_breaker import (
     TokenCircuitBreakerHandler,
     TokenLimitExceededError,
