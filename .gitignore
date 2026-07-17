@@ -37,7 +37,8 @@ node_modules/
 
 #Ignore Scratch work
 scratch/*
-scripts/scratch/*
+scripts/analyze_scripts/sync_gcp_secrets.ps1
+scripts/analyze_scripts/sync_gcp_secrets.*
 
 #Potentially Sensitive documentation
 Documentation/issues_and_audit/*
