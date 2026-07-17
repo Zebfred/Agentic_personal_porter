@@ -36,8 +36,7 @@ venv/
 node_modules/
 
 #Ignore Scratch work
-scratch/*
-scripts/analyze_scripts/sync_gcp_secrets.ps1
+scripts/scratch/*
 scripts/analyze_scripts/sync_gcp_secrets.*
 
 #Potentially Sensitive documentation
@@ -47,9 +46,4 @@ Documentation/notes/*
 Documentation/Completed_Tasks/
 Documentation/Current_work/*
 
-#
-# Sensitive helper scripts removed from git history (2026-04-17).
-# These files read from .auth/.env and must never be re-committed.
 **/check_status.py
-**/sync_gcp_secrets.sh
-**/sync_gcp_secrets.ps1
