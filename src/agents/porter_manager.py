@@ -1,9 +1,9 @@
+"""Porter Manager — orchestrates agent routing and conversation flow."""
 import os
 import logging
 from datetime import datetime
 from typing import Optional, TypedDict, Dict, Any
 
-from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langgraph.graph import StateGraph, START, END
 
@@ -16,10 +16,9 @@ from src.agents.context_loader import get_context
 from src.agents.finops_agent import with_finops_trace
 from src.utils.retry_utils import with_llm_retry
 
+# Load env centrally — load_env_vars() handles dotenv internally
 load_env_vars()
 raw_api_key = os.getenv("GROQ_API_KEY")
-env_path = get_auth_file('.env')
-load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger(__name__)
 

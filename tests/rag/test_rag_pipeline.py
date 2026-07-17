@@ -20,7 +20,13 @@ def temp_data_dir():
     """Create temporary data directory."""
     temp_dir = tempfile.mkdtemp()
     yield temp_dir
-    shutil.rmtree(temp_dir)
+    # Run GC to release any open file handles (e.g. from VectorStore) before deleting on Windows
+    import gc
+    gc.collect()
+    try:
+        shutil.rmtree(temp_dir)
+    except PermissionError:
+        pass
 
 @pytest.mark.integration
 def test_end_to_end_pipeline(temp_data_dir):

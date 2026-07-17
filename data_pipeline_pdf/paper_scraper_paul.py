@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 Paul's version of the paper scraper.
 Paper scraper for downloading RL papers from arxiv.org and conference sites.

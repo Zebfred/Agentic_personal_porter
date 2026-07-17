@@ -20,9 +20,19 @@ from src.config import MongoConfig
 from src.database.mongo_client.uuid_manager import UUIDGenerator
 from src.utils.correlation import generate_correlation_id, generate_freeform_correlation_id
 from src.events.publisher import publish_journal_event
+from src.database.neo4j_client.connection import get_driver
 
 journal_bp = Blueprint('journal', __name__)
 logger = logging.getLogger("APP_ROUTER")
+
+def _handle_request_data():
+    """Helper to handle OPTIONS and extract JSON data."""
+    if request.method == 'OPTIONS':
+        return None, ('', 204)
+    data = request.get_json()
+    if not data:
+        return None, (jsonify({"error": "No JSON data received"}), 400)
+    return data, None
 
 @journal_bp.route('/api/save_log', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -30,12 +40,11 @@ def save_log():
     """
     Saves a log entry to MongoDB and Neo4j without triggering AI reflection.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         try:
             validated_data = JournalLogBase(**data)
@@ -180,12 +189,11 @@ def save_weekly_expectation():
     """
     Saves a Weekly Expectation mapping it to the (Week) node in Neo4j.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         week_start_date = data.get("week_start_date")
         expectation_text = data.get("expectation_text")
@@ -225,10 +233,9 @@ def save_weekly_expectation():
         # Inject to Neo4j (Week)-[:PLANNED_AS]->(Intention)
         neo4j_status = "Failed"
         try:
-            from src.database.neo4j_client.connection import get_driver
             with get_driver().session() as session:
                 query = """
-                MERGE (u:User {id: $username})
+                MERGE (u:Hero {id: $username})
                 MERGE (w:Week {id: $week_start_date})
                 MERGE (u)-[:EXPERIENCED]->(w)
                 MERGE (i:Intention {type: "Weekly Expectation", week: $week_start_date})
@@ -342,18 +349,15 @@ def get_freeform_journal():
         date_str = request.args.get("date")
         if not date_str:
             return jsonify({"error": "Missing date"}), 400
-
         user_email = getattr(request, 'user_email', 'Hero')
         mongo_storage = SovereignMongoStorage()
         user_doc = mongo_storage.get_user_by_email(user_email)
         username = user_doc.get("username", "Hero") if user_doc else "Hero"
-
         doc = mongo_storage.get_freeform_journal(date_str, username)
         # convert datetime to string if it was saved prior to the isoformat change
         updated_at = doc.get("updated_at")
         if updated_at and not isinstance(updated_at, str):
             updated_at = updated_at.isoformat()
-
         return jsonify({"status": "success", "data": {"text": doc.get("text", ""), "updated_at": updated_at}})
     except Exception as e:
         logger.error(f"Error fetching freeform journal: {e}", exc_info=True)
@@ -453,12 +457,11 @@ def process_journal():
     Generates a daily reflection based on the day's logs.
     Saves the reflection to a dedicated collection.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
+
     try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data received"}), 400
 
         try:
             validated_data = DailyReflectionRequestSchema(**data)
@@ -495,8 +498,6 @@ def process_journal():
 
                     if events:
                         event_titles = [e.get('summary', 'Untitled') for e in events]
-                        calendar_context = f"\n\nCalendar Events for {day}: {', '.join(event_titles)}"
-                        #enhanced_journal_entry = journal_entry + calendar_context
                         logger.info(f"Added {len(events)} calendar events to journal context")
             except Exception as cal_err:
                 logger.warning(f"Calendar context failed: {cal_err}")
