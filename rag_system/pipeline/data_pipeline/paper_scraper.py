@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 """
 Paper scraper for downloading RL papers from arxiv.org and conference sites.
 
@@ -22,7 +23,7 @@ class PaperScraper:
     def __init__(self, papers_dir: str = "data/papers", metadata_file: str = "data/papers_metadata.json"):
         """
         Initialize the paper scraper.
-        
+
         Args:
             papers_dir: Directory to store downloaded PDFs
             metadata_file: Path to JSON file storing paper metadata
@@ -58,13 +59,13 @@ class PaperScraper:
                      sort_order: arxiv.SortOrder = arxiv.SortOrder.Descending) -> List[Dict]:
         """
         Scrape papers from arxiv.org using the arxiv API.
-        
+
         Args:
             query: Search query (default: "reinforcement learning")
             max_results: Maximum number of papers to download
             sort_by: How to sort results
             sort_order: Sort order (ascending/descending)
-            
+
         Returns:
             List of paper metadata dictionaries
         """
@@ -130,11 +131,11 @@ class PaperScraper:
     def _fetch_paper_with_retry(self, arxiv_id: str, max_retries: int = 5) -> Optional[arxiv.Result]:
         """
         Fetch a single paper from arxiv with retry logic and exponential backoff.
-        
+
         Args:
             arxiv_id: Arxiv ID (without version)
             max_retries: Maximum number of retry attempts
-            
+
         Returns:
             arxiv.Result object or None if all retries fail
         """
@@ -192,11 +193,11 @@ class PaperScraper:
     def _download_pdf(self, paper: arxiv.Result, arxiv_id: str) -> Optional[Path]:
         """
         Download PDF for a given arxiv paper.
-        
+
         Args:
             paper: arxiv.Result object
             arxiv_id: Arxiv ID for the paper
-            
+
         Returns:
             Path to downloaded PDF, or None if download failed
         """
@@ -277,7 +278,7 @@ class PaperScraper:
         """
         Get a curated list of foundational RL papers.
         This method uses specific arxiv IDs for well-known RL papers.
-        
+
         Returns:
             List of paper metadata dictionaries
         """

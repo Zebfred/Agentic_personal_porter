@@ -39,6 +39,7 @@ node_modules/
 #Ignore Scratch work
 scratch/*
 scripts/scratch/*
+
 #ignore backups
 .legacy_hr/*
 
