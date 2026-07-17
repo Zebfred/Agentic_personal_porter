@@ -22,7 +22,15 @@ def temp_vector_store():
     )
     yield store
     # Cleanup
-    shutil.rmtree(temp_dir)
+    # Clear client references and run GC to release file locks on Windows
+    store.collection = None
+    store.client = None
+    import gc
+    gc.collect()
+    try:
+        shutil.rmtree(temp_dir)
+    except PermissionError:
+        pass
 
 def test_vector_store_initialization(temp_vector_store):
     """Test VectorStore initialization."""
