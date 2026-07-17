@@ -106,6 +106,7 @@ jobs:
               },
               "tools": {
                 "core": [
+                  "mcp_github_*",
                   "run_shell_command(cat)",
                   "run_shell_command(echo)",
                   "run_shell_command(git)",
