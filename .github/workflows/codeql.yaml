@@ -27,7 +27,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: 'github/codeql-action/init@b7351df727350dca84cb9d725d57dcf5bc82ba26' # ratchet:github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
         # Exclude node_modules or third-party dependencies from scanning
