@@ -128,7 +128,7 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
             if hasattr(response, 'content') and response.content and response.content.parts:
                 for part in response.content.parts:
                     if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == "The_Categorizer":
+                        if getattr(response, 'author', '') == runner.agent.name:
                             final_text = part.text
         return final_text
 
