@@ -48,3 +48,7 @@
 **Vulnerability:** Found an instance of `except Exception:` and a bare except silently ignoring start parsing exceptions in `src/agents/gtky_base_classifier.py`.
 **Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
 **Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
+## 2024-05-18 - Missing JWT Secret Breaking API Keys
+**Vulnerability:** A missing JWT_SECRET was causing API key-based backend scripts to fail because the check was placed before the API key logic could execute. Also, catching InvalidTokenError with `pass` silently swallowed invalid tokens.
+**Learning:** Middlewares supporting multiple auth mechanisms must validate configuration selectively. Checking `JWT_SECRET` early unconditionally broke `PORTER_ADMIN_KEY` flows. Also, never swallow auth exceptions.
+**Prevention:** Only validate `JWT_SECRET` right before JWT decoding logic, allowing API key paths to return early. Always log caught auth exceptions.
