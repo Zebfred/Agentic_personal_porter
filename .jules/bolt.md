@@ -20,3 +20,6 @@
 ## 2025-02-23 - Batch Updates in Timeseries Collection (Event Processor)
 **Learning:** When replacing sequential `update_one`/`update_many` calls inside a loop with bulk operations, it is easy to accidentally drop updates for auxiliary collections (like `timeseries_col` closing the loop) if they aren't explicitly migrated to a corresponding ops array.
 **Action:** Ensure all sequential operations from the original single-event routing method are mapped exactly to their batch counterpart `bulk_write` operations, otherwise backend integrity breaks.
+## 2026-06-12 - Index Creation Hardcoded Collection Names
+**Learning:** Index definitions should be tied to configuration variables (`MongoConfig`) instead of hardcoded strings to avoid missing indexes on new collection names after schema changes, preventing full collection scans. Also, temporal queries should use `DESCENDING` indexes for optimal performance.
+**Action:** Always use constants from the config classes (e.g., `MongoConfig.INTENT_COLLECTION`) when creating database indexes, and map time-based sorting to `DESCENDING` (-1).
