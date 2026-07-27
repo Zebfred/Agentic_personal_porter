@@ -320,20 +320,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 editForm.innerHTML = `
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Intention</label>
-                            <input type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.intention || '')}" data-field="intention">
+                            <label for="edit-intention-${chunkId}" class="block text-xs font-bold text-gray-700 uppercase cursor-pointer">Intention</label>
+                            <input id="edit-intention-${chunkId}" type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.intention || '')}" data-field="intention">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Actual</label>
-                            <input type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.actual || '')}" data-field="actual">
+                            <label for="edit-actual-${chunkId}" class="block text-xs font-bold text-gray-700 uppercase cursor-pointer">Actual</label>
+                            <input id="edit-actual-${chunkId}" type="text" class="w-full border p-1.5 rounded text-sm" value="${escapeHTML(chunk.actual || '')}" data-field="actual">
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 uppercase">Brain Fog (0-100)</label>
-                            <input type="number" class="w-full border p-1.5 rounded text-sm" value="${chunk.brainFog || 0}" data-field="brainFog">
+                            <label for="edit-brainFog-${chunkId}" class="block text-xs font-bold text-gray-700 uppercase cursor-pointer">Brain Fog (0-100)</label>
+                            <input id="edit-brainFog-${chunkId}" type="number" class="w-full border p-1.5 rounded text-sm" value="${chunk.brainFog || 0}" data-field="brainFog">
                         </div>
                         <div class="flex gap-4 text-sm">
-                            <label class="flex items-center gap-1"><input type="checkbox" data-field="isValuableDetour" ${chunk.isValuableDetour ? 'checked' : ''}> Valuable Detour</label>
-                            <label class="flex items-center gap-1"><input type="checkbox" data-field="isDetrimentalDetour" ${chunk.isDetrimentalDetour ? 'checked' : ''}> Detrimental Detour</label>
+                            <label for="edit-valuable-${chunkId}" class="flex items-center gap-1 cursor-pointer"><input id="edit-valuable-${chunkId}" type="checkbox" data-field="isValuableDetour" ${chunk.isValuableDetour ? 'checked' : ''}> Valuable Detour</label>
+                            <label for="edit-detrimental-${chunkId}" class="flex items-center gap-1 cursor-pointer"><input id="edit-detrimental-${chunkId}" type="checkbox" data-field="isDetrimentalDetour" ${chunk.isDetrimentalDetour ? 'checked' : ''}> Detrimental Detour</label>
                         </div>
                         <div class="flex justify-end gap-2">
                             <button class="cancel-edit-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-bold">Cancel</button>

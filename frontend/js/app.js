@@ -141,7 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${['happy', 'neutral', 'sad'].map(feeling => `
                                 <label for="feeling-${day}-${chunkId}-${feeling}" class="cursor-pointer">
                                     <input type="radio" id="feeling-${day}-${chunkId}-${feeling}" name="feeling-${day}-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
-                                    <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
+                                    <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition" aria-hidden="true">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
+                                    <span class="sr-only">${feeling}</span>
                                 </label>
                                 `).join('')}
                             </div>
