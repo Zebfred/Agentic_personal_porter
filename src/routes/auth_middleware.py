@@ -13,6 +13,7 @@ import re
 import os
 import hmac
 import jwt
+import logging
 from functools import wraps
 from flask import request, jsonify, make_response
 
@@ -58,25 +59,28 @@ def require_api_key(f):
             return f(*args, **kwargs)
 
         # Try checking if it's a valid JWT from the frontend login UI
-        if jwt_secret:
-            try:
-                decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
-                email_claim = decoded.get("email")
-                if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
-                    return jsonify({"error": "Invalid email format in token"}), 401
+        if not jwt_secret:
+            logging.getLogger("APP_ROUTER").error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
 
-                # Inject identity into request context for downstream routes
-                request.user_email = email_claim
-                request.user_role = decoded.get("role", "user")
-                request.user_account_type = decoded.get("account_type", "hero")
+        try:
+            decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
+            email_claim = decoded.get("email")
+            if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
+                return jsonify({"error": "Invalid email format in token"}), 401
 
-                # We no longer hard-reject non-admins here.
-                # Endpoint-level @require_role decorators will handle fine-grained authorization.
-                return f(*args, **kwargs)
-            except jwt.ExpiredSignatureError:
-                return jsonify({"error": "Unauthorized: Token expired"}), 401
-            except jwt.InvalidTokenError:
-                pass
+            # Inject identity into request context for downstream routes
+            request.user_email = email_claim
+            request.user_role = decoded.get("role", "user")
+            request.user_account_type = decoded.get("account_type", "hero")
+
+            # We no longer hard-reject non-admins here.
+            # Endpoint-level @require_role decorators will handle fine-grained authorization.
+            return f(*args, **kwargs)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Unauthorized: Token expired"}), 401
+        except jwt.InvalidTokenError:
+            pass
 
         return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
     return decorated_function

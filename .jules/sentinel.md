@@ -48,3 +48,8 @@
 **Vulnerability:** Found an instance of `except Exception:` and a bare except silently ignoring start parsing exceptions in `src/agents/gtky_base_classifier.py`.
 **Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
 **Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
+
+## 2024-05-18 - Missing Secret Configuration Silently Falling Through to Invalid Token
+**Vulnerability:** In the `auth_middleware.py` check, if `JWT_SECRET` was unconfigured, the code failed to check for it before wrapping the token check in a `if jwt_secret:` statement, meaning it simply skipped it and returned a generic `401 Unauthorized` without a system log.
+**Learning:** Security-critical configuration failures (like missing secrets) must block execution and log auditable `CRITICAL` warnings internally, failing loudly (500) rather than failing closed silently (401).
+**Prevention:** Explicitly validate configurations (secrets, tokens, IDs) that govern authentication logic first and `raise` or `return 500` appropriately before allowing business logic to proceed.
