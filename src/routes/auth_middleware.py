@@ -13,8 +13,11 @@ import re
 import os
 import hmac
 import jwt
+import logging
 from functools import wraps
 from flask import request, jsonify, make_response
+
+logger = logging.getLogger("APP_ROUTER")
 
 def require_role(*roles):
     """
@@ -57,26 +60,32 @@ def require_api_key(f):
             request.user_account_type = "system"
             return f(*args, **kwargs)
 
+        if not jwt_secret:
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
+
         # Try checking if it's a valid JWT from the frontend login UI
-        if jwt_secret:
-            try:
-                decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
-                email_claim = decoded.get("email")
-                if not email_claim or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
-                    return jsonify({"error": "Invalid email format in token"}), 401
+        try:
+            decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
+            email_claim = decoded.get("email")
+            if not isinstance(email_claim, str) or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
+                logger.warning(f"SECURITY AUDIT: Invalid email format or missing claim in JWT token from {request.remote_addr}: {email_claim}")
+                return jsonify({"error": "Invalid email format in token"}), 401
 
-                # Inject identity into request context for downstream routes
-                request.user_email = email_claim
-                request.user_role = decoded.get("role", "user")
-                request.user_account_type = decoded.get("account_type", "hero")
+            # Inject identity into request context for downstream routes
+            request.user_email = email_claim
+            role_claim = decoded.get("role")
+            request.user_role = role_claim if isinstance(role_claim, str) else "user"
+            account_claim = decoded.get("account_type")
+            request.user_account_type = account_claim if isinstance(account_claim, str) else "hero"
 
-                # We no longer hard-reject non-admins here.
-                # Endpoint-level @require_role decorators will handle fine-grained authorization.
-                return f(*args, **kwargs)
-            except jwt.ExpiredSignatureError:
-                return jsonify({"error": "Unauthorized: Token expired"}), 401
-            except jwt.InvalidTokenError:
-                pass
+            # We no longer hard-reject non-admins here.
+            # Endpoint-level @require_role decorators will handle fine-grained authorization.
+            return f(*args, **kwargs)
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Unauthorized: Token expired"}), 401
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"SECURITY AUDIT: Invalid JWT token attempt from {request.remote_addr}: {e}")
 
         return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
     return decorated_function
