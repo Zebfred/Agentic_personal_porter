@@ -49,7 +49,6 @@ class SovereignMongoStorage:
 
         # Intent and Actual collections for quick queries
         try:
-        try:
             self.db[MongoConfig.INTENT_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
             self.db[MongoConfig.ACTUAL_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
             self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
