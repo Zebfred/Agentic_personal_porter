@@ -331,11 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const events = await fetchCalendarEvents(day);
                 const count = populateIntentionsFromCalendar(day, events);
-                syncBtn.replaceChildren();
                 const successIcon = document.createElement('span');
                 successIcon.textContent = '✅';
-                syncBtn.appendChild(successIcon);
-                syncBtn.appendChild(document.createTextNode(` Found ${count} Events`));
+                syncBtn.replaceChildren(successIcon, ` Found ${count} Events`);
             } catch (e) {
                 const errorIcon = document.createElement('span');
                 errorIcon.textContent = '❌';
