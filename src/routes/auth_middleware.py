@@ -69,6 +69,7 @@ def require_api_key(f):
             decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
             email_claim = decoded.get("email")
             if not isinstance(email_claim, str) or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
+                logger.warning(f"SECURITY AUDIT: Invalid email format or missing claim in JWT token from {request.remote_addr}: {email_claim}")
                 return jsonify({"error": "Invalid email format in token"}), 401
 
             # Inject identity into request context for downstream routes
