@@ -323,19 +323,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
 
             const originalText = syncBtn.innerText;
-            syncBtn.innerHTML = `<span>⏳</span> Syncing...`;
+            syncBtn.replaceChildren();
+            const syncingIcon = document.createElement('span');
+            syncingIcon.textContent = '⏳';
+            syncBtn.appendChild(syncingIcon);
+            syncBtn.appendChild(document.createTextNode(' Syncing...'));
             syncBtn.disabled = true;
 
             try {
                 const events = await fetchCalendarEvents(day);
                 const count = populateIntentionsFromCalendar(day, events);
-                syncBtn.innerHTML = `<span>✅</span> Found ${count} Events`;
+                syncBtn.replaceChildren();
+                const successIcon = document.createElement('span');
+                successIcon.textContent = '✅';
+                syncBtn.appendChild(successIcon);
+                syncBtn.appendChild(document.createTextNode(` Found ${count} Events`));
             } catch (e) {
-                syncBtn.innerHTML = `<span>❌</span> Error`;
+                syncBtn.replaceChildren();
+                const errorIcon = document.createElement('span');
+                errorIcon.textContent = '❌';
+                syncBtn.appendChild(errorIcon);
+                syncBtn.appendChild(document.createTextNode(' Error'));
             }
 
             setTimeout(() => {
-                syncBtn.innerHTML = originalText;
+                syncBtn.textContent = originalText;
                 syncBtn.disabled = false;
             }, 3000);
         });
