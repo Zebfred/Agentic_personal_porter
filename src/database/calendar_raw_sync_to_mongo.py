@@ -165,7 +165,7 @@ class SovereignCalendarSync:
         logger.info(f"Total Native TS Events Stored: {ts_total}")
 
         if total > 0:
-            latest = self.raw_collection.find_one(sort=[("start", -1)])
+            latest = self.raw_collection.find_one({}, {"_id": 0, "summary": 1, "start": 1}, sort=[("start", -1)])
             logger.info(f"Most Recent Event: {latest.get('summary')} ({latest.get('start')})")
 
 if __name__ == "__main__":
