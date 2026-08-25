@@ -19,28 +19,6 @@ def app():
 def client(app):
     return app.test_client()
 
-def mock_neo4j_read_operations_import(return_val_or_exception, *expected_args, **expected_kwargs):
-    original_import = builtins.__import__
-
-    def mocked_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if name == 'src.database.neo4j_client.read_operations':
-            class MockMod:
-                pass
-            mod = MockMod()
-            def mock_get_full_graph_topology(*args, **kwargs):
-                if expected_args:
-                    assert args == expected_args
-                if expected_kwargs:
-                    assert kwargs == expected_kwargs
-
-                if isinstance(return_val_or_exception, Exception):
-                    raise return_val_or_exception
-                return return_val_or_exception
-            mod.get_full_graph_topology = mock_get_full_graph_topology
-            return mod
-        return original_import(name, globals, locals, fromlist, level)
-
-    return mocked_import
 
 def test_get_graph_data_success_default_limit(client):
     """
