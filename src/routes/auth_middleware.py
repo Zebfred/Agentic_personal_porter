@@ -14,6 +14,8 @@ import os
 import hmac
 import jwt
 import logging
+
+logger = logging.getLogger("APP_ROUTER")
 from functools import wraps
 from flask import request, jsonify, make_response
 
