@@ -82,7 +82,7 @@ def require_api_key(f):
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Unauthorized: Token expired"}), 401
         except jwt.InvalidTokenError as e:
-            logger.warning(f"SECURITY AUDIT: Invalid JWT token attempt: {e}")
+            logger.warning(f"SECURITY AUDIT: Invalid JWT token attempt from {request.remote_addr}: {e}")
 
         return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
     return decorated_function
