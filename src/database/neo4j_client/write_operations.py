@@ -20,7 +20,7 @@ def log_to_neo4j(log_data: dict, username: str, correlation_id: str = None) -> s
 
         # another potential fix
         # We must check if result_node is not None before trying to access it.
-        if result_node and 'activity' in result_node:
+        if result_node is not None and 'activity' in result_node:
             return f"Successfully logged entry for '{result_node['activity']}'"
         else:
             logger.info("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
@@ -222,7 +222,7 @@ def create_goal(username: str, description: str, category: str = "general",
     with driver.session() as session:
         result = session.execute_write(_create_goal_tx, username, description,
                                       category, priority, timeframe)
-    return result
+    return result if result is not None else {}
 
 def _create_goal_tx(tx, username: str, description: str, category: str,
                    priority: str, timeframe: str):
