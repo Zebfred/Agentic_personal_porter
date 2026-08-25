@@ -46,9 +46,13 @@ class SovereignMongoStorage:
         self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
 
         # Intent and Actual collections for quick queries
-        self.db[MongoConfig.INTENT_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
-        self.db[MongoConfig.ACTUAL_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
-        self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+        # Intent and Actual collections for quick queries
+        try:
+            self.db[MongoConfig.INTENT_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+            self.db[MongoConfig.ACTUAL_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+            self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+        except Exception as e:
+            logger.warning(f"Failed to ensure temporal indexes: {e}")
 
         self.__class__._indexes_ensured = True
 
