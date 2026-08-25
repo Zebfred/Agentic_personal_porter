@@ -17,6 +17,9 @@
 ## 2024-05-19 - Missing loading states on async actions
 **Learning:** Found that long-running async actions (like the chat feature in `user_hub.js`) lacked visual loading feedback, allowing users to rapidly double-click buttons resulting in duplicate API requests and no perceived performance response.
 **Action:** Always verify that interactive buttons that trigger async `fetch` requests temporarily update their text (e.g., "Sending...") or display a spinner, and add the `disabled` attribute to prevent double-submission while awaiting a response. Restore the original state within a `finally` block to ensure errors don't permanently disable the interface.
+## 2024-05-19 - Screen reader support for emojis in custom radio buttons
+**Learning:** Using emojis as visual representations for radio buttons (e.g., mood selectors) causes screen readers to read the emoji characters (which can be confusing or verbose) rather than the intended state.
+**Action:** When using emojis for visual UI, wrap the emoji in a span with `aria-hidden="true"`, and provide an adjacent `<span class="sr-only">` containing the descriptive text for screen readers. Ensure the parent `<label>` uses a `for` attribute pointing to the hidden radio input.
 
 ## 2024-05-20 - Missing Labels on Textareas and Inputs in Adventure Journal
 **Learning:** The `Adventure_Journal.html` page lacked explicit `<label>` elements for its date input and textareas, which negatively impacts screen reader users who rely on labeled fields to understand the required input.
