@@ -141,7 +141,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 ${['happy', 'neutral', 'sad'].map(feeling => `
                                 <label for="feeling-${day}-${chunkId}-${feeling}" class="cursor-pointer">
                                     <input type="radio" id="feeling-${day}-${chunkId}-${feeling}" name="feeling-${day}-${chunkId}" value="${feeling}" class="peer hidden" ${chunkData.feeling === feeling ? 'checked' : ''}>
-                                    <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
+                                    <span class="text-2xl opacity-40 peer-checked:opacity-100 hover:opacity-100 transition" aria-hidden="true">${feeling === 'happy' ? '😊' : feeling === 'neutral' ? '😐' : '😔'}</span>
+                                    <span class="sr-only">${feeling}</span>
                                 </label>
                                 `).join('')}
                             </div>
@@ -224,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Show correlation ID if available (Hero lineage)
                     if (data.data.correlation_id) {
-                        content.innerHTML += `<div class="mt-4 text-right"><span class="text-xs font-mono bg-purple-100 text-purple-600 px-2 py-1 rounded" title="Data Lineage ID">🔗 ${data.data.correlation_id.substring(0,12)}...</span></div>`;
+                        content.innerHTML += `<div class="mt-4 text-right"><span class="text-xs font-mono bg-purple-100 text-purple-600 px-2 py-1 rounded" title="Data Lineage ID">🔗 ${escapeHTML(data.data.correlation_id.substring(0,12))}...</span></div>`;
                     }
                     
                     container.classList.remove('hidden');
@@ -323,19 +324,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
 
             const originalText = syncBtn.innerText;
-            syncBtn.innerHTML = `<span>⏳</span> Syncing...`;
+            const syncingIcon = document.createElement('span');
+            syncingIcon.textContent = '⏳';
+            syncBtn.replaceChildren(syncingIcon, ' Syncing...');
             syncBtn.disabled = true;
 
             try {
                 const events = await fetchCalendarEvents(day);
                 const count = populateIntentionsFromCalendar(day, events);
-                syncBtn.innerHTML = `<span>✅</span> Found ${count} Events`;
+                const successIcon = document.createElement('span');
+                successIcon.textContent = '✅';
+                syncBtn.replaceChildren(successIcon, ` Found ${count} Events`);
             } catch (e) {
-                syncBtn.innerHTML = `<span>❌</span> Error`;
+                const errorIcon = document.createElement('span');
+                errorIcon.textContent = '❌';
+                syncBtn.replaceChildren(errorIcon, ' Error');
             }
 
             setTimeout(() => {
-                syncBtn.innerHTML = originalText;
+                syncBtn.textContent = originalText;
                 syncBtn.disabled = false;
             }, 3000);
         });
