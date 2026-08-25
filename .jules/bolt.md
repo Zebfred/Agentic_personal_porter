@@ -23,3 +23,6 @@
 ## 2026-08-25 - MongoDB Field Projection
 **Learning:** Returning large, unprojected fields from MongoDB (especially during batch operations) creates a hidden memory bottleneck and deserialization overhead in Python applications. Even if the database load stays similar, pulling unnecessary fields bloated memory usage by up to 97% on large data batches.
 **Action:** Always apply projection dicts when querying MongoDB for batch operations or operations pulling down many documents, unless every field is strictly required. This is particularly important for functions retrieving hundreds of items for transformations or filtering.
+## 2026-06-12 - Index Creation Hardcoded Collection Names
+**Learning:** Index definitions should be tied to configuration variables (`MongoConfig`) instead of hardcoded strings to avoid missing indexes on new collection names after schema changes, preventing full collection scans. Also, temporal queries should use `DESCENDING` indexes for optimal performance.
+**Action:** Always use constants from the config classes (e.g., `MongoConfig.INTENT_COLLECTION`) when creating database indexes, and map time-based sorting to `DESCENDING` (-1).
