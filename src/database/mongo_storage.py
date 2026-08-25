@@ -37,7 +37,9 @@ class SovereignMongoStorage:
 
     def _ensure_indexes(self):
         """Create compound indexes to speed up multi-tenant queries."""
-        from pymongo import ASCENDING
+        if getattr(self.__class__, "_indexes_ensured", False):
+            return
+        from pymongo import ASCENDING, DESCENDING
 
         # In the Timeseries (raw events), index on email + start time for quick window querying
         self.raw_col.create_index([("metadata.user_email", ASCENDING), ("start_time", ASCENDING)])
@@ -46,9 +48,14 @@ class SovereignMongoStorage:
         self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
 
         # Intent and Actual collections for quick queries
-        self.db['calendar_intent_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
-        self.db['calendar_actual_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
-        self.db['calendar_unified_events'].create_index([("user_id", ASCENDING), ("time_slot.start", ASCENDING)])
+        try:
+            self.db[MongoConfig.INTENT_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+            self.db[MongoConfig.ACTUAL_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+            self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION].create_index([("user_id", ASCENDING), ("time_slot.start", DESCENDING)])
+        except Exception as e:
+            logger.warning(f"Failed to ensure temporal indexes: {e}")
+
+        self.__class__._indexes_ensured = True
 
     def save_journal_entry(self, log_data: dict, user_id: str = "Hero", correlation_id: str = None):
         """
