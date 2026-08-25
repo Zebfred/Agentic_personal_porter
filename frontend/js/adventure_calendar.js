@@ -332,8 +332,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <input id="edit-brainFog-${chunkId}" type="number" class="w-full border p-1.5 rounded text-sm" value="${chunk.brainFog || 0}" data-field="brainFog">
                         </div>
                         <div class="flex gap-4 text-sm">
-                            <label for="edit-valuable-${chunkId}" class="flex items-center gap-1 cursor-pointer"><input id="edit-valuable-${chunkId}" type="checkbox" data-field="isValuableDetour" ${chunk.isValuableDetour ? 'checked' : ''}> Valuable Detour</label>
-                            <label for="edit-detrimental-${chunkId}" class="flex items-center gap-1 cursor-pointer"><input id="edit-detrimental-${chunkId}" type="checkbox" data-field="isDetrimentalDetour" ${chunk.isDetrimentalDetour ? 'checked' : ''}> Detrimental Detour</label>
+                            <div class="flex items-center gap-1">
+                                <input id="edit-valuable-${chunkId}" type="checkbox" data-field="isValuableDetour" ${chunk.isValuableDetour ? 'checked' : ''}>
+                                <label for="edit-valuable-${chunkId}" class="cursor-pointer">Valuable Detour</label>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <input id="edit-detrimental-${chunkId}" type="checkbox" data-field="isDetrimentalDetour" ${chunk.isDetrimentalDetour ? 'checked' : ''}>
+                                <label for="edit-detrimental-${chunkId}" class="cursor-pointer">Detrimental Detour</label>
+                            </div>
                         </div>
                         <div class="flex justify-end gap-2">
                             <button class="cancel-edit-btn bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded text-sm font-bold">Cancel</button>
