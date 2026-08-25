@@ -124,7 +124,7 @@ class AuditInspector:
 
             # Mark daily event as verified
             daily_ops.append(UpdateOne(
-                {"gcal_id": gcal_id, "user_email": user_email},
+                {"_id": r["_id"]},
                 {"$set": {"status": "Verified", "verification_time": datetime.now(timezone.utc)}}
             ))
 
