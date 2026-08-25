@@ -337,11 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 syncBtn.appendChild(successIcon);
                 syncBtn.appendChild(document.createTextNode(` Found ${count} Events`));
             } catch (e) {
-                syncBtn.replaceChildren();
                 const errorIcon = document.createElement('span');
                 errorIcon.textContent = '❌';
-                syncBtn.appendChild(errorIcon);
-                syncBtn.appendChild(document.createTextNode(' Error'));
+                syncBtn.replaceChildren(errorIcon, ' Error');
             }
 
             setTimeout(() => {
