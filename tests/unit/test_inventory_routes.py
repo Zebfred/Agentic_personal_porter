@@ -44,13 +44,9 @@ def test_get_graph_data_success_custom_limit(client):
     Test that GET /graph_data successfully fetches graph data with a custom limit.
     """
     return_val = {"nodes": [{"id": 1, "label": "Node"}], "edges": []}
-    mock_import = mock_neo4j_read_operations_import(return_val, limit=100)
-    original_import = builtins.__import__
-
-    try:
-        builtins.__import__ = mock_import
-
-        # Override environment variables manually instead of patching
+    
+    with patch("src.database.neo4j_client.read_operations.get_full_graph_topology") as mock_get:
+        mock_get.return_value = return_val
         os.environ["PORTER_ADMIN_KEY"] = "dummy_api_key"
 
         response = client.get(
@@ -59,10 +55,8 @@ def test_get_graph_data_success_custom_limit(client):
         )
 
         assert response.status_code == 200
-        data = response.get_json()
-        assert data == return_val
-    finally:
-        builtins.__import__ = original_import
+        assert response.get_json() == return_val
+        mock_get.assert_called_once_with(limit=100)
 
 def test_get_graph_data_error_handling(client):
     """
