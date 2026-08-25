@@ -60,7 +60,7 @@ def require_api_key(f):
 
         # Try checking if it's a valid JWT from the frontend login UI
         if not jwt_secret:
-            logging.getLogger("APP_ROUTER").error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
             return jsonify({"error": "Server configuration error"}), 500
 
         try:
