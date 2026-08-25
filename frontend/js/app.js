@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Show correlation ID if available (Hero lineage)
                     if (data.data.correlation_id) {
-                        content.innerHTML += `<div class="mt-4 text-right"><span class="text-xs font-mono bg-purple-100 text-purple-600 px-2 py-1 rounded" title="Data Lineage ID">🔗 ${data.data.correlation_id.substring(0,12)}...</span></div>`;
+                        content.innerHTML += `<div class="mt-4 text-right"><span class="text-xs font-mono bg-purple-100 text-purple-600 px-2 py-1 rounded" title="Data Lineage ID">🔗 ${escapeHTML(data.data.correlation_id.substring(0,12))}...</span></div>`;
                     }
                     
                     container.classList.remove('hidden');
