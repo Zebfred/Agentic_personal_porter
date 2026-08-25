@@ -57,6 +57,11 @@ def require_api_key(f):
             request.user_account_type = "system"
             return f(*args, **kwargs)
 
+        if not jwt_secret:
+            from flask import current_app
+            current_app.logger.error("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing.")
+            return jsonify({"error": "Server configuration error"}), 500
+
         # Try checking if it's a valid JWT from the frontend login UI
         if jwt_secret:
             try:
