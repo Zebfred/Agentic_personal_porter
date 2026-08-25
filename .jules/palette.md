@@ -20,3 +20,7 @@
 ## 2024-05-19 - Screen reader support for emojis in custom radio buttons
 **Learning:** Using emojis as visual representations for radio buttons (e.g., mood selectors) causes screen readers to read the emoji characters (which can be confusing or verbose) rather than the intended state.
 **Action:** When using emojis for visual UI, wrap the emoji in a span with `aria-hidden="true"`, and provide an adjacent `<span class="sr-only">` containing the descriptive text for screen readers. Ensure the parent `<label>` uses a `for` attribute pointing to the hidden radio input.
+
+## 2024-05-20 - Missing Labels on Textareas and Inputs in Adventure Journal
+**Learning:** The `Adventure_Journal.html` page lacked explicit `<label>` elements for its date input and textareas, which negatively impacts screen reader users who rely on labeled fields to understand the required input.
+**Action:** Added `.sr-only` labels to these inputs (specifically `weekly-expectation-text`, `journal-date-picker`, and `daily-journal-text`) to provide necessary context for assistive tech while preserving the visual layout.
