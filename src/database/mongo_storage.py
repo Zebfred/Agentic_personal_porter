@@ -435,7 +435,7 @@ class SovereignMongoStorage:
         """
         Returns a list of user profiles who have opted into background calendar sync.
         """
-        return list(self.users_col.find({"opt_in_calendar_sync": True}, {"_id": 0}))
+        return list(self.users_col.find({"opt_in_calendar_sync": True}, {"_id": 0, "email": 1, "google_refresh_token": 1, "username": 1}))
 
     def get_user_by_email(self, email: str) -> dict:
         """
@@ -459,7 +459,7 @@ class SovereignMongoStorage:
         Uses 'staged' status to track progress across the 13.5k event history.
         """
         # Find raw events not yet formatted
-        raw_events = list(self.raw_col.find({"sync_status": "staged"}))
+        raw_events = list(self.raw_col.find({"sync_status": "staged"}, {"_id": 1, "metadata": 1, "raw_data": 1, "gcal_id": 1}))
 
         logger.info("--- Processing Raw Events for Formatting ((bulk upsert) ---")
 
@@ -522,7 +522,7 @@ class SovereignMongoStorage:
         successfully processed into the Neo4j graph yet.
         """
         # Look for events where we haven't set a 'neo4j_synced' flag
-        return list(self.formatted_col.find({"neo4j_synced": {"$ne": True}}))
+        return list(self.formatted_col.find({"neo4j_synced": {"$ne": True}}, {"_id": 0, "gcal_id": 1}))
 
     def mark_neo4j_synced(self, gcal_ids):
         """
