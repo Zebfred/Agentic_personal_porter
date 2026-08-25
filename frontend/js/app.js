@@ -323,11 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
 
             const originalText = syncBtn.innerText;
-            syncBtn.replaceChildren();
             const syncingIcon = document.createElement('span');
             syncingIcon.textContent = '⏳';
-            syncBtn.appendChild(syncingIcon);
-            syncBtn.appendChild(document.createTextNode(' Syncing...'));
+            syncBtn.replaceChildren(syncingIcon, ' Syncing...');
             syncBtn.disabled = true;
 
             try {
