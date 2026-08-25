@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isPadding) {
             cell.classList.add('bg-background', 'text-muted');
             cell.classList.remove('bg-surface', 'hover:bg-surface-hover');
-            cell.innerHTML = `<span class="text-sm font-medium self-end opacity-50">${dayNum}</span>`;
+            cell.innerHTML = `<span class="text-sm font-medium self-end opacity-50">${escapeHTML(dayNum)}</span>`;
             return cell;
         }
 
