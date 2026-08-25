@@ -64,7 +64,14 @@ class AuditInspector:
         """
         records = list(self.daily_col.find(
             {"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification", "user_email": user_email},
-            {"_id": 0, "gcal_id": 1}
+            {
+                "gcal_id": 1,
+                "title": 1,
+                "pillar": 1,
+                "duration_minutes": 1,
+                "start": 1,
+                "end": 1
+            }
         ))
 
         if not records:
