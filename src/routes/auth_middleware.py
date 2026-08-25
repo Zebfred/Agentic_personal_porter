@@ -73,8 +73,10 @@ def require_api_key(f):
 
             # Inject identity into request context for downstream routes
             request.user_email = email_claim
-            request.user_role = decoded.get("role", "user")
-            request.user_account_type = decoded.get("account_type", "hero")
+            role_claim = decoded.get("role")
+            request.user_role = role_claim if isinstance(role_claim, str) else "user"
+            account_claim = decoded.get("account_type")
+            request.user_account_type = account_claim if isinstance(account_claim, str) else "hero"
 
             # We no longer hard-reject non-admins here.
             # Endpoint-level @require_role decorators will handle fine-grained authorization.
