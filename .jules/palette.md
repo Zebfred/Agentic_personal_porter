@@ -17,3 +17,7 @@
 ## 2024-05-19 - Missing loading states on async actions
 **Learning:** Found that long-running async actions (like the chat feature in `user_hub.js`) lacked visual loading feedback, allowing users to rapidly double-click buttons resulting in duplicate API requests and no perceived performance response.
 **Action:** Always verify that interactive buttons that trigger async `fetch` requests temporarily update their text (e.g., "Sending...") or display a spinner, and add the `disabled` attribute to prevent double-submission while awaiting a response. Restore the original state within a `finally` block to ensure errors don't permanently disable the interface.
+
+## 2024-05-20 - Missing Labels on Textareas and Inputs in Adventure Journal
+**Learning:** The `Adventure_Journal.html` page lacked explicit `<label>` elements for its date input and textareas, which negatively impacts screen reader users who rely on labeled fields to understand the required input.
+**Action:** Added `.sr-only` labels to these inputs (specifically `weekly-expectation-text`, `journal-date-picker`, and `daily-journal-text`) to provide necessary context for assistive tech while preserving the visual layout.
