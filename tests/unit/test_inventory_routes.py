@@ -5,9 +5,6 @@ from flask import Flask
 
 # Set dummy environment variables to avoid real DB connections in imports
 os.environ.setdefault("NEO4J_URI", "bolt://dummy:7687")
-os.environ.setdefault("PORTER_API_KEY", "dummy")
-os.environ.setdefault("JWT_SECRET", "dummy")
-os.environ.setdefault("GROQ_API_KEY", "dummy")
 os.environ.setdefault("GOOGLE_CLIENT_USER_LOGIN_ID", "dummy")
 
 from src.routes.inventory_routes import inventory_bp
