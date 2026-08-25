@@ -62,7 +62,10 @@ class AuditInspector:
         Mark a batch of records as explicitly verified by the human.
         Also writes them permanently to the event_actuals ground truth collection.
         """
-        records = list(self.daily_col.find({"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification", "user_email": user_email}))
+        records = list(self.daily_col.find(
+            {"gcal_id": {"$in": gcal_ids}, "status": "Pending Verification", "user_email": user_email},
+            {"_id": 0, "gcal_id": 1}
+        ))
 
         if not records:
             return 0
@@ -114,7 +117,7 @@ class AuditInspector:
 
             # Mark daily event as verified
             daily_ops.append(UpdateOne(
-                {"_id": r["_id"]},
+                {"gcal_id": gcal_id, "user_email": user_email},
                 {"$set": {"status": "Verified", "verification_time": datetime.now(timezone.utc)}}
             ))
 

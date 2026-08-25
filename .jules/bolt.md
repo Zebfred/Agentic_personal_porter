@@ -20,3 +20,6 @@
 ## 2025-02-23 - Batch Updates in Timeseries Collection (Event Processor)
 **Learning:** When replacing sequential `update_one`/`update_many` calls inside a loop with bulk operations, it is easy to accidentally drop updates for auxiliary collections (like `timeseries_col` closing the loop) if they aren't explicitly migrated to a corresponding ops array.
 **Action:** Ensure all sequential operations from the original single-event routing method are mapped exactly to their batch counterpart `bulk_write` operations, otherwise backend integrity breaks.
+## 2026-08-25 - MongoDB Field Projection
+**Learning:** Returning large, unprojected fields from MongoDB (especially during batch operations) creates a hidden memory bottleneck and deserialization overhead in Python applications. Even if the database load stays similar, pulling unnecessary fields bloated memory usage by up to 97% on large data batches.
+**Action:** Always apply projection dicts when querying MongoDB for batch operations or operations pulling down many documents, unless every field is strictly required. This is particularly important for functions retrieving hundreds of items for transformations or filtering.
