@@ -62,14 +62,8 @@ def test_get_graph_data_error_handling(client):
     """
     Test that GET /graph_data correctly handles exceptions from get_full_graph_topology.
     """
-    return_val = Exception("Database connection failed")
-    mock_import = mock_neo4j_read_operations_import(return_val, limit=500)
-    original_import = builtins.__import__
-
-    try:
-        builtins.__import__ = mock_import
-
-        # Override environment variables manually instead of patching
+    with patch("src.database.neo4j_client.read_operations.get_full_graph_topology") as mock_get:
+        mock_get.side_effect = Exception("Database connection failed")
         os.environ["PORTER_ADMIN_KEY"] = "dummy_api_key"
 
         response = client.get(
@@ -81,5 +75,4 @@ def test_get_graph_data_error_handling(client):
         data = response.get_json()
         assert "error" in data
         assert data["error"] == "Database connection failed"
-    finally:
-        builtins.__import__ = original_import
+        mock_get.assert_called_once_with(limit=500)
