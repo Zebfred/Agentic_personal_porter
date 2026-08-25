@@ -1,6 +1,6 @@
 import pytest
 import os
-import builtins
+from unittest.mock import patch
 from flask import Flask
 
 # Set dummy environment variables to avoid real DB connections in imports
