@@ -35,6 +35,8 @@ class SovereignMongoStorage:
         self.users_col = self.db['users']
         self._ensure_indexes()
 
+    def _ensure_indexes(self):
+        """Create compound indexes to speed up multi-tenant queries."""
         if getattr(self.__class__, "_indexes_ensured", False):
             return
         from pymongo import ASCENDING, DESCENDING
