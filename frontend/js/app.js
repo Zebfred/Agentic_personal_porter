@@ -323,19 +323,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const day = activeDayBtn ? activeDayBtn.dataset.day : 'monday';
 
             const originalText = syncBtn.innerText;
-            syncBtn.innerHTML = `<span>⏳</span> Syncing...`;
+            const syncingIcon = document.createElement('span');
+            syncingIcon.textContent = '⏳';
+            syncBtn.replaceChildren(syncingIcon, ' Syncing...');
             syncBtn.disabled = true;
 
             try {
                 const events = await fetchCalendarEvents(day);
                 const count = populateIntentionsFromCalendar(day, events);
-                syncBtn.innerHTML = `<span>✅</span> Found ${count} Events`;
+                const successIcon = document.createElement('span');
+                successIcon.textContent = '✅';
+                syncBtn.replaceChildren(successIcon, ` Found ${count} Events`);
             } catch (e) {
-                syncBtn.innerHTML = `<span>❌</span> Error`;
+                const errorIcon = document.createElement('span');
+                errorIcon.textContent = '❌';
+                syncBtn.replaceChildren(errorIcon, ' Error');
             }
 
             setTimeout(() => {
-                syncBtn.innerHTML = originalText;
+                syncBtn.textContent = originalText;
                 syncBtn.disabled = false;
             }, 3000);
         });
