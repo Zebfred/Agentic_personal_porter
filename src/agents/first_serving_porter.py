@@ -155,6 +155,7 @@ def search_private_brain(query: str) -> str:
     try:
         results = weaviate.search_private_brain(query_vector=vector, limit=3)
     except Exception as e:
+        logger.error(f"Failed to access private brain: {e}", exc_info=True)
         return f"[DATABASE RETURN] Failed to access private brain: {e}"
 
     hits = []

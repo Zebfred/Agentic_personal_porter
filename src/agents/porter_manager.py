@@ -22,12 +22,14 @@ raw_api_key = os.getenv("GROQ_API_KEY")
 
 logger = logging.getLogger(__name__)
 
+from typing import List
+
 # State definition
 class ReflectionState(TypedDict, total=False):
     journal_entry: str
     log_data: Optional[Dict[str, Any]]
     username: str
-    actuals_str: str
+    actuals_list: List[Dict[str, Any]]
     recon_result: str
     curator_result: str
     final_output: str
@@ -76,7 +78,7 @@ def setup_node(state: ReflectionState) -> ReflectionState:
         state (ReflectionState): The current state containing the username and initial payload.
 
     Returns:
-        ReflectionState: The updated state with fetched 'actuals_str'.
+        ReflectionState: The updated state with fetched 'actuals_list'.
     """
     logger.info("Initializing Agentic Porter Sovereign Sync (LangGraph)...")
     username = state["username"]
@@ -84,12 +86,9 @@ def setup_node(state: ReflectionState) -> ReflectionState:
 
     # Fetching Ground Truth Data for the Recon Task
     storage = SovereignMongoStorage()
-    mongo_actuals = list(storage.formatted_col.find({"record_type": "Actual"}).sort("start", -1).limit(5))
-    actuals_str = "\n".join([f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})" for e in mongo_actuals])
-    if not actuals_str:
-        actuals_str = "No recent actual events found."
+    mongo_actuals = list(storage.formatted_col.find({"record_type": "Actual", "user_id": username}).sort("start", -1).limit(5))
 
-    return {"actuals_str": actuals_str}
+    return {"actuals_list": mongo_actuals}
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
     """
@@ -110,7 +109,12 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     instruction = "You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
     runner = _create_adk_runner(agent_name="The_Categorizer", instruction=instruction)
 
-    query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{state['actuals_str']}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
+    actuals_list = state.get('actuals_list', [])
+    actuals_str = "\n".join([f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})" for e in actuals_list])
+    if not actuals_str:
+        actuals_str = "No recent actual events found."
+
+    query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
 
     @with_llm_retry
     async def run_adk():
@@ -260,18 +264,30 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
 
     return {"final_output": final_output}
 
+def action_execution_node(state: ReflectionState) -> ReflectionState:
+    """
+    Simulates the action execution layer to separate planning from execution.
+    Takes the categorized goal and schedules calendar blocks or updates Neo4j.
+    """
+    logger.info("--- Handoff to execution layer: action_execution_node ---")
+    logger.info(f"Simulating execution based on recon_result:\n{state.get('recon_result')}")
+    # In the future, actual connections to Neo4j Graph or Google Calendar scheduling go here.
+    return state
+
 # Build Graph
 builder = StateGraph(ReflectionState)
 builder.add_node("setup_node", setup_node)
 builder.add_node("categorizer_node", categorizer_node)
 builder.add_node("curator_node", curator_node)
 builder.add_node("save_results_node", save_results_node)
+builder.add_node("action_execution_node", action_execution_node)
 
 builder.add_edge(START, "setup_node")
 builder.add_edge("setup_node", "categorizer_node")
 builder.add_conditional_edges("categorizer_node", should_curate, ["curator_node", "save_results_node"])
 builder.add_edge("curator_node", "save_results_node")
-builder.add_edge("save_results_node", END)
+builder.add_edge("save_results_node", "action_execution_node")
+builder.add_edge("action_execution_node", END)
 
 graph = builder.compile()
 
@@ -290,7 +306,7 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
             "journal_entry": journal_entry,
             "log_data": log_data,
             "username": username,
-            "actuals_str": "",
+            "actuals_list": [],
             "recon_result": "",
             "curator_result": "",
             "final_output": ""

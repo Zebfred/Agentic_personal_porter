@@ -23,13 +23,6 @@ if not PORTER_API_KEY:
         "It must be set in .auth/.env for secure authentication."
     )
 
-JWT_SECRET = os.environ.get("JWT_SECRET")
-if not JWT_SECRET:
-    raise ValueError(
-        "CRITICAL SECURITY ERROR: JWT_SECRET environment variable is missing. "
-        "It must be set in .auth/.env for secure token generation."
-    )
-
 def _configure_logging():
     """Set up the APP_ROUTER logger with file and console handlers."""
     from src.utils.path_utils import get_project_root
