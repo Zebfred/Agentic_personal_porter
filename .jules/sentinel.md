@@ -48,3 +48,16 @@
 **Vulnerability:** Found an instance of `except Exception:` and a bare except silently ignoring start parsing exceptions in `src/agents/gtky_base_classifier.py`.
 **Learning:** These hide runtime issues like `time` string format mismatches and fail-state transitions by effectively swallowing the exception, dropping data, or bypassing intended application flows.
 **Prevention:** Avoid bare exceptions and always provide logging, such as `except Exception as e: logger.warning(f"...: {e}")`.
+
+## 2024-05-18 - Missing Secret Configuration Silently Falling Through to Invalid Token
+**Vulnerability:** In the `auth_middleware.py` check, if `JWT_SECRET` was unconfigured, the code failed to check for it before wrapping the token check in a `if jwt_secret:` statement, meaning it simply skipped it and returned a generic `401 Unauthorized` without a system log.
+**Learning:** Security-critical configuration failures (like missing secrets) must block execution and log auditable `CRITICAL` warnings internally, failing loudly (500) rather than failing closed silently (401).
+**Prevention:** Explicitly validate configurations (secrets, tokens, IDs) that govern authentication logic first and `raise` or `return 500` appropriately before allowing business logic to proceed.
+## 2024-05-18 - Missing JWT Secret Breaking API Keys
+**Vulnerability:** A missing JWT_SECRET was causing API key-based backend scripts to fail because the check was placed before the API key logic could execute. Also, catching InvalidTokenError with `pass` silently swallowed invalid tokens.
+**Learning:** Middlewares supporting multiple auth mechanisms must validate configuration selectively. Checking `JWT_SECRET` early unconditionally broke `PORTER_ADMIN_KEY` flows. Also, never swallow auth exceptions.
+**Prevention:** Only validate `JWT_SECRET` right before JWT decoding logic, allowing API key paths to return early. Always log caught auth exceptions.
+## 2026-08-25 - DOM-based XSS via correlation_id
+**Vulnerability:** A Cross-Site Scripting (XSS) vulnerability was found in frontend/js/app.js where the correlation_id from an external API response was appended directly to innerHTML using a template literal without sanitization.
+**Learning:** Even internal or metadata fields like correlation_id can be manipulated if the data originates from external sources. Appending raw data directly to innerHTML is a critical vector for DOM-based XSS.
+**Prevention:** To prevent DOM-based XSS, always sanitize user or API-controlled input before injecting it into the DOM. Use textContent for plain text or an escaping utility (e.g., escapeHTML) when HTML injection is necessary.

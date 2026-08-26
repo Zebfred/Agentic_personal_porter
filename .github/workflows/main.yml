@@ -1,0 +1,22 @@
+name: Cache Workflow
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache
+        uses: actions/cache@v5.1.0
+        with:
+          # A list of files, directories, and wildcard patterns to cache and restore
+          path: ~/.cache
+          # An explicit key for restoring and saving the cache
+          key: ${{ runner.os }}-cache
