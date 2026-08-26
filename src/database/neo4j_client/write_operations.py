@@ -222,7 +222,7 @@ def create_goal(username: str, description: str, category: str = "general",
     with driver.session() as session:
         result = session.execute_write(_create_goal_tx, username, description,
                                       category, priority, timeframe)
-    return result if result is not None else {}
+    return dict(result) if result is not None else {}
 
 def _create_goal_tx(tx, username: str, description: str, category: str,
                    priority: str, timeframe: str):
