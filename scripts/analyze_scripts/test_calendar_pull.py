@@ -8,6 +8,12 @@ from src.database.calendar_raw_sync_to_mongo import SovereignCalendarSync
 from src.database.mongo_storage import SovereignMongoStorage
 from src.utils.path_utils import get_project_root
 
+def _is_gmail_address(email):
+    if not isinstance(email, str):
+        return False
+    local_part, sep, domain = email.rpartition("@")
+    return bool(sep and local_part) and domain.lower() == "gmail.com"
+
 def main():
     logger.info("=== Starting Calendar Pull Test ===")
     root = get_project_root()
@@ -22,7 +28,7 @@ def main():
         logger.info("No users opted in. Cannot test pull.")
         return
 
-    user = next((u for u in users if "gmail.com" in u.get("email", "")), users[0])
+    user = next((u for u in users if _is_gmail_address(u.get("email", ""))), users[0])
     user_email = user.get("email")
     refresh_token = user.get("google_refresh_token")
 
