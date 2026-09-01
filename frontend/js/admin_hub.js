@@ -126,7 +126,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if(btnApprove) {
                  btnApprove.addEventListener('click', async () => {
+                     const originalText = btnApprove.innerText;
                      btnApprove.innerText = "Approving...";
+                     btnApprove.disabled = true;
                      try {
                          const response = await fetchFn('/api/admin/approve_audits', {
                              method: 'POST',
@@ -138,7 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
                              unvContainer.innerHTML = '<div class="text-green-600 font-bold text-sm">✅ Approved all!</div>';
                              setTimeout(loadVerificationDashboard, 2000); // refresh layout
                          }
-                     } catch(e) { console.error(e); }
+                     } catch(e) {
+                         console.error(e);
+                     } finally {
+                         btnApprove.innerText = originalText;
+                         btnApprove.disabled = false;
+                     }
                  });
             }
             
