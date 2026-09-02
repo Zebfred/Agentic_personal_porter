@@ -42,7 +42,7 @@ def chat_porter():
 
     except Exception as e:
         logger.error(f"Error in First-Serving Porter chat: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @chat_bp.route('/chat/welcome', methods=['GET', 'OPTIONS'])
 @require_api_key
@@ -70,4 +70,4 @@ def chat_welcome():
 
     except Exception as e:
         logger.error(f"Error in First-Serving Porter welcome: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500

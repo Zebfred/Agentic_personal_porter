@@ -332,7 +332,7 @@ def login():
         return jsonify({"error": "Invalid token"}), 401
     except Exception as e:
         logger.error(f"Error during user login: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 
 @auth_bp.route('/login/code', methods=['POST', 'OPTIONS'])
@@ -454,7 +454,7 @@ def login_code():
         return jsonify({"error": "Server configuration error"}), 500
     except Exception as e:
         logger.error(f"Error during user code login: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 
 @auth_bp.route('/nexus/login', methods=['POST', 'OPTIONS'])
@@ -543,14 +543,14 @@ def nexus_login():
         })
 
     except PermissionError as e:
-        return jsonify({"error": str(e)}), 403
+        return jsonify({"error": "Permission denied"}), 403
     except RuntimeError:
         return jsonify({"error": "Server configuration error"}), 500
     except ValueError:
         return jsonify({"error": "Invalid token"}), 401
     except Exception as e:
         logger.error(f"Error during admin login: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 
 @auth_bp.route('/nexus/login/code', methods=['POST', 'OPTIONS'])
@@ -667,11 +667,11 @@ def nexus_login_code():
         })
 
     except PermissionError as e:
-        return jsonify({"error": str(e)}), 403
+        return jsonify({"error": "Permission denied"}), 403
     except RuntimeError:
         return jsonify({"error": "Server configuration error"}), 500
     except ValueError:
         return jsonify({"error": "Invalid token"}), 401
     except Exception as e:
         logger.error(f"Error during admin code login: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500

@@ -60,4 +60,7 @@
 ## 2026-08-25 - DOM-based XSS via correlation_id
 **Vulnerability:** A Cross-Site Scripting (XSS) vulnerability was found in frontend/js/app.js where the correlation_id from an external API response was appended directly to innerHTML using a template literal without sanitization.
 **Learning:** Even internal or metadata fields like correlation_id can be manipulated if the data originates from external sources. Appending raw data directly to innerHTML is a critical vector for DOM-based XSS.
-**Prevention:** To prevent DOM-based XSS, always sanitize user or API-controlled input before injecting it into the DOM. Use textContent for plain text or an escaping utility (e.g., escapeHTML) when HTML injection is necessary.
+## 2025-03-20 - Exposed Stack Traces and Internal Errors
+**Vulnerability:** Many route handlers in `src/routes/` were explicitly logging `str(e)` and passing it directly to the end user via `jsonify({'error': str(e)})` in response to catch-all exceptions.
+**Learning:** Returning `str(e)` directly to the user in a JSON response for a 500 internal server error could leak sensitive internal implementation details, such as file paths, SQL query fragments, or unhandled component errors (stack traces). This violates the principle of failing securely, potentially providing attackers with information to craft more targeted attacks.
+**Prevention:** Ensure that catch-all exceptions log the detailed error internally using `logger.error` but only return a sanitized, generic error message (e.g., `"An internal server error occurred"`) to the user. Do not expose `str(e)` or other internal stack trace information to external APIs.
