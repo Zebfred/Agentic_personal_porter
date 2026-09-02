@@ -181,7 +181,7 @@ def save_log():
         })
     except Exception as e:
         logger.error(f"Error saving log: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/planning/weekly', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -270,7 +270,7 @@ def save_weekly_expectation():
 
     except Exception as e:
         logger.error(f"Error saving weekly expectation: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/planning/weekly', methods=['GET'])
 @require_api_key
@@ -301,7 +301,7 @@ def get_weekly_expectation():
         })
     except Exception as e:
         logger.error(f"Error fetching weekly expectation: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/freeform', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -340,7 +340,7 @@ def save_freeform_journal():
         return jsonify({"status": "success", "updated_at": updated_at, "correlation_id": correlation_id})
     except Exception as e:
         logger.error(f"Error saving freeform journal: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/freeform', methods=['GET'])
 @require_api_key
@@ -361,7 +361,7 @@ def get_freeform_journal():
         return jsonify({"status": "success", "data": {"text": doc.get("text", ""), "updated_at": updated_at}})
     except Exception as e:
         logger.error(f"Error fetching freeform journal: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/history', methods=['GET'])
 @require_api_key
@@ -389,7 +389,7 @@ def get_journal_history():
         return jsonify({"status": "success", "data": history})
     except Exception as e:
         logger.error(f"Error fetching journal history: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 
 @journal_bp.route('/api/logs', methods=['GET', 'OPTIONS'])
@@ -419,7 +419,7 @@ def get_historical_logs():
         })
     except Exception as e:
         logger.error(f"Error fetching monthly logs: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/logs/year', methods=['GET', 'OPTIONS'])
 @require_api_key
@@ -448,7 +448,7 @@ def get_yearly_logs_route():
         })
     except Exception as e:
         logger.error(f"Error fetching yearly logs: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/process_journal', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -528,11 +528,11 @@ def process_journal():
 
         except Exception as e:
             logger.error(f"Backend Error during LangGraph execution: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "An internal server error occurred"}), 500
 
     except Exception as e:
         logger.error(f"Error reading request data: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/reflection', methods=['GET', 'OPTIONS'])
 @require_api_key
@@ -557,7 +557,7 @@ def get_daily_reflection():
         return jsonify({"status": "success", "data": doc})
     except Exception as e:
         logger.error(f"Error fetching reflection: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/edit_event', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -622,7 +622,7 @@ def edit_journal_event():
 
     except Exception as e:
         logger.error(f"Error editing journal event: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @journal_bp.route('/api/journal/review_data', methods=['GET'])
 @require_api_key
@@ -724,4 +724,4 @@ def get_journal_review_data():
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error fetching journal review data: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500

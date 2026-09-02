@@ -164,7 +164,7 @@ def get_unverified_audits():
         return jsonify({"status": "success", "records": records})
     except Exception as e:
         logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @calendar_bp.route('/api/calendar/verified_history', methods=['GET'])
 @require_api_key
@@ -183,7 +183,7 @@ def get_verified_history():
         return jsonify({"status": "success", "records": records})
     except Exception as e:
         logger.error(f"Error fetching verified history: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @calendar_bp.route('/api/calendar/approve_audits', methods=['POST'])
 @require_api_key
@@ -207,7 +207,7 @@ def approve_audits():
         return jsonify({"status": "success", "modified_count": modified})
     except Exception as e:
         logger.error(f"Error approving audits: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
 @require_api_key
@@ -256,7 +256,7 @@ def get_adventure_log():
         return jsonify({"status": "success", "data": analysis})
     except Exception as e:
         logger.error(f"Error getting adventure log delta: {e}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @calendar_bp.route('/api/calendar/user_sync', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -276,7 +276,7 @@ def user_sync_calendar():
         return jsonify({"message": f"Calendar sync completed successfully for {user_email}."})
     except Exception as e:
         logger.error(f"Error syncing user calendar: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @calendar_bp.route('/api/calendar/push_to_gcal', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -337,4 +337,4 @@ def push_to_gcal():
 
     except Exception as e:
         logger.error(f"Error in push_to_gcal: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
