@@ -27,9 +27,9 @@ class ReflectionState(TypedDict, total=False):
     journal_entry: str
     log_data: Optional[Dict[str, Any]]
     username: str
-    actuals_str: str
-    recon_result: str
-    curator_result: str
+    actuals_list: list[Dict[str, Any]]
+    recon_result: Dict[str, Any]
+    curator_result: Dict[str, str]
     final_output: str
 
 # Structured output for Categorizer
@@ -85,11 +85,7 @@ def setup_node(state: ReflectionState) -> ReflectionState:
     # Fetching Ground Truth Data for the Recon Task
     storage = SovereignMongoStorage()
     mongo_actuals = list(storage.formatted_col.find({"record_type": "Actual"}).sort("start", -1).limit(5))
-    actuals_str = "\n".join([f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})" for e in mongo_actuals])
-    if not actuals_str:
-        actuals_str = "No recent actual events found."
-
-    return {"actuals_str": actuals_str}
+    return {"actuals_list": mongo_actuals}
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
     """
@@ -110,7 +106,8 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     instruction = "You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
     runner = _create_adk_runner(agent_name="The_Categorizer", instruction=instruction)
 
-    query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{state['actuals_str']}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
+    actuals_str = "\n".join([f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})" for e in state.get('actuals_list', [])]) or "No recent actual events found."
+    query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
 
     @with_llm_retry
     async def run_adk():
@@ -142,12 +139,11 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     result_text = result_text.replace('```json', '').replace('```', '').strip()
     try:
         data = json.loads(result_text)
-        recon_str = f"```json\n{{\n  \"Pillar\": \"{data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{data.get('Reason', '')}\",\n  \"Confidence_Score\": {data.get('Confidence_Score', 0)}\n}}\n```"
     except Exception as e:
-        logger.warning(f"Failed to parse ADK Categorizer response: {e}")
-        recon_str = f"```json\n{{\n  \"Pillar\": \"Parse Error\",\n  \"Reason\": \"Failed to parse ADK Categorizer response: {str(e)}\",\n  \"Confidence_Score\": 0\n}}\n```"
+        logger.error(f"Failed to parse ADK Categorizer response: {e}", exc_info=True)
+        data = {"Pillar": "Parse Error", "Reason": f"Failed to parse ADK Categorizer response: {str(e)}", "Confidence_Score": 0}
 
-    return {"recon_result": recon_str}
+    return {"recon_result": data}
 
 def should_curate(state: ReflectionState) -> str:
     """
@@ -213,8 +209,7 @@ def curator_node(state: ReflectionState) -> ReflectionState:
 
     result_text = asyncio.run(run_adk())
 
-    curator_str = f"### Acquired Inventory\n{result_text}"
-    return {"curator_result": curator_str}
+    return {"curator_result": {"acquired_inventory": result_text}}
 
 def save_results_node(state: ReflectionState) -> ReflectionState:
     """
@@ -226,12 +221,13 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     Returns:
         ReflectionState: The updated state with the 'final_output' string.
     """
-    recon_result = state.get("recon_result", "")
-    curator_result = state.get("curator_result", "")
+    recon_data = state.get("recon_result", {})
+    curator_data = state.get("curator_result", {})
 
-    final_output = recon_result
-    if curator_result:
-        final_output += f"\n\n{curator_result}"
+    final_output = f"```json\n{{\n  \"Pillar\": \"{recon_data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{recon_data.get('Reason', '')}\",\n  \"Confidence_Score\": {recon_data.get('Confidence_Score', 0)}\n}}\n```"
+
+    if curator_data and curator_data.get("acquired_inventory"):
+        final_output += f"\n\n### Acquired Inventory\n{curator_data.get('acquired_inventory')}"
 
     current_date = datetime.now().strftime("%Y-%m-%d")
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reflections")
@@ -256,7 +252,7 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
         storage.save_agent_reflection(reflection_data)
         logger.info(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
     except Exception as e:
-        logger.warning(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---")
+        logger.error(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---", exc_info=True)
 
     return {"final_output": final_output}
 
@@ -290,9 +286,9 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
             "journal_entry": journal_entry,
             "log_data": log_data,
             "username": username,
-            "actuals_str": "",
-            "recon_result": "",
-            "curator_result": "",
+            "actuals_list": [],
+            "recon_result": {},
+            "curator_result": {},
             "final_output": ""
         }
         result = graph.invoke(initial_state)
@@ -304,7 +300,7 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return "ERROR: Socratic Categorizer experienced a logic loop and was forcefully halted by the Token Circuit Breaker to preserve API limits."
     except Exception as e:
-        logger.error(f"\n[RUNTIME ERROR] {e}")
+        logger.error(f"\n[RUNTIME ERROR] {e}", exc_info=True)
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return f"ERROR: Unexpected Backend Error during Categorization: {e}"
 
