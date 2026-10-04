@@ -1,4 +1,4 @@
-# Feature Specification: Evaluate Current State of the Agentic Personal Porter Project
+# Feature Specification: Evaluate Current State for Mach 4 Transition
 
 **Feature Branch**: `feature/spec-kit-constitution-and-documentation-rules`
 
@@ -6,82 +6,80 @@
 
 **Status**: Draft
 
-**Input**: User description: "Evaluate current state of the Agentic_personal_porter project"
+**Input**: User description: "Evaluate current state of the Agentic_personal_porter project for Mach 4 transition"
+
+---
+
+## Strategic Vision: The Mach 4 Transition
+
+The **Mach 4 Lifecycle ("Modeling The Life Engine")** transitions the Agentic Personal Porter from a reactive daily logger and reflection tool (Mach 2/3) into a **proactive predictive intelligence engine** capable of steering long-term (10-year) life trajectories. 
+
+This evaluation assesses the system's baseline readiness across:
+1. **Multi-Tenant Foundation & Sovereign Data**: Zero-trust `.auth/` layer, tenant-partitioned MongoDB timeseries, and versioned Neo4j intention trees.
+2. **The "Pillar Balancer" Engine**: Algorithmic scoring of daily/weekly actuals against long-term ambitions (`hero_future.json`) to compute numeric "Hero Numbers."
+3. **Integrated ML Agent Tools**: Deterministic analytical tools (Time Series Burnout Sensor, Reinforcement Learning Life Path Finder) called by autonomous agent coordinators.
+4. **Three Echelons of Review**: Daily triage, weekly CrewAI reflection, and monthly macro-trajectory analysis ("The Grand Visionary").
+5. **High-Fidelity Hero UI**: 20-Second Recon Loop, Adventure Expectations, and predictive visualization screens (`Oracle_predictions.html`, `adventure_calendar.html`).
+
+---
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Multi-Tenant Security & Sovereign State Audit (Priority: P1)
+### User Story 1 - Multi-Tenant Core & Ingestion Baseline Audit (Priority: P1)
 
-As a system owner or security auditor, I want a comprehensive evaluation of the multi-tenant architecture, data privacy boundaries, and authentication subsystems to verify that legacy single-tenant hardcoding is eradicated, sensitive credentials are safe under zero-trust rules, and no cross-tenant data leakage is possible.
+As a system owner, I want to evaluate our multi-tenant data pipelines and database connection pooling to verify that our MongoDB timeseries collections and Neo4j graph instances provide a stable, zero-trust foundation for Mach 4 multi-year projections.
 
-**Why this priority**: Security, tenant isolation, and zero-trust privacy are fundamental, non-negotiable requirements under Principles I and II of the Constitution. Any regression at this layer endangers user data and system viability.
+**Why this priority**: Mach 4 predictive models require clean, uncorrupted historical timeseries and collision-proof tenant partitioning. Without robust multi-tenancy and connection pooling, advanced ML models will ingest noisy or contaminated data.
 
-**Independent Test**: Can be verified by executing an automated audit inspection against API endpoints, authentication middleware, and database indices, confirming zero hardcoded credentials, timing-attack-safe comparisons, and active multi-tenant partitioning.
+**Independent Test**: Execute an automated verification audit scanning route middlewares, MongoDB timeseries collections, Neo4j singleton pooling, and `.auth/` zero-trust compliance, reporting health status and zero cross-tenant leakage.
 
 **Acceptance Scenarios**:
-
-1. **Given** the backend routing and data layer, **When** scanning for legacy single-tenant environment lookups, **Then** the system confirms zero dependencies on deprecated global identifiers and verifies that tenant identity is derived strictly from verified request tokens.
-2. **Given** incoming API requests, **When** evaluating authentication middleware, **Then** all protected endpoints enforce valid tenant credentials and prevent unauthenticated compute triggers or access to operational resources.
-3. **Given** authentication and token comparison logic, **When** verifying secret evaluation, **Then** all credential comparisons execute using constant-time evaluation to eliminate timing side-channels.
+1. **Given** the active routing layer, **When** evaluating authentication and tenant context propagation, **Then** all requests derive identity strictly from `request.user_email` and fail fast if secrets are missing.
+2. **Given** the database layer, **When** testing Neo4j driver lifecycle, **Then** connection pooling operates as a singleton without per-request driver closures.
+3. **Given** timeseries storage in MongoDB, **When** evaluating event updates, **Then** all operations execute via batched `bulk_write` rather than sequential roundtrips.
 
 ---
 
-### User Story 2 - Ingestion & Persistence Pipeline Health Assessment (Priority: P2)
+### User Story 2 - Proactive Intent & "Pillar Balancer" Readiness (Priority: P2)
 
-As a data engineer or platform developer, I want to evaluate the operational health, idempotency, and throughput of data ingestion pipelines moving user calendar events through the landing zone and into the primary graph and vector memories.
+As the Hero (user), I want the system to evaluate how effectively the First-Serving Porter and backend can compare daily logged actuals against my long-term ambition models (`hero_future.json`) to calculate actionable "Hero Numbers" and proactively recommend weekly intent quotas.
 
-**Why this priority**: Data persistence is the core engine of the Mach 2 ecosystem. The system must ingest events accurately and idempotently without exhausting rate limits, causing network roundtrip bottlenecks, or corrupting graph topology.
+**Why this priority**: This bridges reactive logging into the proactive Mach 4 mandate, allowing agents to intervene before detriment tasks consume high-priority life pillars.
 
-**Independent Test**: Can be verified by running a connectivity and pipeline inspection script checking MongoDB collections, Neo4j singleton pool status, index validity, and batch ingestion constraints.
+**Independent Test**: Run a mock intention-evaluation cycle computing the numeric delta ($\Delta = \text{Actual} - \text{Intention}_{terminal}$) against versioned intention chains in Neo4j, checking algorithm output and priority recommendations.
 
 **Acceptance Scenarios**:
-
-1. **Given** the database connection manager, **When** evaluating Neo4j connection lifecycle, **Then** the driver is verified to run as a persistent singleton without per-request driver instantiation or destructive teardown hooks.
-2. **Given** the Google Calendar backfill ingestion process, **When** checking batch chunking rules, **Then** the ingestion queue restricts batch backfills to chronological chunks of at most one month per cycle.
-3. **Given** database write operations in MongoDB, **When** reviewing update execution patterns, **Then** repetitive updates are executed via batched bulk operations rather than iterative sequential network roundtrips.
+1. **Given** versioned intention chains in Neo4j (`:Intention {version, created_at}`), **When** evaluating weekly delta calculations, **Then** the system computes variance against the terminal intention in the chain.
+2. **Given** long-term pillar targets, **When** a critical pillar falls below quota, **Then** the evaluation validates that the First-Serving Porter generates proactive compensation blocks.
 
 ---
 
-### User Story 3 - Agent Cluster & Orchestration Readiness (Priority: P3)
+### User Story 3 - Integrated Machine Learning Tools Readiness (Priority: P3)
 
-As an AI workflow architect, I want to evaluate the readiness, schema alignment, and stability of the multi-agent cluster (First-Serving Porter, Socratic Mirror, GTKY Classifier, Silas Auditor, Fiona Architect, and Bill FinOps) to prevent infinite reasoning loops and ensure resilient downstream handoffs.
+As an ML/AI engineer, I want to assess the system readiness for integrating deterministic machine learning tools (Time Series Forecasting for the "Burnout Sensor" and Reinforcement Learning for the "Life Path Finder") into the agent toolchain.
 
-**Why this priority**: Unchecked agent execution can cause token explosion and service disruption. Agent payloads must strictly match downstream schema expectations.
+**Why this priority**: In Mach 4, agents do not guess life trajectories; they query deterministic ML models (`get_burnout_risk`, `calculate_path_to_milestone`) as standardized tool calls.
 
-**Independent Test**: Can be verified by inspecting agent registry definitions, observability traces, token limit decorators, and schema output contracts against active test fixtures.
+**Independent Test**: Audit feature store extraction from MongoDB timeseries, testing dataset generation for Prophet/LSTM models and state/action/reward representations for Neo4j graph traversal.
 
 **Acceptance Scenarios**:
-
-1. **Given** the agent orchestration pipeline, **When** evaluating high-frequency task delegation, **Then** the system enforces rate-limiting backoff decorators and state tracing to prevent infinite execution loops.
-2. **Given** calendar classification agents, **When** producing formatted event payloads, **Then** outputs match the strict schema required for graph injection without failing back to dry-run placeholders.
-3. **Given** First-Serving Porter interactions, **When** checking user origin and ambition profiles, **Then** the agent prompts for missing fields without generating ungrounded historical claims.
+1. **Given** sleep gaps and task density data in MongoDB, **When** extracting timeseries features, **Then** the system produces normalized numerical arrays suitable for time series forecasting.
+2. **Given** long-term milestone nodes in Neo4j, **When** formulating pathfinding problems, **Then** graph transitions are mapped to structured state-action-reward representations.
 
 ---
 
-### User Story 4 - Frontend Recon & Accessibility Compliance Audit (Priority: P4)
+### User Story 4 - Echelons of Review & Predictive UX Evaluation (Priority: P4)
 
-As a frontend architect and end-user ("Hero"), I want to evaluate the client interface against the 20-Second Recon Loop, WCAG accessibility standards, and semantic design tokens to ensure frictionless, high-fidelity daily verification.
+As a frontend architect and end-user, I want to evaluate the user interface against the 20-Second Recon Loop, WCAG accessibility, and predictive layout screens (`Oracle_predictions.html`, `Adventure_calendar.html`, and `journal_review.html`).
 
-**Why this priority**: The user interface is the daily touchpoint. High cognitive friction, broken keyboard accessibility, or desynchronized local state directly undermines the habit of daily verification.
+**Why this priority**: The 10-year predictive engine requires clear visual affordances that do not induce cognitive fatigue or violate the 20-second administrative limit.
 
-**Independent Test**: Can be verified by running automated static code analysis across frontend templates and scripts to audit click counts, ARIA attributes, label associations, and local storage state synchronization.
+**Independent Test**: Run an automated DOM and accessibility audit across the frontend pages, measuring click depth, ARIA attribute completeness, and local storage state hydration.
 
 **Acceptance Scenarios**:
-
-1. **Given** interactive buttons and controls across the interface, **When** inspecting icon-only navigation and modal buttons, **Then** each element provides an explicit, descriptive accessible label.
-2. **Given** primary logging workflows, **When** a user verifies or logs an actual activity, **Then** the user can complete the action within three clicks or fewer.
-3. **Given** client-side state in local storage, **When** activities are updated or verified, **Then** local storage state maintains parity with backend graph updates.
-
----
-
-### Edge Cases
-
-- How does the evaluation handle unconfigured or offline local services (e.g., local Neo4j or MongoDB instances temporarily down during developer evaluation)?
-  - System must report clear, non-crashing diagnostic statuses ("Service Unavailable", "Missing Env") with actionable setup steps.
-- What happens if sensitive credentials are missing from `.auth/.env`?
-  - Evaluation must highlight missing required variables immediately without printing or logging any existing secret values.
-- How does the evaluation assess large volumes of legacy historical calendar events?
-  - Diagnostic tools must sample or summarize pipeline statistics without initiating costly full-table scans.
+1. **Given** daily verification flows on `index.html`, **When** confirming inferences or logging actuals, **Then** the workflow requires no more than 3 user clicks.
+2. **Given** navigation controls and modal buttons, **When** evaluated for accessibility, **Then** 100% of icon-only elements provide descriptive `aria-label` tags.
+3. **Given** predictive placeholder pages (`Oracle_predictions.html`), **When** inspected for architecture readiness, **Then** component slots for ML recommendations and macro-trend graphs are identified.
 
 ---
 
@@ -89,27 +87,18 @@ As a frontend architect and end-user ("Hero"), I want to evaluate the client int
 
 ### Functional Requirements
 
-- **FR-001**: System MUST provide an evaluation mechanism that audits backend routes, ensuring every protected endpoint extracts and validates tenant identity (`user_email`) from request authentication.
-- **FR-002**: System MUST inspect codebase configuration to verify that no cryptographic secrets or API keys use hardcoded dev fallbacks, enforcing fail-secure startup behavior.
-- **FR-003**: System MUST verify that all secret and token comparison routines utilize constant-time comparison methods (`hmac.compare_digest`).
-- **FR-004**: System MUST evaluate database driver instantiation to confirm that Neo4j uses a singleton connection pool and does not attach driver closure to per-request web teardown hooks.
-- **FR-005**: System MUST verify that database update routines in MongoDB leverage batched bulk writes (`bulk_write`) rather than iterative sequential network roundtrips.
-- **FR-006**: System MUST evaluate calendar synchronization logic to confirm that historical ingestion is bounded to chronological chunks of at most one month.
-- **FR-007**: System MUST assess agent delegation pipelines to verify the presence of token density monitoring, exponential backoff decorators, and execution tracing.
-- **FR-008**: System MUST audit agent output payloads to ensure schema compatibility with the downstream formatted events pipeline.
-- **FR-009**: System MUST inspect frontend HTML and JavaScript to verify WCAG accessibility compliance (explicit `aria-label` attributes on icon-only buttons, associated labels on all form inputs and textareas, and visible keyboard focus rings).
-- **FR-010**: System MUST verify that frontend UI workflows for logging actual activities require no more than three user clicks (20-Second Recon Loop).
-- **FR-011**: System MUST verify that project documentation is maintained in lowercase `documentation/` using `kebab-case.md` file naming, with no markdown in the project root other than `README.md`.
-- **FR-012**: System MUST confirm that file retention policies preserve outdated files in `.legacy_hr/` and that `.legacy_hr/` is excluded from version control and AI token contexts.
-
----
-
-### Key Entities *(include if feature involves data)*
-
-- **Evaluation Report**: Structured assessment output capturing pass/warn/fail status, diagnostic findings, and remediation guidance across all evaluated architectural dimensions.
-- **System Dimension**: Specific architectural domain under evaluation (Multi-Tenant Security, Data Pipeline & Persistence, Agent Orchestration, Frontend UX & A11y, Documentation & Hygiene).
-- **Audit Check**: Individual testable invariant verified during the evaluation with associated severity (Critical, Warning, Informational).
-- **Remediation Item**: Actionable technical task identified during evaluation to bring an invariant into full constitutional compliance.
+- **FR-001**: System MUST audit multi-tenant partitioning across all routes, confirming dynamic derivation of `user_email` and composite UUID generation (`UUIDGenerator.generate_for_event`).
+- **FR-002**: System MUST evaluate zero-trust configuration, verifying that all secrets reside in `.auth/` and fail-secure startup prevents boot on missing keys.
+- **FR-003**: System MUST verify constant-time evaluation (`hmac.compare_digest`) for all authentication tokens and API keys.
+- **FR-004**: System MUST evaluate Neo4j graph driver management to guarantee singleton connection pooling and idempotent `MERGE` persistence.
+- **FR-005**: System MUST audit MongoDB operations to enforce batched `bulk_write` updates and compound indices on `(user_email, start_time)`.
+- **FR-006**: System MUST evaluate the schema of versioned intention chains (`(:Day)-[:PLANNED_AT]->(:Intention)`) for terminal delta calculation.
+- **FR-007**: System MUST assess readiness for the "Burnout Sensor" tool by verifying timeseries data extraction pipelines from MongoDB.
+- **FR-008**: System MUST evaluate agent orchestration defenses, ensuring exponential backoff decorators and state tracing (`first_serving_traces`) exist to prevent infinite loops.
+- **FR-009**: System MUST audit frontend accessibility, ensuring WCAG compliance (`aria-label` on icon buttons, label-input bindings, visible keyboard focus rings).
+- **FR-010**: System MUST verify that daily actual verification satisfies the 20-Second Recon Loop ($\le 3$ clicks).
+- **FR-011**: System MUST audit project documentation, enforcing lowercase `documentation/` storage and `kebab-case.md` file naming.
+- **FR-012**: System MUST verify that outdated files are non-destructively archived in `.legacy_hr/`.
 
 ---
 
@@ -117,18 +106,17 @@ As a frontend architect and end-user ("Hero"), I want to evaluate the client int
 
 ### Measurable Outcomes
 
-- **SC-001**: Evaluation covers 100% of the five constitutional pillars (Security/Tenancy, Database Discipline, Agent Orchestration, Frontend Recon/A11y, Documentation Hygiene).
-- **SC-002**: Audit check completes execution and generates a diagnostic report in under 30 seconds in local development environments.
-- **SC-003**: Zero hardcoded secrets, single-tenant environment variables (`HERO_NAME`), or insecure string comparisons (`==` on tokens) remain undetected.
-- **SC-004**: 100% of icon-only interactive frontend elements and form fields are audited for WCAG accessibility labeling.
-- **SC-005**: The evaluation output produces clear, prioritized remediation items mapping directly to the active sprint backlog documents (`documentation/current_work/active-*.md`).
-- **SC-006**: The evaluation report itself adheres to the project's documentation standards (located in `documentation/` using `kebab-case.md`).
+- **SC-001**: Complete 100% diagnostic coverage of the 5 Mach 4 readiness dimensions (Tenancy/Security, Ingestion/Graph, Proactive Intent Engine, ML Agent Tools, Predictive UX/A11y).
+- **SC-002**: Assessment audit script runs and produces a structured readiness report in under 30 seconds in local environments.
+- **SC-003**: Zero hardcoded credentials, single-tenant environment variables (`HERO_NAME`), or non-constant-time comparisons remain undetected.
+- **SC-004**: Timeseries feature extraction for the Burnout Sensor produces valid feature matrices from MongoDB in under 5 seconds.
+- **SC-005**: 100% of interactive frontend elements audited for accessible labeling and $\le 3$-click recon speed.
+- **SC-006**: Output diagnostic deliverables comply with project documentation standards (`documentation/` with `kebab-case.md`).
 
 ---
 
 ## Assumptions
 
-- Target developers and auditors run evaluations in an environment with access to project source files and local test configurations.
-- Production services and live credentials are evaluated safely without exposing secret keys in logs, terminal outputs, or artifacts.
-- Evaluation tools operate in read-only analysis mode during assessment, preventing destructive state modification of databases or user data.
-- The evaluation respects the active Conda environment (`agentic_porter`) and `uv` package workspace definitions.
+- The evaluation is performed in read-only analysis mode without mutating production or test data.
+- The Mach 4 transition builds directly upon the Mach 2/3 ingestion and multi-tenant foundations.
+- Local instances of MongoDB, Neo4j, and Python 3.12 (`agentic_porter` conda environment) are available for inspection.

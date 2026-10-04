@@ -95,6 +95,6 @@ Depending entirely on one API provider (e.g., Groq) exposes the pipeline to sing
 As development continues across multiple environments (e.g., Laptop vs Desktop), the Agentic Personal Porter requires a localized "Private Brain" that stores completed tasks, audit logs, and notes without polluting the public GitHub repository.
 
 ### The Architecture
-1. **Source of Truth (Git Submodule):** All private markdown documentation is tracked in a dedicated, private Git repository (`Agentic_Private_Brain`). This repository is mounted as a Git Submodule. It acts as the immutable, version-controlled source of truth.
+1. **Source of Truth (Git Submodule):** All private markdown documentation is tracked in a dedicated, private Git repository (`agentic-private-brain`). This repository is mounted as a Git Submodule. It acts as the immutable, version-controlled source of truth.
 2. **Multi-Machine Vector Search (Weaviate Cloud):** Rather than relying on a local `ChromaDB` (which traps embeddings on a single physical machine), the Private Brain is ingested into a dedicated `PrivateBrainObj` class within the existing Weaviate Cloud instance. 
 3. **Seamless Portability:** When you switch computers, you simply run `git submodule update --remote` to pull the latest text, and your Agents (running locally on your laptop) can instantly query the Weaviate Cloud to fetch historical tasks without needing to re-ingest the embeddings locally.
