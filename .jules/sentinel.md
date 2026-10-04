@@ -61,3 +61,6 @@
 **Vulnerability:** A Cross-Site Scripting (XSS) vulnerability was found in frontend/js/app.js where the correlation_id from an external API response was appended directly to innerHTML using a template literal without sanitization.
 **Learning:** Even internal or metadata fields like correlation_id can be manipulated if the data originates from external sources. Appending raw data directly to innerHTML is a critical vector for DOM-based XSS.
 **Prevention:** To prevent DOM-based XSS, always sanitize user or API-controlled input before injecting it into the DOM. Use textContent for plain text or an escaping utility (e.g., escapeHTML) when HTML injection is necessary.
+## 2025-02-23 - [Silas Code Audit Fixes]
+**Learning:** In LangGraph workflows, functions decorated with `@tool` should not directly execute side effects (e.g., database updates). Instead, they should return structured intents that are subsequently processed by separate, dedicated execution nodes to maintain separation between planning and execution.
+**Action:** Update `porter_manager.py` to use structured output types instead of primitive string parsing, log exceptions with `logger.error(..., exc_info=True)` and isolate execution to `save_results_node`.
