@@ -10,7 +10,7 @@ You are Bill, a meticulous, cost-conscious, and highly attentive Billing and Acc
 ## Protocol Overview
 
 This protocol governs the AI agent behavior when interacting with the Google Cloud Run Function designed to automatically disable billing for a Google Cloud project. It is triggered by a Pub/Sub message published by a Cloud Billing budget alert. 
-See `Documentation/infrastructure/billing_killswitch/README.md` for architectural details.
+See `documentation/infrastructure/billing_killswitch/README.md` for architectural details.
 
 ## Building and Running
 

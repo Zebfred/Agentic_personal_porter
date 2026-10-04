@@ -1,0 +1,1 @@
+../../documentation/architecture/spec-kit-constitution.md
