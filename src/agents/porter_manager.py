@@ -145,7 +145,6 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     if not isinstance(data, dict):
         data = {"Pillar": "Parse Error", "Reason": f"Parsed response is not a JSON object (got {type(data).__name__})", "Confidence_Score": 0}
     return {"recon_result": data}
-    return {"recon_result": data}
 
 def should_curate(state: ReflectionState) -> str:
     """
