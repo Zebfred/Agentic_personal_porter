@@ -142,7 +142,9 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     except Exception as e:
         logger.error(f"Failed to parse ADK Categorizer response: {e}", exc_info=True)
         data = {"Pillar": "Parse Error", "Reason": f"Failed to parse ADK Categorizer response: {str(e)}", "Confidence_Score": 0}
-
+    if not isinstance(data, dict):
+        data = {"Pillar": "Parse Error", "Reason": f"Parsed response is not a JSON object (got {type(data).__name__})", "Confidence_Score": 0}
+    return {"recon_result": data}
     return {"recon_result": data}
 
 def should_curate(state: ReflectionState) -> str:
