@@ -220,8 +220,8 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     Args:
         state (ReflectionState): The final state containing all processed results.
 
-    Returns:
-        ReflectionState: The updated state with the 'final_output' string.
+    recon_data = state.get("recon_result") or {}
+    curator_data = state.get("curator_result") or {}
     """
     recon_json_dict = {
         "Pillar": recon_data.get('Pillar', 'Unknown'),
