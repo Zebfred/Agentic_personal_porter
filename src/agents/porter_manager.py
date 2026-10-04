@@ -222,6 +222,11 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     recon_data = state.get("recon_result") or {}
     curator_data = state.get("curator_result") or {}
     """
+    import json
+
+    recon_data = state.get("recon_result") or {}
+    curator_data = state.get("curator_result") or {}
+
     recon_json_dict = {
         "Pillar": recon_data.get('Pillar', 'Unknown'),
         "Reason": recon_data.get('Reason', ''),
@@ -229,9 +234,6 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     }
     recon_json_str = json.dumps(recon_json_dict, indent=2)
     final_output = f"```json\n{recon_json_str}\n```"
-    curator_data = state.get("curator_result", {})
-
-    final_output = f"```json\n{{\n  \"Pillar\": \"{recon_data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{recon_data.get('Reason', '')}\",\n  \"Confidence_Score\": {recon_data.get('Confidence_Score', 0)}\n}}\n```"
 
     if curator_data and curator_data.get("acquired_inventory"):
         final_output += f"\n\n### Acquired Inventory\n{curator_data.get('acquired_inventory')}"
