@@ -124,18 +124,18 @@ else
 	fi
 endif
 
-sync-brain: ## Automate committing and pushing updates to the Agentic_Private_Brain submodule
+sync-brain: ## Automate committing and pushing updates to the agentic-private-brain submodule
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File Agentic_Private_Brain/deployment_scripts/sync_brain.ps1
+	@powershell -ExecutionPolicy Bypass -File agentic-private-brain/deployment_scripts/sync_brain.ps1
 else
-	@./Agentic_Private_Brain/deployment_scripts/sync_brain.sh
+	@./agentic-private-brain/deployment_scripts/sync_brain.sh
 endif
 
-ingest-private-brain: ## Parse the Agentic_Private_Brain and push vectors to Weaviate Cloud
+ingest-private-brain: ## Parse the agentic-private-brain and push vectors to Weaviate Cloud
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "$$env:PYTHONPATH='.'; uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py"
+	@powershell -Command "$$env:PYTHONPATH='.'; uv run python agentic-private-brain/deployment_scripts/ingest_private_brain.py"
 else
-	PYTHONPATH=. uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
+	PYTHONPATH=. uv run python agentic-private-brain/deployment_scripts/ingest_private_brain.py
 endif
 
 # --- Frontend Assets ---

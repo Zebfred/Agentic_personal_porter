@@ -51,10 +51,10 @@ This Constitution serves as the supreme architectural rulebook and governance co
 
 ### Principle V: Non-Destructive File Retention & Lifecycle (.legacy_hr)
 1. **Zero Permanent Deletion**: Files MUST NEVER be permanently deleted. Outdated, refactored, or deprecated files MUST be relocated to the `.legacy_hr/` archive directory at the project root.
-2. **Token Window Protection**: The `.legacy_hr/` directory MUST remain listed in `.gitignore`, `.geminiignore`, and `.cursorignore` to prevent obsolete code from polluting AI context windows.
+2. **Token Window Protection**: The `.legacy_hr/` directory MUST remain listed in `.gitignore` and `.geminiignore` to prevent obsolete code from polluting AI context windows.
 3. **Mandatory Backup Discipline**: Before modifying any existing file, a backup with a `.bk` extension MUST be created.
 4. **Clean Exit**: Upon task completion, all lingering `.bk*` files MUST be independently collected and moved into `.legacy_hr/`.
-5. **Artifact Export**: Upon task or sprint completion, finalized `task.md` and `walkthrough.md` artifacts MUST be exported to `Agentic_Private_Brain/Completed_Tasks/` matching kebab-case format: `YYYY-MM-DD-task-name-task.md` and `YYYY-MM-DD-task-name-walkthrough.md`.
+5. **Artifact Export**: Upon task or sprint completion, finalized `task.md` and `walkthrough.md` artifacts MUST be exported to `agentic-private-brain/completed-tasks/` matching kebab-case format: `YYYY-MM-DD-task-name-task.md` and `YYYY-MM-DD-task-name-walkthrough.md`.
 
 ### Principle VI: Documentation Supremacy, Kebab-Case Naming & Domain Scoping
 1. **Markdown Storage Boundary**: All markdown (`.md`) documentation MUST be stored within the `documentation/` directory (lowercase). No markdown files are permitted in the project root with the sole exception of `README.md`.
