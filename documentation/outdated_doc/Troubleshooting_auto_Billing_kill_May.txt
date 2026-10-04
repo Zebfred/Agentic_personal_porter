@@ -1,0 +1,200 @@
+Core goal:
+Create an automated system to stop billing for Vertex AI when the cost reaches a certain threshold.
+
+Core Issue: 
+When creating the budget alert, cannot connect Billing account with the pub/sub topic
+
+Core Details:
+projectId: long-facet-473520-n0
+billingAccountName: billingAccounts/016D81-8E2088-ADF419
+gcloud organizations list
+DISPLAY_NAME                          ID  DIRECTORY_CUSTOMER_ID
+nexus-ds-ml-consulting.com  665746657773   
+
+Tandem underlying Issue: 
+Project belong to an Organization that has DOMAIN RESTRCITIVE SHARING Policy
+
+Core Troubleshooting(without success):
+ assigning an Organization Policy that overrides the constraint: iam.allowedPolicyMemberDomains
+
+----------------------------------------------------------------------------------------------
+A record of some things tried:
+May 8 notes
+# Login if you haven't already
+gcloud auth login
+
+# Set your project ID
+gcloud config set project long-facet-473520-n0
+
+# Export your project ID to a variable for the later commands
+export PROJECT_ID=$(gcloud config get-value project)
+
+gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget \
+    --member="serviceAccount:billing-budgets-api@system.gserviceaccount.com" \
+    --role="roles/pubsub.publisher"
+
+    gcloud services enable cloudfunctions.googleapis.com \
+                           pubsub.googleapis.com \
+                           cloudbuild.googleapis.com \
+                           serviceusage.googleapis.com
+gcloud pubsub topics list
+
+---
+name: projects/long-facet-473520-n0/topics/Vertex_AI_Budget
+---
+messageRetentionDuration: 604800s
+name: projects/long-facet-473520-n0/topics/Dummy
+---
+
+#Dummy created for troubleshooting
+# Vertex_AI_Budget topic is created, but can not connect Billing account with it
+#gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget --member="user:[EMAIL_ADDRESS]" --role="roles/pubsub.editor" 
+
+gcloud functions deploy stop_billing \
+    --gen2 \
+    --runtime python311 \
+    --trigger-topic budget-alerts \
+    --entry-point stop_billing \
+    --region us-central1 \
+    --set-env-vars GCP_PROJECT=$PROJECT_ID \
+    --service-account="${PROJECT_ID}@appspot.gserviceaccount.com"
+
+
+---
+gcloud resource-manager org-policies disable-enforce \
+    iam.allowedPolicyMemberDomains \
+    --project=$PROJECT_ID
+    gcloud pubsub topics add-iam-policy-binding budget-alerts \
+        --member="serviceAccount:billing-budgets-api@system.gserviceaccount.com" \
+        --role="roles/pubsub.publisher" \
+        --project=$PROJECT_ID
+        gcloud resource-manager org-policies delete \
+            iam.allowedPolicyMemberDomains \
+            --project=$PROJECT_ID
+-----------
+gcloud resource-manager org-policies list --project=$PROJECT_ID
+gcloud resource-manager org-policies describe \
+    iam.allowedPolicyMemberDomains \
+    --project=$PROJECT_ID \
+    --effective
+
+    ersonal_porter$ gcloud resource-manager org-policies list --project=$PROJECT_ID
+    CONSTRAINT                                                  LIST_POLICY  BOOLEAN_POLICY  ETAG
+    constraints/iam.allowedPolicyMemberDomains                  SET          -               CLSS8s8GEKjz4v4B
+    customConstraints/custom.allowBillingBudgetsServiceAccount  -            SET             CPja8s8GEPCH7IED
+
+    constraint: constraints/iam.allowedPolicyMemberDomains
+    listPolicy:
+      allowedValues:
+      - C02x7dfnx
+---
+gcloud resource-manager org-policies set-policy policy.yaml \
+    --project=$PROJECT_ID
+    gcloud pubsub topics add-iam-policy-binding budget-alerts \
+        --member="serviceAccount:billing-budgets-api@system.gserviceaccount.com" \
+        --role="roles/pubsub.publisher" \
+        --project=$PROJECT_ID
+    gcloud resource-manager org-policies delete \
+    iam.allowedPolicyMemberDomains \
+    --project=$PROJECT_ID
+
+#Checks if this has been disabled
+gcloud resource-manager org-policies describe \
+    iam.allowedPolicyMemberDomains \
+    --project=$PROJECT_ID \
+    --effective    
+
+service-016D81-8E2088-ADF419@gcp-sa-billingbudgets.iam.gserviceaccount.com
+# This billing service agent doesn't actually exist and is not "live" even though it appears in IAM
+
+gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget \
+    --member="serviceAccount:service-016D81-8E2088-ADF419@gcp-sa-billingbudgets.iam.gserviceaccount.com" \
+    --role="roles/pubsub.publisher" \
+    --project=$PROJECT_ID
+
+gcloud beta services identity create \
+>     --service=billingbudgets.googleapis.com \
+>     --project=$PROJECT_ID
+
+ERROR: (gcloud.beta.services.identity.create) INVALID_ARGUMENT: com.google.api.tenant.error.TenantManagerException: IAM_SERVICE_NOT_CONFIGURED_FOR_IDENTITIES: Parameter{name=service_name, values=Constant{values=[billingbudgets.googleapis.com]}} Code: INVALID_ARGUMENT
+Help Token: AShNTyFr-j8rpKrC48-vS34U4lPUHGicnmXJdsOsuO2oqJYK2AOIzzNqbVwIxuqo9YlrG9cc2J7wOCCuvPtWQfdL4Xa99EJYwoelJWqnKCWBUjlZ
+- '@type': type.googleapis.com/google.rpc.PreconditionFailure
+  violations:
+  - subject: '908020'
+    type: googleapis.com
+- '@type': type.googleapis.com/google.rpc.ErrorInfo
+  domain: serviceusage.googleapis.com
+  reason: SU_INTERNAL_GENERATE_SERVICE_IDENTITY    
+
+gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget \
+    --member="serviceAccount:service-661696249441@gcp-sa-billingbudgets.iam.gserviceaccount.com" \
+    --role="roles/pubsub.publisher" \
+    --project=$PROJECT_ID
+
+  gcloud services enable billingbudgets.googleapis.com --project=$PROJECT_ID
+  (No output to be expected)
+  gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget \
+    >     --member="serviceAccount:gcp-organization-admins@nexus-ds-ml-consulting.com" \
+    >     --role="roles/pubsub.publisher" \
+    >     --project=$PROJECT_ID
+
+
+    ERROR: Policy modification failed. For a binding with condition, run "gcloud alpha iam policies lint-condition" to identify issues in condition.
+    ERROR: (gcloud.pubsub.topics.add-iam-policy-binding) INVALID_ARGUMENT: Service account service-661696249441@gcp-sa-billingbudgets.iam.gserviceaccount.com does not exist.
+    (/  
+
+May 7 logs 
+ame: organizations/665746657773/customConstraints/custom.allowBillingBudgetsServiceAccount
+resourceTypes:
+- iam.googleapis.com/AllowPolicy
+methodTypes:
+- CREATE
+- UPDATE
+condition: |
+  resource.bindings.exists(binding,
+    binding.members.exists(member,
+      !MemberSubjectMatches(member, ['serviceAccount:billing-budgets-api@system.gserviceaccount.com']) &&
+      !member.endsWith('@nexus-ds-ml-consulting.com')
+    )
+  )
+actionType: DENY
+displayName: Allow Billing Budgets SA and Internal Domain
+description: Allows the billing-budgets-api service account and internal domain members while blocking others.
+
+service-PROJECT_NUMBER@gcp-sa-pubsub.iam.gserviceaccount.com
+
+{
+    name: organizations/665746657773/customConstraints/custom.allowBillingBudgetsServiceAccount ,
+    resourceTypes:
+    - iam.googleapis.com/AllowPolicy ,
+    methodTypes:
+    - CREATE
+    - UPDATE ,
+    condition:
+    resource.bindings.exists(binding,
+        binding.members.exists(member,
+        !MemberSubjectMatches(member, ['serviceAccount:billing-budgets-api@system.gserviceaccount.com']) &&
+        !member.endsWith('@yourdomain.com')
+      )
+    ) ,
+    actionType: DENY ,
+    displayName: Allow billing Budgets SA and Internal Domain ,
+    description: Allows the billing-budgets-api service account and internal domain members while blocking others.
+
+}
+
+serviceAccount:billing-budgets-api@system.gserviceaccount.com
+
+Email addresses and domains must be associated with an active Google Account, Google Workspace account, or Cloud Identity account.
+
+gcloud pubsub topics add-iam-policy-binding Vertex_AI_Budget \
+    --member="serviceAccount:billing-budgets-api@system.gserviceaccount.com" \
+    --role="roles/pubsub.publisher"
+
+e service-PROJECT_NUMBER@gcp-sa-billing.iam.gserviceaccount.com.
+Find these accounts in the Google Cloud Console under IAM & Admin > Service Accounts or via Billing > Accoun
+
+
+gcloud beta services identity create --service=billingbudgets.googleapis.com --project=long-facet-473520-n0
+
+organization-ID=665746657773 
