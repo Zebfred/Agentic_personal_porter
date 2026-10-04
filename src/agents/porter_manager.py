@@ -221,7 +221,13 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     Returns:
         ReflectionState: The updated state with the 'final_output' string.
     """
-    recon_data = state.get("recon_result", {})
+    recon_json_dict = {
+        "Pillar": recon_data.get('Pillar', 'Unknown'),
+        "Reason": recon_data.get('Reason', ''),
+        "Confidence_Score": recon_data.get('Confidence_Score', 0)
+    }
+    recon_json_str = json.dumps(recon_json_dict, indent=2)
+    final_output = f"```json\n{recon_json_str}\n```"
     curator_data = state.get("curator_result", {})
 
     final_output = f"```json\n{{\n  \"Pillar\": \"{recon_data.get('Pillar', 'Unknown')}\",\n  \"Reason\": \"{recon_data.get('Reason', '')}\",\n  \"Confidence_Score\": {recon_data.get('Confidence_Score', 0)}\n}}\n```"
