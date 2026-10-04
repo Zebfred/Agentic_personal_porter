@@ -7,12 +7,17 @@ trigger: always_on
 ## 1. File, Handoff & Documentation Hygiene
 
 ### Markdown & Project Documentation
-* **CRITICAL Location:** All markdown (`.md`) documentation files MUST be placed in the `Documentation/` directory. 
+* **CRITICAL Location:** All markdown (`.md`) documentation files MUST be placed in the `documentation/` directory (lowercase).
+* **Kebab-Case Naming Standard:** All markdown files MUST use `kebab-case` naming (e.g. `quick-start.md`, `spec-kit-constitution.md`, `active-backend-tasks.md`). The only exception is `README.md`.
 * **Project Root:** Never create markdown files in the project root. The only exception is `README.md`.
-* **Automatic Routing:** If asked or required to create documentation, automatically place it in `Documentation/` (e.g. `Documentation/[FILENAME].md`) without asking.
+* **Automatic Routing:** If asked or required to create documentation, automatically place it in `documentation/` using kebab-case (e.g. `documentation/[category]/[file-name].md`) without asking.
 * **Examples:**
-  * ✅ `Documentation/ARCHITECTURE.md`
-  * ❌ `ARCHITECTURE.md` (in root)
+  * ✅ `documentation/architecture/spec-kit-constitution.md`
+  * ✅ `documentation/development/quick-start.md`
+  * ❌ `Documentation/...` (capitalized directory)
+  * ❌ `documentation/ARCHITECTURE.md` (UPPERCASE filename)
+  * ❌ `documentation/quick_start.md` (snake_case filename)
+  * ❌ `quick-start.md` (in root)
 * **When to Create Documentation:** Implementation summaries, setup guides, architecture details, API specs, troubleshooting guides, and explanatory markdown files.
 
 ### File Retentions & Backups
@@ -27,7 +32,7 @@ trigger: always_on
 
 ### Private Brain Submodule & Artifact Sync
 * **Export Artifacts:** Upon task completion, the agent MUST automatically copy the finalized `task.md` and `walkthrough.md` artifacts into the `Agentic_Private_Brain/Completed_Tasks/` directory.
-* **Artifact Naming:** The files should be renamed to include the current date and a descriptive name using the format: `YYYY-MM-DD_Task_Name_Task.md` and `YYYY-MM-DD_Task_Name_Walkthrough.md`.
+* **Artifact Naming:** The files should be renamed to include the current date and a descriptive name in kebab-case using the format: `YYYY-MM-DD-task-name-task.md` and `YYYY-MM-DD-task-name-walkthrough.md`.
 * **Sync Private Brain:** After finalizing artifacts or writing new deployment scripts into the private brain, the agent MUST execute `make sync-brain` to commit and push changes to the remote repository.
 
 ---
@@ -65,7 +70,7 @@ trigger: always_on
 ## 3. Workflow, Testing & Verification
 
 ### Strict Domain Scoping
-* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `Documentation/Current_work/ACTIVE_[Domain].md` document.
+* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `documentation/current_work/active-[domain].md` document.
 * **Pre-flight Check:** At the start of every session, the assigned agent MUST independently read their specific ACTIVE document before proposing any code edits.
 * **Verification Log:** As tasks are performed, the ACTIVE document must be updated to note human verification of completion.
 
