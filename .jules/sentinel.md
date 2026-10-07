@@ -64,3 +64,7 @@
 ## 2025-02-23 - [Silas Code Audit Fixes]
 **Learning:** In LangGraph workflows, functions decorated with `@tool` should not directly execute side effects (e.g., database updates). Instead, they should return structured intents that are subsequently processed by separate, dedicated execution nodes to maintain separation between planning and execution.
 **Action:** Update `porter_manager.py` to use structured output types instead of primitive string parsing, log exceptions with `logger.error(..., exc_info=True)` and isolate execution to `save_results_node`.
+## 2026-10-07 - Error message information leakage
+**Vulnerability:** Many Flask routes leaked internal Python exception strings and stack traces (e.g. `jsonify({'error': str(e)})`) directly to the user when handling a 500 or 400 error.
+**Learning:** This could leak potentially sensitive internal information, including configuration paths, environment strings, or logic flows.
+**Prevention:** Always return a generic error message string for 500 exceptions (e.g. `'An internal server error occurred'`) to clients, and log the detailed error `logger.error(..., exc_info=True)` server-side for debugging.

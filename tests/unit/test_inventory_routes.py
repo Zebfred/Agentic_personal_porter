@@ -74,5 +74,5 @@ def test_get_graph_data_error_handling(client):
         assert response.status_code == 500
         data = response.get_json()
         assert "error" in data
-        assert data["error"] == "Database connection failed"
+        assert data["error"] == "An internal server error occurred"
         mock_get.assert_called_once_with(limit=500)
