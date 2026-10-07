@@ -30,7 +30,7 @@ def get_graph_data():
         return jsonify(graph_data)
     except Exception as e:
         logger.error(f"Error fetching graph data: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @inventory_bp.route('/inventory', methods=['GET'])
 @require_api_key
@@ -63,7 +63,7 @@ def get_inventory():
         return jsonify(response_data)
     except Exception as e:
         logger.error(f"Error fetching inventory: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @inventory_bp.route('/artifacts/scan', methods=['GET'])
 @require_api_key
@@ -82,7 +82,7 @@ def scan_artifacts():
         return jsonify({"status": "success", "results": scan_results})
     except Exception as e:
         logger.error(f"Error scanning artifacts: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @inventory_bp.route('/artifacts/<artifact_name>', methods=['GET', 'POST', 'OPTIONS'])
 @require_api_key
@@ -137,7 +137,7 @@ def manage_artifact(artifact_name):
             return jsonify(data)
         except Exception as e:
             logger.error(f"Error fetching artifact {artifact_name}: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "An internal server error occurred"}), 500
 
     elif request.method == 'POST':
         try:
@@ -155,4 +155,4 @@ def manage_artifact(artifact_name):
             return jsonify({"status": "success", "message": f"{artifact_name} updated successfully in MongoDB for user {username}"})
         except Exception as e:
             logger.error(f"Error saving artifact {artifact_name}: {e}", exc_info=True)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "An internal server error occurred"}), 500

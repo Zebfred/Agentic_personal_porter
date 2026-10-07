@@ -29,7 +29,7 @@ def admin_system_sync():
         return jsonify({"message": "Calendar sync completed successfully."})
     except Exception as e:
         logger.error(f"Error syncing calendar: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @admin_bp.route('/wake_infrastructure', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -47,7 +47,7 @@ def wake_infrastructure():
         return jsonify({"status": "acknowledged", "woke_instance": success})
     except Exception as e:
         logger.error(f"Error executing wake pulse: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @admin_bp.route('/admin/vector_sync', methods=['POST'])
 @require_api_key
@@ -62,7 +62,7 @@ def admin_vector_sync():
         return jsonify({"message": "Vector DB batch synchronization completed."})
     except Exception as e:
         logger.error(f"Error during vector batch sync: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @admin_bp.route('/admin/inject_foundation', methods=['POST'])
 @require_api_key
@@ -77,7 +77,7 @@ def admin_inject_foundation():
         return jsonify({"message": "Hero foundation injected successfully."})
     except Exception as e:
         logger.error(f"Error injecting foundation: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @admin_bp.route('/admin/pulse', methods=['GET'])
 @require_api_key
@@ -92,7 +92,7 @@ def get_system_pulse():
         return jsonify(pulse_data)
     except Exception as e:
         logger.error(f"Error fetching system pulse: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
 
 @admin_bp.route('/admin/impersonate', methods=['POST', 'OPTIONS'])
 @require_api_key
@@ -155,4 +155,4 @@ def impersonate_user():
         })
     except Exception as e:
         logger.error(f"Error during impersonation: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal server error occurred"}), 500
