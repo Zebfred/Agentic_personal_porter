@@ -21,7 +21,7 @@ else
 endif
 
 # Phony targets to prevent conflicts with file names
-.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage
+.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage test-sentinel test-bolt test-palette test-silas test-archie test-docdoc test-devops test-critic test-roster
 
 help: ## Show this help message with available commands
 ifeq ($(OS),Windows_NT)
@@ -115,6 +115,48 @@ verify-done: ## Enforce automated quality gates before marking a task done
 	@echo "3. Running unit test suite..."
 	uv run pytest tests/unit -v --tb=short
 	@echo "=== ALL QUALITY GATES PASSED: TASK DONE ==="
+
+test-sentinel: ## Sentinel profile check: security pre-push verification and security tests
+	@echo "🛡️ Running Sentinel Security Profile Checks..."
+	@bash scripts/git_hooks/pre-push
+	@uv run pytest tests/unit -k "auth or security or mock_mongo" -v --tb=short
+	@echo "✅ Sentinel security checks passed."
+
+test-bolt: ## Bolt profile check: database mock and performance tests
+	@echo "⚡ Running Bolt Performance & DB Profile Checks..."
+	@uv run pytest tests/unit/test_mock_mongo.py -v --tb=short
+	@echo "✅ Bolt performance checks passed."
+
+test-palette: ## Palette profile check: frontend CSS build and asset validation
+	@echo "🎨 Running Palette Frontend & A11y Profile Checks..."
+	@make build-css
+	@echo "✅ Palette frontend checks passed."
+
+test-silas: verify-done ## Silas profile check: complete quality verification gate
+
+test-archie: ## Archie profile check: modular architecture linting and schema typing
+	@echo "🏛️ Running Archie Architectural Profile Checks..."
+	@uv run ruff check src
+	@uv run mypy src/schemas
+	@echo "✅ Archie architecture checks passed."
+
+test-docdoc: ## DocDoc profile check: markdown hierarchy, kebab-case naming, and zero-deletion hygiene
+	@echo "📚 Running DocDoc Documentation Governance Checks..."
+	@python3 scripts/analyze_scripts/verify_doc_hygiene.py
+	@echo "✅ DocDoc documentation checks passed."
+
+test-devops: ## DevOps profile check: docker compose integrity and GitHub Actions SHA pinning
+	@echo "⚙️ Running DevOps CI/CD & Infrastructure Checks..."
+	@python3 scripts/analyze_scripts/verify_devops.py
+	@echo "✅ DevOps infrastructure checks passed."
+
+test-critic: ## Critic profile check: adversarial stress tests, edge cases, and fallback verification
+	@echo "🔍 Running Critic Adversarial Profile Checks..."
+	@uv run pytest tests/unit/test_api_schemas.py tests/test_llm_resilience.py tests/unit/test_mock_mongo.py -v --tb=short
+	@echo "✅ Critic adversarial checks passed."
+
+test-roster: test-sentinel test-bolt test-palette test-archie test-docdoc test-devops test-critic ## Run full automated profile checks across all agent personas
+	@echo "🌟 ALL 7 AGENT PROFILE CHECKS PASSED SUCCESSFULLY!"
 
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)
