@@ -63,17 +63,17 @@ graph TB
 
 | Directory | Purpose |
 |---|---|
-| [src/app.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/app.py) | Flask application – **the single entry point**. Serves frontend, defines all API routes, handles auth. |
-| [src/agents/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents) | All AI agent modules (CrewAI + LangChain) |
-| [src/database/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database) | Neo4j client, MongoDB storage, Context Engine, Graph Injectors, Vector DB clients |
-| [src/integrations/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/integrations) | Google Calendar auth + parsing, Embeddings client |
-| [src/orchestrators/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/orchestrators) | High-level pipeline runners (e.g., `sync_calendar_to_graph.py`) |
-| [src/schemas/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/schemas) | Pydantic request validation models |
-| [src/config.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/config.py) | Centralized `NeoConfig` and `MongoConfig` classes |
-| [frontend/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/frontend) | Static HTML pages + JS/CSS served directly by Flask |
-| [rag_system/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system) | RAG pipeline for PDF ingestion (research papers) |
-| [helper_scripts/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/helper_scripts) | Operational utilities (Neo4j snapshots, Mongo seeding, status checks) |
-| [data/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/data) | Hero artifacts (JSON), reflections, calendar exports, ChromaDB store |
+| [src/app.py](../../src/app.py) | Flask application – **the single entry point**. Serves frontend, defines all API routes, handles auth. |
+| [src/agents/](../../src/agents) | All AI agent modules (CrewAI + LangChain) |
+| [src/database/](../../src/database) | Neo4j client, MongoDB storage, Context Engine, Graph Injectors, Vector DB clients |
+| [src/integrations/](../../src/integrations) | Google Calendar auth + parsing, Embeddings client |
+| [src/orchestrators/](../../src/orchestrators) | High-level pipeline runners (e.g., `sync_calendar_to_graph.py`) |
+| [src/schemas/](../../src/schemas) | Pydantic request validation models |
+| [src/config.py](../../src/config.py) | Centralized `NeoConfig` and `MongoConfig` classes |
+| [frontend/](../../frontend) | Static HTML pages + JS/CSS served directly by Flask |
+| [rag_system/](../../rag_system) | RAG pipeline for PDF ingestion (research papers) |
+| [helper_scripts/](../../helper_scripts) | Operational utilities (Neo4j snapshots, Mongo seeding, status checks) |
+| [data/](../../data) | Hero artifacts (JSON), reflections, calendar exports, ChromaDB store |
 
 ---
 
@@ -110,7 +110,7 @@ The project runs a **dual-framework** agent architecture:
 
 ### 5.1 CrewAI — Batch Multi-Agent Orchestration
 
-Used for intensive, synchronized reflections. Defined in [crew_manager_mach2.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents/crew_manager_mach2.py).
+Used for intensive, synchronized reflections. Defined in [crew_manager_mach2.py](../../src/agents/crew_manager_mach2.py).
 
 ```mermaid
 graph LR
@@ -132,7 +132,7 @@ graph LR
 
 ### 5.2 LangChain — Low-Latency Direct Chat
 
-Used for real-time user interaction. Defined in [first_serving_porter.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents/first_serving_porter.py).
+Used for real-time user interaction. Defined in [first_serving_porter.py](../../src/agents/first_serving_porter.py).
 
 | Agent | LLM | Role |
 |---|---|---|
@@ -140,14 +140,14 @@ Used for real-time user interaction. Defined in [first_serving_porter.py](file:/
 
 ### 5.3 Standalone — GTKY Librarian (Classification Mode)
 
-A separate batch-classification pipeline in [gtky_librarian.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents/gtky_librarian.py) that:
+A separate batch-classification pipeline in [gtky_librarian.py](../../src/agents/gtky_librarian.py) that:
 1. Ingests `hero_origin.json` / `hero_ambition.json` into Neo4j as `Epoch`, `Principle`, `Intent` nodes
 2. Classifies raw GCal events into **"Golden Objects"** using LLM (chunks of 10)
 3. Feeds the sync orchestrator pipeline
 
 ### 5.4 Socratic Mirror Engine
 
-Pure Python logic in [Socratic_mirror_logic.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents/Socratic_mirror_logic.py):
+Pure Python logic in [Socratic_mirror_logic.py](../../src/agents/Socratic_mirror_logic.py):
 - Calculates gap-aware Delta (detects "Fog of War" gaps > 60 minutes)
 - Classifies events as: `Aligned`, `Valuable Detour`, `Fog of War`
 - Generates a Socratic prompt for CrewAI consumption
@@ -174,9 +174,9 @@ graph LR
 **Key Constraint:** `gcal_id` uniqueness ensures idempotent MERGE operations.
 
 **Access Layer:**
-- [connection.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/neo4j_client/connection.py) — Driver singleton
-- [write_operations.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/neo4j_client/write_operations.py) — `log_to_neo4j()`, calendar injection
-- [read_operations.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/neo4j_client/read_operations.py) — `get_full_graph_topology()`, `get_valuable_detours()`
+- [connection.py](../../src/database/neo4j_client/connection.py) — Driver singleton
+- [write_operations.py](../../src/database/neo4j_client/write_operations.py) — `log_to_neo4j()`, calendar injection
+- [read_operations.py](../../src/database/neo4j_client/read_operations.py) — `get_full_graph_topology()`, `get_valuable_detours()`
 
 ### 6.2 MongoDB — Landing Zone & Operational Store
 
@@ -197,15 +197,15 @@ Database: **`porter_collections`**
 | `semantic_vectors` | Vector embeddings for agent long-term memory |
 
 **Access Layer:**
-- [mongo_storage.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/mongo_storage.py) — `SovereignMongoStorage` class (CRUD for all collections)
-- [mongo_client/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/mongo_client) — Lower-level connection, event processor, UUID manager, time-series helpers
+- [mongo_storage.py](../../src/database/mongo_storage.py) — `SovereignMongoStorage` class (CRUD for all collections)
+- [mongo_client/](../../src/database/mongo_client) — Lower-level connection, event processor, UUID manager, time-series helpers
 
 ### 6.3 Vector Database — Long-Term Semantic Memory (In Progress)
 
 | Client | File | Status |
 |---|---|---|
-| ChromaDB | [chromadb_client.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/vector_database/chromadb_client.py) | Experimental |
-| Weaviate | [weaviate_client.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/vector_database/weaviate_client.py) | Experimental |
+| ChromaDB | [chromadb_client.py](../../src/database/vector_database/chromadb_client.py) | Experimental |
+| Weaviate | [weaviate_client.py](../../src/database/vector_database/weaviate_client.py) | Experimental |
 
 **Goal:** Enable unstructured semantic search for agents (journal memory, reflection recall). Currently pivoting to a local/sovereign solution with IVF/PQ compression to stay within a 1GB memory budget.
 
@@ -230,7 +230,7 @@ sequenceDiagram
     Neo-->>Fmt: mark neo4j_synced = True
 ```
 
-**Orchestrator:** [sync_calendar_to_graph.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/orchestrators/sync_calendar_to_graph.py) — Runs all 5 phases in sequence. Triggered via `POST /api/admin/sync_calendar`.
+**Orchestrator:** [sync_calendar_to_graph.py](../../src/orchestrators/sync_calendar_to_graph.py) — Runs all 5 phases in sequence. Triggered via `POST /api/admin/sync_calendar`.
 
 ### 7.2 Daily Reflection Pipeline (Frontend → CrewAI → MongoDB)
 
@@ -274,7 +274,7 @@ sequenceDiagram
 
 ## 8. Context Engine
 
-The [SovereignContextEngine](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/database/context_engine.py) is the **bridge** between the Neo4j graph and the LLM agents:
+The [SovereignContextEngine](../../src/database/context_engine.py) is the **bridge** between the Neo4j graph and the LLM agents:
 
 1. **`get_hero_snapshot()`** — Queries `(Hero)-[:HAS_ARTIFACTS]->(Artifacts)-[:GUIDED_BY]->(Principle)` and `[:HAS_INTENT]->(Intent)` to extract the Hero's principles and active intentions.
 2. **`analyze_day_delta()`** — Compares planned vs. actual events using the context.
@@ -318,7 +318,7 @@ graph LR
 
 ### Production (GCP Cloud Run)
 - **Dockerfile:** Multi-stage build → Python 3.12-slim → Gunicorn (1 worker, 4 threads, 300s timeout)
-- **[deploy_gcp.sh](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/deploy_gcp.sh):** Utilizes `sync_secrets_gcp.sh` to upload `.env` natively to **GCP Secret Manager**, binding them securely via `--set-secrets`.
+- **[deploy_gcp.sh](../../deploy_gcp.sh):** Utilizes `sync_secrets_gcp.sh` to upload `.env` natively to **GCP Secret Manager**, binding them securely via `--set-secrets`.
 - **Health Check:** `curl -f http://localhost:5090/` every 30s
 - **Memory Budget:** 1024Mi
 - **Port:** 5090
@@ -366,12 +366,12 @@ A multi-page static application served by Flask:
 
 ## 12. RAG System (Standalone)
 
-Located in [rag_system/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system), this is a **separate** pipeline for research paper ingestion:
+Located in [rag_system/](../../rag_system), this is a **separate** pipeline for research paper ingestion:
 
-- [build_rag_index.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system/build_rag_index.py) — PDF extraction and chunking
-- [rag_service.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system/rag_service.py) — Query service over indexed chunks
-- [pipeline/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system/pipeline) — Processing stages
-- [rag_core/](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/rag_system/rag_core) — Core retrieval logic
+- [build_rag_index.py](../../rag_system/build_rag_index.py) — PDF extraction and chunking
+- [rag_service.py](../../rag_system/rag_service.py) — Query service over indexed chunks
+- [pipeline/](../../rag_system/pipeline) — Processing stages
+- [rag_core/](../../rag_system/rag_core) — Core retrieval logic
 
 Data stored in `data/chunks_*.json` and `data/papers/`.
 
@@ -380,7 +380,7 @@ Data stored in `data/chunks_*.json` and `data/papers/`.
 ## 13. Open Infrastructure Items
 
 > [!IMPORTANT]
-> These are tracked in [ACTIVE_BACKEND_TASKS.md](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/Documentation/Current_Future_work/ACTIVE_BACKEND_TASKS.md) and represent incomplete or planned work.
+> These are tracked in [ACTIVE_BACKEND_TASKS.md](../../Documentation/Current_Future_work/ACTIVE_BACKEND_TASKS.md) and represent incomplete or planned work.
 
 | Area | Status | Detail |
 |---|---|---|

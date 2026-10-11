@@ -84,6 +84,7 @@ dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "pylint>=3.0.0",
+    "mongomock>=4.3.0",
 ]
 
 [tool.pyright]

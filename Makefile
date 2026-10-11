@@ -21,7 +21,7 @@ else
 endif
 
 # Phony targets to prevent conflicts with file names
-.PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse sync-brain ingest-private-brain trace-lineage
+.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage
 
 help: ## Show this help message with available commands
 ifeq ($(OS),Windows_NT)
@@ -49,6 +49,14 @@ ifeq ($(OS),Windows_NT)
 else
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
 	uv sync --dev
+endif
+
+install-hooks: ## Install local git pre-push security hook
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "Copy-Item scripts/git_hooks/pre-push .git/hooks/pre-push -Force; Write-Host 'Pre-push security hook installed successfully.'"
+else
+	@cp scripts/git_hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+	@echo "Pre-push security hook installed successfully."
 endif
 
 update: ## Update the conda environment dependencies using uv sync
@@ -98,6 +106,15 @@ lint: ## Run code quality checks (codespell, ruff, mypy)
 	uv run codespell -s
 	uv run ruff check . --diff
 	uv run mypy .
+
+verify-done: ## Enforce automated quality gates before marking a task done
+	@echo "1. Checking lint & style..."
+	uv run ruff check src tests
+	@echo "2. Checking static types..."
+	uv run mypy src
+	@echo "3. Running unit test suite..."
+	uv run pytest tests/unit -v --tb=short
+	@echo "=== ALL QUALITY GATES PASSED: TASK DONE ==="
 
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)

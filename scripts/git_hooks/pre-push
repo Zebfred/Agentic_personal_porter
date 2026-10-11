@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Agentic Personal Porter - Pre-Push Security & Secret Scan Hook
+#
+# Prevents accidental publication of secrets, API keys, credentials, or private
+# files to remote repositories (GitHub, GitLab, etc.).
+# Runs automatically before every `git push`.
+# Compatible with Linux, macOS, and Windows (Git for Windows sh.exe).
+# =============================================================================
+set -euo pipefail
+
+echo "🔒 [Security Hook] Verifying outgoing commits for secrets and sensitivities..."
+
+# --- Check 1: Tracked Sensitive Directories & Files ---
+# Verify that no .auth/ or secret environment files are accidentally tracked by git.
+TRACKED_AUTH=$(git ls-files .auth/ 2>/dev/null || true)
+if [ -n "$TRACKED_AUTH" ]; then
+    echo "❌ PRE-PUSH REJECTED: Sensitive files tracked in .auth/ directory:"
+    echo "$TRACKED_AUTH"
+    echo "Run: git rm --cached -r .auth/ to unstage."
+    exit 1
+fi
+
+TRACKED_ENV=$(git ls-files | grep -E '\.env$|\.env\.' | grep -v '\.env\.example' | grep -v '\.gitignore' || true)
+if [ -n "$TRACKED_ENV" ]; then
+    echo "❌ PRE-PUSH REJECTED: Sensitive .env file is tracked by git:"
+    echo "$TRACKED_ENV"
+    echo "Run: git rm --cached <file> to unstage."
+    exit 1
+fi
+
+TRACKED_TOKENS=$(git ls-files | grep -E 'token\.pickle|token\.json|credentials\.json|\.pem$|\.key$' || true)
+if [ -n "$TRACKED_TOKENS" ]; then
+    echo "❌ PRE-PUSH REJECTED: Credential or token file is tracked by git:"
+    echo "$TRACKED_TOKENS"
+    echo "Run: git rm --cached <file> to unstage."
+    exit 1
+fi
+
+# --- Check 2: Scan Outgoing Commits Diff for Sensitive Patterns ---
+REMOTE="${1:-origin}"
+URL="${2:-}"
+z40="0000000000000000000000000000000000000000"
+
+SECRET_FOUND=0
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+    if [ "$local_oid" = "$z40" ]; then
+        continue # Deleting a remote branch, skip
+    fi
+
+    if [ "$remote_oid" = "$z40" ]; then
+        # New branch being pushed: compare against main or upstream tracking
+        if git rev-parse --verify origin/main >/dev/null 2>&1; then
+            RANGE="origin/main..$local_oid"
+        elif git rev-parse --verify origin/master >/dev/null 2>&1; then
+            RANGE="origin/master..$local_oid"
+        else
+            RANGE="$local_oid"
+        fi
+    else
+        RANGE="$remote_oid..$local_oid"
+    fi
+
+    # Extract only added/modified lines (starting with +) excluding git diff headers (+++)
+    DIFF_CONTENT=$(git diff -U0 "$RANGE" 2>/dev/null | grep -E '^\+[^+]' || true)
+    if [ -z "$DIFF_CONTENT" ]; then
+        continue
+    fi
+
+    # Pattern A: API Keys (Google/Gemini, OpenAI, Groq, GitHub, Slack, AWS)
+    API_MATCH=$(echo "$DIFF_CONTENT" | grep -iE '(AIza[a-zA-Z0-9_-]{35}|sk-proj-[a-zA-Z0-9_-]{20,}|sk-[a-zA-Z0-9]{20,}|gsk_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{50,}|glpat-[a-zA-Z0-9_-]{20,}|xox[baprs]-[a-zA-Z0-9-]{10,}|AKIA[0-9A-Z]{16})' || true)
+    if [ -n "$API_MATCH" ]; then
+        echo "❌ PRE-PUSH REJECTED: Potential live API key detected in outgoing commits!"
+        echo "$API_MATCH" | head -n 5
+        SECRET_FOUND=1
+    fi
+
+    # Pattern B: Private Key Blocks
+    KEY_MATCH=$(echo "$DIFF_CONTENT" | grep -E '-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----' || true)
+    if [ -n "$KEY_MATCH" ]; then
+        echo "❌ PRE-PUSH REJECTED: Private cryptographic key material detected in outgoing commits!"
+        echo "$KEY_MATCH" | head -n 3
+        SECRET_FOUND=1
+    fi
+done
+
+if [ "$SECRET_FOUND" -ne 0 ]; then
+    echo ""
+    echo "⚠️  Push aborted to protect against accidental credential exposure."
+    echo "Please remove the secret from your commit history before pushing."
+    exit 1
+fi
+
+echo "✅ [Security Hook] Pre-push verification passed: No secrets or sensitive files detected."
+exit 0
