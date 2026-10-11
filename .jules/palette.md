@@ -24,3 +24,6 @@
 ## 2024-05-20 - Missing Labels on Textareas and Inputs in Adventure Journal
 **Learning:** The `Adventure_Journal.html` page lacked explicit `<label>` elements for its date input and textareas, which negatively impacts screen reader users who rely on labeled fields to understand the required input.
 **Action:** Added `.sr-only` labels to these inputs (specifically `weekly-expectation-text`, `journal-date-picker`, and `daily-journal-text`) to provide necessary context for assistive tech while preserving the visual layout.
+## 2024-05-20 - Missing loading states on async actions in verification flow
+**Learning:** Found that long-running async actions (like the Approve All audits feature in `user_hub.js` and `admin_hub.js`) lacked proper disabled loading states during API fetch, allowing users to rapidly click buttons resulting in duplicate API requests.
+**Action:** Always verify that interactive buttons that trigger async `fetch` requests temporarily update their text (e.g., "Approving..."), disable the button with `disabled = true`, and restore the original state within a `finally` block to ensure errors don't permanently disable the interface.
