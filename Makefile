@@ -21,7 +21,7 @@ else
 endif
 
 # Phony targets to prevent conflicts with file names
-.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage test-sentinel test-bolt test-palette test-silas test-archie test-docdoc test-devops test-critic test-roster
+.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage test-sentinel test-bolt test-palette test-silas test-archie test-docdoc test-dave test-devops test-crii test-critic test-jovol test-roster
 
 help: ## Show this help message with available commands
 ifeq ($(OS),Windows_NT)
@@ -145,18 +145,27 @@ test-docdoc: ## DocDoc profile check: markdown hierarchy, kebab-case naming, and
 	@python3 scripts/analyze_scripts/verify_doc_hygiene.py
 	@echo "✅ DocDoc documentation checks passed."
 
-test-devops: ## DevOps profile check: docker compose integrity and GitHub Actions SHA pinning
-	@echo "⚙️ Running DevOps CI/CD & Infrastructure Checks..."
+test-dave: ## Dave profile check: docker compose integrity and GitHub Actions SHA pinning
+	@echo "⚙️ Running Dave (DevOps) CI/CD & Infrastructure Checks..."
 	@python3 scripts/analyze_scripts/verify_devops.py
-	@echo "✅ DevOps infrastructure checks passed."
+	@echo "✅ Dave (DevOps) infrastructure checks passed."
 
-test-critic: ## Critic profile check: adversarial stress tests, edge cases, and fallback verification
-	@echo "🔍 Running Critic Adversarial Profile Checks..."
+test-devops: test-dave ## Alias for test-dave
+
+test-crii: ## Crii profile check: adversarial stress tests, edge cases, and fallback verification
+	@echo "🔍 Running Crii (Adversarial Critic) Profile Checks..."
 	@uv run pytest tests/unit/test_api_schemas.py tests/test_llm_resilience.py tests/unit/test_mock_mongo.py -v --tb=short
-	@echo "✅ Critic adversarial checks passed."
+	@echo "✅ Crii adversarial checks passed."
 
-test-roster: test-sentinel test-bolt test-palette test-archie test-docdoc test-devops test-critic ## Run full automated profile checks across all agent personas
-	@echo "🌟 ALL 7 AGENT PROFILE CHECKS PASSED SUCCESSFULLY!"
+test-critic: test-crii ## Alias for test-crii
+
+test-jovol: ## Jovol profile check: JS functional component syntax and Spec Kit design tokens
+	@echo "⚛️ Running Jovol (JS Functional Component) Profile Checks..."
+	@python3 scripts/analyze_scripts/verify_components.py
+	@echo "✅ Jovol functional component checks passed."
+
+test-roster: test-sentinel test-bolt test-palette test-archie test-docdoc test-dave test-crii test-jovol ## Run full automated profile checks across all agent personas
+	@echo "🌟 ALL 8 AGENT PROFILE CHECKS PASSED SUCCESSFULLY!"
 
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)

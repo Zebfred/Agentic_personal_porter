@@ -1,6 +1,6 @@
-# Critic's Journal - Critical Learnings & Operational Playbook
+# Crii's Journal - Critical Learnings & Operational Playbook
 
-This document is a living record of critical learnings, adversarial vulnerability patterns, edge cases, and failure mode analyses accumulated during stress-testing and architectural review of the personal porter application.
+This document is a living record of critical learnings, adversarial vulnerability patterns, edge cases, and failure mode analyses accumulated by **Crii** (Adversarial Critic) during stress-testing and architectural review of the personal porter application.
 
 ## 2026-10-11 - Hostile Boundary Inputs and Type Coercion Exploits
 **Learning:** Assuming that incoming query parameters, JSON payloads, or calendar summary fields conform to expected types allows malformed, oversized, or nested payloads to trigger unexpected unhandled exceptions (500s) or crash worker processes.

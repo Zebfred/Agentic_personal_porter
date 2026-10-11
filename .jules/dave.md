@@ -1,6 +1,6 @@
-# DevOps's Journal - Critical Learnings & Operational Playbook
+# Dave's Journal - Critical Learnings & Operational Playbook
 
-This document is a living record of critical learnings, infrastructure automation, container orchestration, and CI/CD security accumulated during the development and maintenance of the personal porter application.
+This document is a living record of critical learnings, infrastructure automation, container orchestration, and CI/CD security accumulated by **Dave** (DevOps Engineer) during the development and maintenance of the personal porter application.
 
 ## 2026-10-11 - Mandatory 40-Character SHA Pinning in GitHub Actions
 **Learning:** Referencing mutable Git tags (e.g. `actions/checkout@v4` or `@v3`) in GitHub Actions workflows exposes the CI/CD pipeline to supply chain attacks if upstream tags are maliciously retargeted or hijacked.

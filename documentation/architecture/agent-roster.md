@@ -23,12 +23,12 @@ To eliminate cognitive friction, maintain zero-trust security, and preserve deve
          │                  │                       │                       │                  │
          └──────────────────┴───────────┬───────────┴───────────────────────┴──────────────────┘
                                         │
-                         ┌──────────────┴──────────────┐
-                         ▼                             ▼
-                  ⚙️ DevOps                     🔍 Critic
-                  (CI/CD & Containers)          (Adversarial Inquisitor)
-                  .jules/devops.md              .jules/critic.md
-                  make test-devops              make test-critic
+                         ┌──────────────┼──────────────┐
+                         ▼              ▼              ▼
+                  ⚙️ Dave         🔍 Crii         ⚛️ Jovol
+                  (DevOps)        (Adversarial)  (JS Components)
+                  .jules/dave.md  .jules/crii.md .jules/jovol.md
+                  make test-dave  make test-crii make test-jovol
                                         │
            ┌────────────────────────────┼────────────────────────────┐
            ▼                            ▼                            ▼
@@ -104,25 +104,38 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 
 ---
 
-### ⚙️ DevOps — Infrastructure, CI/CD & Containers
-* **Profile Source**: [`.jules/devops.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/devops.md)
-* **Antigravity Agent Name**: `devops`
+### ⚙️ Dave — DevOps, CI/CD & Infrastructure Engineer
+* **Profile Source**: [`.jules/dave.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/dave.md)
+* **Antigravity Agent Name**: `dave`
 * **Core Directives**:
   1. **Supply Chain Hardening**: Pin all third-party GitHub Actions to immutable 40-character commit SHAs with version comments (e.g. `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`).
   2. **Container Determinism**: Validate Docker Compose configurations (`docker compose config --quiet`) with explicit healthchecks and dependency sequencing.
   3. **FinOps Guardrails**: Implement billing alarms, quota caps, and timeout killswitches to prevent runaway cloud compute or vector search costs.
-* **Automated Test Target**: `make test-devops` (validates Docker Compose integrity and checks GitHub Action SHA pinning).
+* **Automated Test Target**: `make test-dave` (or `make test-devops`).
 
 ---
 
-### 🔍 Critic — Adversarial Inquisitor & Failure Mode Hunter
-* **Profile Source**: [`.jules/critic.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/critic.md)
-* **Antigravity Agent Name**: `critic`
+### 🔍 Crii — Adversarial Inquisitor & Failure Mode Hunter
+* **Profile Source**: [`.jules/crii.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/crii.md)
+* **Antigravity Agent Name**: `crii`
 * **Core Directives**:
   1. **Adversarial Input Fuzzing**: Actively formulate test fixtures injecting null bytes, extreme string lengths, malformed JSON, and unexpected types into endpoints and parsers.
   2. **Concurrency & Race Conditions**: Hunt down race conditions, cursor exhaustion, and double-execution issues in async loops and bulk writes.
   3. **Challenge Assumptions**: Perform pre-mortems on architectural designs, demanding circuit breakers, exponential backoff with jitter, and robust fallbacks for all downstream services.
-* **Automated Test Target**: `make test-critic` (runs adversarial error-handling, schema boundary tests, LLM fallbacks, and mock DB isolation).
+* **Automated Test Target**: `make test-crii` (or `make test-critic`).
+
+---
+
+### ⚛️ Jovol — JS Functional Component & Spec Kit Specialist
+* **Profile Source**: [`.jules/jovol.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/jovol.md) & [`scratch/jovol.txt`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/scratch/jovol.txt)
+* **Antigravity Agent Name**: `jovol`
+* **Core Directives**:
+  1. **Spec Kit Assembly**: Assemble UI views in `components/views/` using only approved atomic primitives from `components/spec-kit/` documented in `COMPONENT_REGISTRY.md`. Never invent arbitrary raw Tailwind styles.
+  2. **Server Components First**: Treat React Server Components (RSC) as the default in Next.js App Router for zero client-bundle overhead and direct database access. Use `'use client'` strictly for interactive leaf elements.
+  3. **Strict TypeScript Interfaces**: Every functional component must declare an explicit TypeScript `Props` interface with strict types.
+  4. **Glassmorphic Design Tokens**: Adhere to centralized semantic glassmorphism tokens (`--glass-surface`, `--glass-border`) for the 20-second recon loop hero experience.
+  5. **Route Group Perimeter**: Keep LLC static marketing pages in `app/(marketing)/` completely separated from dynamic personal porter dashboards in `app/(dashboard)/`.
+* **Automated Test Target**: `make test-jovol` (validates JS syntax across `frontend/js/*.js` via `node -c`, checks design tokens, and enforces Spec Kit registry rules).
 
 ---
 
@@ -141,8 +154,8 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 | Domain Agent | Active Sprint Document | Primary Scope | Primary Quality Partners |
 | :--- | :--- | :--- | :--- |
 | `backend-porter` | [`documentation/current-work/active-backend-tasks.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-backend-tasks.md) | Flask routes, DB connectors, calendar sync | 🛡️ Sentinel, ⚡ Bolt & 🏛️ Archie |
-| `frontend-porter` | [`documentation/current-work/active-frontend-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-frontend-dev.md) | HTML UI, Vanilla JS state, Tailwind CSS v4 | 🎨 Palette & 🔍 Critic |
-| `agentic-porter` | [`documentation/current-work/active-agent-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-agent-dev.md) | GTKY agents, Socratic mirror, LLM prompts | 🏛️ Archie, 🔍 Critic & ⚙️ DevOps |
+| `frontend-porter` | [`documentation/current-work/active-frontend-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-frontend-dev.md) | HTML UI, Vanilla JS state, Tailwind CSS v4, Next.js | 🎨 Palette & ⚛️ Jovol |
+| `agentic-porter` | [`documentation/current-work/active-agent-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-agent-dev.md) | GTKY agents, Socratic mirror, LLM prompts | 🏛️ Archie, 🔍 Crii & ⚙️ Dave |
 
 ---
 
@@ -157,11 +170,12 @@ make test-bolt       # ⚡ Bolt: Query projection & DB mock performance tests
 make test-palette    # 🎨 Palette: Tailwind CSS v4 build & DOM accessibility
 make test-archie     # 🏛️ Archie: Modular architecture linting & schema typing
 make test-docdoc     # 📚 DocDoc: Markdown hierarchy, kebab-case & legacy hygiene
-make test-devops     # ⚙️ DevOps: Docker Compose & GitHub Actions SHA pinning
-make test-critic     # 🔍 Critic: Adversarial inputs, LLM resilience & fallbacks
+make test-dave       # ⚙️ Dave: Docker Compose & GitHub Actions SHA pinning (alias: test-devops)
+make test-crii       # 🔍 Crii: Adversarial inputs, LLM resilience & fallbacks (alias: test-critic)
+make test-jovol      # ⚛️ Jovol: JS syntax verification (node -c) & Spec Kit registry
 
 # Master Multi-Agent Suite
-make test-roster     # 🌟 Runs ALL 7 agent profile checks in sequence
+make test-roster     # 🌟 Runs ALL 8 agent profile checks in sequence
 
 # Final Definition of Done Gate
 make verify-done     # 🏛️ Silas: Ruff, Mypy, and Pytest full suite
@@ -169,18 +183,26 @@ make verify-done     # 🏛️ Silas: Ruff, Mypy, and Pytest full suite
 
 ---
 
-## 5. Google Jules CLI Integration
+## 5. Google Jules CLI & Slash Command Integration
 
 The repository is structured to seamlessly interoperate with Google's Jules asynchronous coding agent CLI (`@google/jules`):
 
 ```bash
-# Install Jules CLI globally
+# 1. Install Jules CLI globally
 npm install -g @google/jules
 
-# Check Jules status & authenticate
+# 2. Check Jules status & authenticate
 jules login
 
-# Dispatch tasks directly to Jules matching repo personas
+# 3. Dispatch tasks directly to Jules matching repo personas
 jules new "Audit MongoDB batch projections using Bolt operational playbook"
-jules new "Stress-test auth endpoints with adversarial payloads following Critic profile"
+jules new "Stress-test auth endpoints with adversarial payloads following Crii profile"
+jules new "Assemble Spec Kit Card primitive following Jovol operational playbook"
 ```
+
+### Slash Command Usage (`/jules`)
+In environments featuring the **Gemini CLI** extension or agentic developer tools, you can invoke the `/jules` slash command directly within your prompt session:
+```text
+/jules "Resolve CodeQL alerts and verify using Sentinel profile"
+```
+Jules spins up a remote sandbox session, applies changes conforming to the target persona's playbook in `.jules/`, and opens a pull request.
