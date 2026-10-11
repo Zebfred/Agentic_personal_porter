@@ -55,7 +55,7 @@ trigger: always_on
 * **Error Handling:** Provide clear, actionable error messages. Include traceback details for debugging in development and return appropriate HTTP status codes.
 
 ### Environment & Dependencies
-* **Environment Manager:** Use the conda environment (`conda activate agentic_porter`).
+* **Environment Manager:** Use the `uv` package manager (`uv run ...`, `uv sync`) with the project virtual environment (`.venv`).
 * **Package Manager:** Use `uv` package manager workspaces (`pyproject.toml`).
 * **Google Cloud SDK:** Use for interacting with GCP services.
 * **Make:** Use for running common development tasks (defined in the `Makefile`).
@@ -70,7 +70,7 @@ trigger: always_on
 ## 3. Workflow, Testing & Verification
 
 ### Strict Domain Scoping
-* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `documentation/current_work/active-[domain].md` document.
+* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `documentation/current-work/active-[domain].md` document.
 * **Pre-flight Check:** At the start of every session, the assigned agent MUST independently read their specific ACTIVE document before proposing any code edits.
 * **Verification Log:** As tasks are performed, the ACTIVE document must be updated to note human verification of completion.
 

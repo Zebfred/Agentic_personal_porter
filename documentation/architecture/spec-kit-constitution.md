@@ -88,7 +88,7 @@ graph TD
 1. **Markdown Storage Boundary**: All markdown (`.md`) documentation MUST be stored within the `documentation/` directory (lowercase). No markdown files are permitted in the project root with the sole exception of `README.md`.
 2. **Kebab-Case Naming Standard**: All markdown files MUST use `kebab-case` naming (e.g., `quick-start.md`, `spec-kit-constitution.md`, `active-backend-tasks.md`). UPPERCASE or snake_case markdown file names are prohibited.
 3. **Automatic Routing**: Any request to produce documentation MUST automatically route to `documentation/[category]/[kebab-name].md` without requiring explicit user instruction.
-4. **Domain Alignment**: Development must be strictly scoped to the active domain document (e.g., `documentation/current_work/active-[domain].md`). Agents MUST read the active domain document before proposing modifications and update it with a verified audit trail upon completion.
+4. **Domain Alignment**: Development must be strictly scoped to the active domain document (e.g., `documentation/current-work/active-[domain].md`). Agents MUST read the active domain document before proposing modifications and update it with a verified audit trail upon completion.
 
 ### Principle VII: Verification-Gated Delivery & Code Hygiene (Silas Protocol)
 *(Inherited from Nexus LLC Constitution Principle III)*
@@ -155,5 +155,5 @@ graph TD
      - **MAJOR**: Structural alteration, deprecation, or removal of an architectural principle.
      - **MINOR**: Addition of new principles, agent personas, or technical contracts.
      - **PATCH**: Typographical fixes, clarifications, or non-semantic wording updates.
-   - Any amendment must be recorded with a corresponding Sync Impact Report updating dependent templates and active sprint documents in `documentation/current_work/`.
+   - Any amendment must be recorded with a corresponding Sync Impact Report updating dependent templates and active sprint documents in `documentation/current-work/`.
 5. **Preset Synchronization**: When introducing or updating presets from our GitHub fork, run `specify preset resolve` to verify that template overrides correctly map to our project standards without shadowing local architecture rules.

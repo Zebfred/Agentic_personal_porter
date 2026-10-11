@@ -98,7 +98,7 @@ frontend/
 └── js/                         # Client-side state hydration & auth wrappers
 documentation/
 ├── architecture/               # High-level system design & spec-kit constitution
-├── current_work/               # Active domain sprint trackers (active-*.md)
+├── current-work/               # Active domain sprint trackers (active-*.md)
 └── development/                # Security checklists & onboarding guides
 ```
 
