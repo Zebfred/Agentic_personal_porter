@@ -35,11 +35,11 @@ else
 endif
 
 # --- Environment Management ---
-# NOTE: conda is ONLY used in the `install` target to bootstrap Python 3.12 +
+# NOTE: conda is ONLY used in the `install` target to bootstrap Python 3.14 +
 # Node.js. All runtime commands use `uv run` directly (~0.15s) instead of
 # `conda run -n ... uv run` (~1.85s) to avoid a ~1.7s per-invocation penalty.
 install: ## Create the conda environment and install all dependencies
-	conda create -n $(CONDA_ENV) python=3.12 nodejs -y
+	conda create -n $(CONDA_ENV) python=3.14 nodejs -y
 	conda run -n $(CONDA_ENV) uv sync --dev
 
 install-uv: ## Install dependencies using uv package manager
