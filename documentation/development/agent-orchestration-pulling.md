@@ -8,7 +8,7 @@ This implementation plan outlines the architecture and tasks required to scaffol
 
 ## Proposed Changes
 
-### [MODIFY] [gtky_librarian.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/agents/gtky_librarian.py)
+### [MODIFY] [gtky_librarian.py](../../src/agents/gtky_librarian.py)
 We will expand the `GTKYLibrarian` class to support a new method `classify_daily_batch`:
 1. **Load Artifacts:** It will bundle `hero_origin.json` and `hero_ambition.json` into a system context block.
 2. **Batch Iteration:** It takes a list of raw calendar events (the daily pulse).
@@ -18,7 +18,7 @@ We will expand the `GTKYLibrarian` class to support a new method `classify_daily
    - **Valuable Detours** (if the event was ad-hoc but positive)
 4. **Mint Golden Object:** The outputs are returned as a list of validated JSON structures (Golden Objects) matching the `SovereignGraphInjector` requirements.
 
-### [MODIFY] [sync_calendar_to_graph.py](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/src/orchestrators/sync_calendar_to_graph.py)
+### [MODIFY] [sync_calendar_to_graph.py](../../src/orchestrators/sync_calendar_to_graph.py)
 We will update the Master Orchestrator to integrate Phase 2:
 1. After pulling unstaged data from Mongo (Phase 1), the Orchestrator will hand the batch to the `GTKYLibrarian`.
 2. The Librarian returns the "Golden Objects."

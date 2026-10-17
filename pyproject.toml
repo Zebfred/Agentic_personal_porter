@@ -11,7 +11,7 @@ name = "agentic-personal-porter"
 version = "0.1.0"
 description = "Agentic Personal Porter"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
     "anyio>=4.13.0",
     "arxiv>=2.1.3",
@@ -84,6 +84,7 @@ dev = [
     "pytest>=9.0.3",
     "ruff>=0.15.12",
     "pylint>=3.0.0",
+    "mongomock>=4.3.0",
 ]
 
 [tool.pyright]

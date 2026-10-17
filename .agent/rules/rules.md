@@ -23,7 +23,7 @@ trigger: always_on
 ### File Retentions & Backups
 * **Backup Creation:** Always create backups for all files changed (e.g. appending a `.bk` extension).
 * **No File Deletion:** Never permanently delete files. All outdated files must be moved to the `.legacy_hr/` directory at the project root.
-* **Token Context Hygiene:** Ensure `.legacy_hr/` remains in `.gitignore` and `.cursorignore` to prevent old code from polluting the AI token context window.
+* **Token Context Hygiene:** Ensure `.legacy_hr/` remains in `.gitignore` and `.geminiignore` to prevent old code from polluting the AI token context window.
 * **Mandatory Cleanup:** Upon task completion, independently move any lingering `.bk` files into the `.legacy_hr/` directory rather than leaving them scattered in active directories.
 
 ### Temporary File & Log Management
@@ -31,7 +31,7 @@ trigger: always_on
 * **Directory Scoping:** Alternatively, place temporary logs in the `logs/` directory or scratch files in the `scratch/` directory, which are both configured to be ignored by Git.
 
 ### Private Brain Submodule & Artifact Sync
-* **Export Artifacts:** Upon task completion, the agent MUST automatically copy the finalized `task.md` and `walkthrough.md` artifacts into the `Agentic_Private_Brain/Completed_Tasks/` directory.
+* **Export Artifacts:** Upon task completion, the agent MUST automatically copy the finalized `task.md` and `walkthrough.md` artifacts into the `agentic-private-brain/completed-tasks/` directory.
 * **Artifact Naming:** The files should be renamed to include the current date and a descriptive name in kebab-case using the format: `YYYY-MM-DD-task-name-task.md` and `YYYY-MM-DD-task-name-walkthrough.md`.
 * **Sync Private Brain:** After finalizing artifacts or writing new deployment scripts into the private brain, the agent MUST execute `make sync-brain` to commit and push changes to the remote repository.
 
@@ -55,7 +55,7 @@ trigger: always_on
 * **Error Handling:** Provide clear, actionable error messages. Include traceback details for debugging in development and return appropriate HTTP status codes.
 
 ### Environment & Dependencies
-* **Environment Manager:** Use the conda environment (`conda activate agentic_porter`).
+* **Environment Manager:** Use the `uv` package manager (`uv run ...`, `uv sync`) with the project virtual environment (`.venv`).
 * **Package Manager:** Use `uv` package manager workspaces (`pyproject.toml`).
 * **Google Cloud SDK:** Use for interacting with GCP services.
 * **Make:** Use for running common development tasks (defined in the `Makefile`).
@@ -70,7 +70,7 @@ trigger: always_on
 ## 3. Workflow, Testing & Verification
 
 ### Strict Domain Scoping
-* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `documentation/current_work/active-[domain].md` document.
+* **Scope Definition:** Agent chats will individually be responsible for doing development in exactly one domain as outlined in their respective `documentation/current-work/active-[domain].md` document.
 * **Pre-flight Check:** At the start of every session, the assigned agent MUST independently read their specific ACTIVE document before proposing any code edits.
 * **Verification Log:** As tasks are performed, the ACTIVE document must be updated to note human verification of completion.
 
