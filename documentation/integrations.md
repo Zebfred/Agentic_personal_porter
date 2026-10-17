@@ -60,5 +60,23 @@ Many users prefer the readability, sharing, and long-term archival capabilities 
 
 ---
 
+## 3. Unified Spec-Kit, Atlassian Jira & Google Jules Bridge
+
+### Current State
+Implemented in `specs/002-jira-jules-bridge/` across `src/integrations/jira_client.py`, `src/integrations/jules_dispatcher.py`, `src/database/mongo_client/jira_storage.py`, `src/orchestrators/speckit_jira_bridge.py`, and `src/routes/jira_routes.py`.
+
+### Architecture & Sovereign Data Flow
+1. **Bi-Directional Jira Synchronization (`POST /api/integrations/jira/sync`)**:
+   - Reads active sprint/project issues via Atlassian Jira REST API v3 (`/rest/api/3/search/jql`) with Tenacity exponential backoff (`invoke_with_retry`).
+   - Persists records in tenant-scoped MongoDB (`jira_issues_staging`) using batched `bulk_write(ops, ordered=False)` and explicit field projections (`Bolt` compliance), and merges them idempotently into the Neo4j Identity Graph as `(:Hero)-[:PURSUES_QUEST]->(:Quest:Intention)`.
+   - Offline or rate-limited upstream creations are preserved locally with `sync_status: "pending_upstream"` and automatically flushed when connectivity resumes.
+2. **Spec-Kit to Jira Standardization Hook (`POST /api/integrations/jira/speckit-push` & `make sync-jira`)**:
+   - Parses `specs/NNN-feature/spec.md` and `tasks.md` (`\bT\d{3,}\b`), deduplicating across existing issues and automatically enriching each task with its `.jules/<persona>.md` profile (`sentinel`, `bolt`, `palette`, `archie`, `docdoc`, `dave`, `crii`, `jovol`, `silas`).
+3. **Jira ↔ Google Jules Dispatcher (`POST /api/integrations/jules/dispatch` & `make jules-dispatch`)**:
+   - Bundles the Jira ticket, Spec-Kit acceptance criteria, `.jules/<persona>.md` operational playbook, and mandatory `make test-<persona>` + `make verify-done` gates into a `JulesWorkOrder` and dispatches via `@google/jules` (`shell=False`), recording the session ID back onto the Jira issue.
+
+---
+
 ## Conclusion
-By positioning MongoDB and Neo4j as the authoritative layer, we ensure the UI remains fast and functional. Google Calendar becomes a bi-directional mirror for convenience, and Google Docs becomes a stylized, archival output. The core engine never strictly waits on external I/O to present insights to the user.
+By positioning MongoDB and Neo4j as the authoritative layer, we ensure the UI remains fast and functional. Google Calendar becomes a bi-directional mirror for convenience, Atlassian Jira and Google Jules form an autonomous project-management-to-execution bridge, and Google Docs becomes a stylized, archival output. The core engine never strictly waits on external I/O to present insights to the user.
+

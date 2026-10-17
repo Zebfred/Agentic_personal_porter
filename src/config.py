@@ -35,3 +35,7 @@ class MongoConfig:
 
     # Agent Heartbeat/Health Logging
     AGENT_HEALTH_COLLECTION = "agent_health_log"
+
+    # Jira & Jules Bridge Collections
+    JIRA_STAGING_COLLECTION = "jira_issues_staging"
+    JULES_WORK_ORDERS_COLLECTION = "jules_work_orders"

@@ -206,6 +206,13 @@ else
 	PYTHONPATH=. uv run python agentic-private-brain/deployment_scripts/ingest_private_brain.py
 endif
 
+sync-jira: ## Synchronize active Spec-Kit feature tasks with Atlassian Jira (use DRY_RUN=false for live push)
+	PYTHONPATH=. $(PYTHON) -m src.orchestrators.speckit_jira_bridge $(if $(filter false,$(DRY_RUN)),--push,--dry-run)
+
+jules-dispatch: ## Format or dispatch a Spec-Kit/Jira task to Google Jules (e.g. make jules-dispatch TASK=T001)
+	PYTHONPATH=. $(PYTHON) -m src.orchestrators.speckit_jira_bridge --dispatch-task $(or $(TASK),T001) $(if $(filter true,$(EXECUTE)),--execute-jules,--dry-run)
+
+
 # --- Frontend Assets ---
 build-css: ## Build and minify Tailwind CSS assets
 	@echo "Building CSS assets..."

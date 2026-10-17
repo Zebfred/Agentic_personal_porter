@@ -88,4 +88,9 @@ This document tracks immediate, high-priority tasks for the Python backend infra
   - Integrated zero-cost local MongoDB architecture: added `mongomock` dev dependency with `mock_mongo` fixture in `tests/conftest.py`, and added `mongo:7.0` container to `docker-compose.yml`. Updated `.auth/.env` to local URI.
   - Implemented push-button `make verify-done` automated quality gate enforcing `ruff check`, `mypy`, and `pytest tests/unit`.
   - Verified: All 34 unit tests passing, static types validated (0 issues in 70 files), and linting clean.
+- **[Oct 2026 - Unified Spec-Kit / Atlassian Jira ↔ Google Jules Bridge (`002-jira-jules-bridge`)]**
+  - Implemented zero-trust read/write `JiraClient` (`src/integrations/jira_client.py`), batched `JiraStorage` with Neo4j `Quest:Intention` Cypher merge (`src/database/mongo_client/jira_storage.py`), Pydantic v2 contracts (`src/schemas/jira_models.py`), `JulesDispatcher` (`src/integrations/jules_dispatcher.py`), Spec-Kit orchestrator & CLI (`src/orchestrators/speckit_jira_bridge.py`), and Flask blueprint (`src/routes/jira_routes.py`).
+  - Wired `.specify/extensions.yml` hooks and `Makefile` targets (`make sync-jira`, `make jules-dispatch`).
+  - Verified via `tests/unit/test_jira_jules_bridge.py`, `make verify-done`, and `make test-roster`.
+
 
