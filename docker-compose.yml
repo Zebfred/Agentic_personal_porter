@@ -62,9 +62,21 @@ services:
     networks:
       - rag-network
 
+  mongo:
+    image: mongo:7.0
+    container_name: porter-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    networks:
+      - rag-network
+
 networks:
   rag-network:
     driver: bridge
 
 volumes:
   redis-data:
+  mongo-data:

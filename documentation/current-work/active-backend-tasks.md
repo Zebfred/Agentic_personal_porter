@@ -80,3 +80,18 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Backend Auditing Pipeline:** Implement proper backend auditing logic strictly based on the frontend journal reflections to ensure reflections are cleanly digested by the agents.
 - [ ] **Neo4j Structural Verification:** Run verification checks to confirm the Identity Graph structure perfectly matches our intended schema models.
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.
+
+## Verification Log
+- **[Oct 2026 - Nexus Constitution & Zero-Cost TDD Architecture]**
+  - Established top-level **Nexus LLC Constitution** in private repository storage (`Notes_repo` and `agentic-private-brain`).
+  - Updated Porter project constitution (`documentation/architecture/spec-kit-constitution.md` v1.2.0) to inherit universal governance mindfully while keeping the public specification focused strictly on Porter technical contracts (Neo4j, Redis, Weaviate, Local MongoDB, Fiona WCAG).
+  - Integrated zero-cost local MongoDB architecture: added `mongomock` dev dependency with `mock_mongo` fixture in `tests/conftest.py`, and added `mongo:7.0` container to `docker-compose.yml`. Updated `.auth/.env` to local URI.
+  - Implemented push-button `make verify-done` automated quality gate enforcing `ruff check`, `mypy`, and `pytest tests/unit`.
+  - Verified: All 34 unit tests passing, static types validated (0 issues in 70 files), and linting clean.
+- **[Oct 2026 - Git History Clean Slate, CI/CD SHA Remediation & Python 3.14 ChromaDB Fix]**
+  - Fixed invalid/fabricated 40-char commit SHAs across `.github/workflows/main.yml`, `pylint.yml`, and `pytest.yml` (`actions/cache@v4.2.0`, `astral-sh/setup-uv@v5.3.0`) and replaced slow Miniconda provisioning in `pytest.yml` with `actions/setup-python@v5.4.0`.
+  - Pinned all remaining mutable tag references (`actions/checkout@v4`, `gitleaks/gitleaks-action@v2`, `google-github-actions/run-gemini-cli@v0`) across all 11 workflow files (`verify_devops.py --strict` passing with 0 violations).
+  - Upgraded `chromadb~=1.5.9` and removed duplicate entries in `pyproject.toml`, resolving the `pydantic.v1.errors.ConfigError` crash on Python 3.14 across `tests/rag/`.
+  - Cleaned stale merged/closed local branches (`bolt/*`, `palette-*`, `sentinel-*`, `fix/sentinel-*`) and synchronized local `main` with `origin/main`.
+  - Verified: Full `make test-roster` (all 8 agent persona checks) and `pytest tests/` (93 tests) passing.
+

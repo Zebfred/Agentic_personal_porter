@@ -15,6 +15,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 import time
 import random
+from urllib.parse import urlparse
 
 
 class PaperScraper:
@@ -217,12 +218,16 @@ class PaperScraper:
                 for link in paper.links:
                     # Links can be Link objects or strings
                     link_str = str(link) if not isinstance(link, str) else link
-                    if '/pdf/' in link_str and 'arxiv.org' in link_str:
+                    parsed_link = urlparse(link_str)
+                    is_arxiv_host = parsed_link.netloc == 'arxiv.org' or parsed_link.netloc.endswith('.arxiv.org')
+                    if '/pdf/' in parsed_link.path and is_arxiv_host:
                         pdf_url = link_str
                         break
                     # Also check if it's a Link object with href
                     if hasattr(link, 'href'):
-                        if '/pdf/' in link.href:
+                        parsed_href = urlparse(link.href)
+                        is_arxiv_href = parsed_href.netloc == 'arxiv.org' or parsed_href.netloc.endswith('.arxiv.org')
+                        if '/pdf/' in parsed_href.path and is_arxiv_href:
                             pdf_url = link.href
                             break
 
@@ -233,14 +238,16 @@ class PaperScraper:
             # Method 4: Construct from entry_id if still no URL
             if not pdf_url and hasattr(paper, 'entry_id') and paper.entry_id:
                 entry_id = paper.entry_id
+                parsed_entry = urlparse(entry_id)
+                is_arxiv_entry = parsed_entry.netloc == 'arxiv.org' or parsed_entry.netloc.endswith('.arxiv.org')
                 # Entry ID format: http://arxiv.org/abs/1707.06347v2
                 # PDF URL format: https://arxiv.org/pdf/1707.06347v2.pdf
-                if '/abs/' in entry_id:
+                if is_arxiv_entry and '/abs/' in parsed_entry.path:
                     # Replace http with https and /abs/ with /pdf/, add .pdf
                     pdf_url = entry_id.replace('http://', 'https://').replace('/abs/', '/pdf/') + '.pdf'
-                elif 'arxiv.org' in entry_id:
+                elif is_arxiv_entry:
                     # Extract the ID part and construct PDF URL
-                    parts = entry_id.split('/')
+                    parts = parsed_entry.path.split('/')
                     if len(parts) >= 2:
                         paper_id = parts[-1]  # Get the ID part
                         pdf_url = f"https://arxiv.org/pdf/{paper_id}.pdf"
