@@ -55,7 +55,7 @@ install-hooks: ## Install local git pre-push security hook
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "Copy-Item scripts/git_hooks/pre-push .git/hooks/pre-push -Force; Write-Host 'Pre-push security hook installed successfully.'"
 else
-	@cp scripts/git_hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+	@mkdir -p .git/hooks && cp scripts/git_hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
 	@echo "Pre-push security hook installed successfully."
 endif
 
