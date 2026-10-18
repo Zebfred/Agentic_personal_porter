@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Jovol JS Functional Component & Spec Kit Verification Tool
 ==========================================================
