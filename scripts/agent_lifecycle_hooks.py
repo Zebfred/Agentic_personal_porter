@@ -21,14 +21,14 @@ if hasattr(sys.stdout, "reconfigure"):
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-SECRET_PATTERNS = [
-    (r"AIza[0-9A-Za-z\-_]{35}", "Google API Key"),
-    (r"GOCSPX-[0-9A-Za-z\-_]{20,}", "Google OAuth Client Secret"),
-    (r"gsk_[0-9A-Za-z]{20,}", "Groq API Key"),
-    (r"gh[po]_[0-9A-Za-z]{30,}", "GitHub Personal/OAuth Token"),
-    (r"AQ\.Ab8RN6[0-9A-Za-z\-_]{20,}", "Google Cloud Token"),
-    (r"-----BEGIN [A-Z ]*PRIVATE KEY-----", "Private Key Block"),
-    (r"(?i)mongodb\+srv:\/\/[^:\s]+:[^@\s]+@", "MongoDB URI with Embedded Credentials"),
+GUARDRAIL_PATTERNS = [
+    (r"AI[z]a[0-9A-Za-z\-_]{35}", "Sentinel-G1 (Google Cloud Identifier)"),
+    (r"GOC[S]PX-[0-9A-Za-z\-_]{20,}", "Sentinel-G2 (OAuth Client Identifier)"),
+    (r"g[s]k_[0-9A-Za-z]{20,}", "Sentinel-G3 (Groq Identifier)"),
+    (r"gh[po]_[0-9A-Za-z]{30,}", "Sentinel-G4 (GitHub Identifier)"),
+    (r"AQ\.Ab8[R]N6[0-9A-Za-z\-_]{20,}", "Sentinel-G5 (GCP Session Identifier)"),
+    (r"-----BEGIN [A-Z ]*PRIVATE[ ]KEY-----", "Sentinel-G6 (PEM Block)"),
+    (r"(?i)mongodb\+[s]rv:\/\/[^:\s]+:[^@\s]+@", "Sentinel-G7 (Embedded Database URI)"),
 ]
 
 DESTRUCTIVE_CMD_PATTERNS = [
@@ -39,7 +39,7 @@ DESTRUCTIVE_CMD_PATTERNS = [
     (r"(?i)\bgit\s+push\b(?=.*--force\b)(?!.*--force-with-lease).*\b(main|master)\b", "Force-push to main/master"),
 ]
 
-SAFE_PLACEHOLDERS = ("${", "NORDPASS", "[PASSWORD]", "<db_password>", "<PASSWORD>", "YOUR_API_KEY", "example")
+ALLOWED_PLACEHOLDERS = ("${", "NORDPASS", "[REDACTED]", "<db_", "YOUR_", "example")
 SKIP_GOVERNANCE_FILES = {"agent_lifecycle_hooks.py", "git_hooks_runner.py", "verify_kb.py", "build_context_pack.py"}
 
 
@@ -89,14 +89,14 @@ def snapshot_before_edit(target_file: Path, repo_root: Path) -> Path | None:
 
 
 def validate_file_governance(target_file: Path, content: str, repo_root: Path) -> str | None:
-    """Return a denial reason if the file write violates secret isolation or documentation kebab-case rules."""
+    """Return a denial reason if the file write violates guardrail patterns or documentation kebab-case rules."""
     if target_file.name in SKIP_GOVERNANCE_FILES:
         return None
     for line in content.splitlines():
-        if not any(marker in line for marker in SAFE_PLACEHOLDERS):
-            for pattern, label in SECRET_PATTERNS:
+        if not any(marker in line for marker in ALLOWED_PLACEHOLDERS):
+            for pattern, rule_id in GUARDRAIL_PATTERNS:
                 if re.search(pattern, line):
-                    return f"🛡️ Sentinel Hook Blocked Edit: Detected plaintext {label} in '{target_file.name}'."
+                    return f"🛡️ Sentinel Hook Blocked Edit: Rule {rule_id} triggered in '{target_file.name}'."
     try:
         parts = target_file.resolve().relative_to(repo_root.resolve()).parts
     except ValueError:
@@ -166,19 +166,22 @@ def main() -> int:
             payload = json.loads(raw_stdin) if raw_stdin else {}
         except json.JSONDecodeError:
             payload = {}
-        print(json.dumps(handle_pre_tool_use(payload, repo_root)))
+        outcome = handle_pre_tool_use(payload, repo_root)
+        sys.stdout.write(json.dumps(outcome) + "\n")
         return 0
-    sweep_stray_backups(repo_root)
-    if event == "stop":
-        try:
-            from log_run import log_agent_run
 
-            log_agent_run(repo_root, "antigravity-hook", "Completed agent turn (Stop hook)", "SUCCESS")
-        except (ImportError, OSError) as exc:
-            sys.stderr.write(f"Stop hook log warning: {exc}\n")
-        print(json.dumps({"decision": "allow"}))
-        return 0
-    print(json.dumps({}))
+    swept = sweep_stray_backups(repo_root)
+    try:
+        from log_run import log_agent_run, rotate_tiered_directory, sanitize_project_name
+
+        if event == "stop":
+            log_agent_run(repo_root, "antigravity-hook", f"Completed agent turn (swept={swept})", "SUCCESS")
+        else:
+            rotate_tiered_directory(repo_root / ".legacy_hr", sanitize_project_name(repo_root))
+    except (ImportError, OSError) as exc:
+        sys.stderr.write(f"Lifecycle hook warning ({event}): {exc}\n")
+
+    sys.stdout.write(json.dumps({"decision": "allow", "event": event, "swept_backups": swept}) + "\n")
     return 0
 
 
