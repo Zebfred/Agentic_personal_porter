@@ -27,9 +27,12 @@ token.json
 credentials.json
 *.json
 !package.json
+!.agents/hooks.json
+!.agents/skill-stack.json
 
 # Ignore sensitive data
 data/*
+!data/.gitkeep
 !data/category_mapping.example.json
 *.bin
 src/data/chroma_db/*
@@ -39,14 +42,7 @@ node_modules/
 
 #Ignore Scratch work
 scratch/
-scripts/scratch/*
 scripts/analyze_scripts/sync_gcp_secrets.*
-
-#Potentially Sensitive documentation
-Documentation/issues_and_audit/*
-Documentation/Outdated_Doc/*
-Documentation/notes/*
-Documentation/Completed_Tasks/
-Documentation/Current_work/*
+scripts/deployment_scripts
 
 **/check_status.py

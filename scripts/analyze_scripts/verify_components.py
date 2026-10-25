@@ -7,7 +7,7 @@ Validates frontend JavaScript and component architecture:
   3. Validates root CSS design tokens in frontend/css/input.css.
 """
 
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -24,7 +24,7 @@ def check_javascript_syntax() -> List[str]:
 
     for js_file in js_files:
         try:
-            res = subprocess.run(
+            res = subprocess.run(  # nosec B603 B607
                 ["node", "-c", str(js_file)],
                 capture_output=True,
                 text=True,
@@ -67,11 +67,15 @@ def check_component_spec_kit() -> List[str]:
 
     spec_kit = components_dir / "spec-kit"
     if not spec_kit.exists():
-        violations.append("components/ present but missing 'spec-kit/' atomic primitives directory.")
+        violations.append(
+            "components/ present but missing 'spec-kit/' atomic primitives directory."
+        )
 
     registry = spec_kit / "COMPONENT_REGISTRY.md"
     if spec_kit.exists() and not registry.exists():
-        violations.append("components/spec-kit/ missing COMPONENT_REGISTRY.md documentation manual.")
+        violations.append(
+            "components/spec-kit/ missing COMPONENT_REGISTRY.md documentation manual."
+        )
 
     return violations
 

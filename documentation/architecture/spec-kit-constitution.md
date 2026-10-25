@@ -45,7 +45,7 @@ graph TD
 ## Core Principles
 
 ### Principle I: Sovereign Privacy & Zero-Trust Security (NON-NEGOTIABLE)
-*(Inherited from Nexus LLC Constitution Principle I)*
+*(Inherited from Organization Constitution Principle I)*
 1. **Zero-Trust Directory Boundary**: All credentials, OAuth refresh tokens, API keys, and sensitive user maps MUST reside exclusively in `.auth/` at the project root. This directory is strictly ignored by version control.
 2. **Fail-Secure Startup**: Cryptographic secrets (`JWT_SECRET`, `PORTER_API_KEY`, database credentials) MUST NOT contain hardcoded fallbacks or default dev strings. If a required environment variable is missing, the application MUST fail fast and loudly on startup with an explicit error.
 3. **Timing-Attack Immunity**: All sensitive token, API key, and password comparisons MUST use constant-time evaluation via `hmac.compare_digest()`. Standard equality (`==` or `!=`) on secrets is strictly forbidden.
@@ -76,7 +76,7 @@ graph TD
 5. **State Synchronization**: The client-side `weeklyLog` stored in `localStorage` MUST remain continuously and deterministically synchronized with the backend Neo4j graph.
 
 ### Principle V: Non-Destructive File Retention & Lifecycle (.legacy_hr)
-*(Inherited from Nexus LLC Constitution Principle IV)*
+*(Inherited from Organization Constitution Principle IV)*
 1. **Zero Permanent Deletion**: Files MUST NEVER be permanently deleted. Outdated, refactored, or deprecated files MUST be relocated to the `.legacy_hr/` archive directory at the project root.
 2. **Token Window Protection**: The `.legacy_hr/` directory MUST remain listed in `.gitignore` and `.geminiignore` to prevent obsolete code from polluting AI context windows.
 3. **Mandatory Backup Discipline**: Before modifying any existing file, a backup with a `.bk` extension MUST be created.
@@ -84,14 +84,14 @@ graph TD
 5. **Artifact Export**: Upon task or sprint completion, finalized `task.md` and `walkthrough.md` artifacts MUST be exported to `agentic-private-brain/completed-tasks/` matching kebab-case format: `YYYY-MM-DD-task-name-task.md` and `YYYY-MM-DD-task-name-walkthrough.md`.
 
 ### Principle VI: Documentation Supremacy, Kebab-Case Naming & Domain Scoping
-*(Inherited from Nexus LLC Constitution Principle V)*
+*(Inherited from Organization Constitution Principle V)*
 1. **Markdown Storage Boundary**: All markdown (`.md`) documentation MUST be stored within the `documentation/` directory (lowercase). No markdown files are permitted in the project root with the sole exception of `README.md`.
 2. **Kebab-Case Naming Standard**: All markdown files MUST use `kebab-case` naming (e.g., `quick-start.md`, `spec-kit-constitution.md`, `active-backend-tasks.md`). UPPERCASE or snake_case markdown file names are prohibited.
 3. **Automatic Routing**: Any request to produce documentation MUST automatically route to `documentation/[category]/[kebab-name].md` without requiring explicit user instruction.
 4. **Domain Alignment**: Development must be strictly scoped to the active domain document (e.g., `documentation/current-work/active-[domain].md`). Agents MUST read the active domain document before proposing modifications and update it with a verified audit trail upon completion.
 
 ### Principle VII: Verification-Gated Delivery & Code Hygiene (Silas Protocol)
-*(Inherited from Nexus LLC Constitution Principle III)*
+*(Inherited from Organization Constitution Principle III)*
 1. **The Push-Button Definition of Done Gate**: A task is strictly incomplete until `make verify-done` exits with return code 0:
    - Lint & style check (`uv run ruff check src tests`)
    - Static type check (`uv run mypy src`)

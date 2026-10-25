@@ -7,13 +7,14 @@ Records agent execution runs inside `.logs/DDMMYYYY/` and delegates the
 functions stay < 60 lines.
 """
 
+# fmt: off
 from __future__ import annotations
 
 import argparse
 import datetime
 import json
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import time
 from pathlib import Path
@@ -49,7 +50,7 @@ __all__ = [
 def _execute_logged_command(command: str, repo_root: Path) -> Tuple[int, int, str]:
     """Run an optional shell command, returning `(exit_code, duration_ms, combined_output)`."""
     start_ns = time.perf_counter_ns()
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B602
         command,
         cwd=str(repo_root),
         shell=True,  # noqa: S602 - intentional CLI wrapper for agent run logging

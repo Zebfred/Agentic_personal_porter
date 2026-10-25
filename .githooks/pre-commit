@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
-# Standardized Nexus LLC pre-commit hook (cross-platform Windows/Linux)
+# Standardized Porter pre-commit hook (cross-platform Windows/Linux)
 exec uv run --no-project python scripts/git_hooks_runner.py pre-commit

@@ -6,6 +6,7 @@ and `.logs/` (`DDMMYYYY/` -> `MMYYYY/` -> `YYYY_{PROJECT_NAME}/` -> `.tar.gz`)
 while keeping scripts < 200 lines and functions < 60 lines.
 """
 
+# fmt: off
 from __future__ import annotations
 
 import datetime

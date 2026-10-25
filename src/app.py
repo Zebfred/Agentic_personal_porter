@@ -4,6 +4,7 @@ Agentic Personal Porter — Application Factory
 This module creates and configures the Flask application.
 All route handlers live in src/routes/ as Flask Blueprints.
 """
+
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -13,6 +14,7 @@ from flask_cors import CORS
 
 # --- Load environment variables ---
 from src.utils.path_utils import load_env_vars
+
 load_env_vars()
 
 # --- Critical security checks ---
@@ -30,9 +32,11 @@ if not JWT_SECRET:
         "It must be set in .auth/.env for secure token generation."
     )
 
+
 def _configure_logging():
     """Set up the APP_ROUTER logger with file and console handlers."""
     from src.utils.path_utils import get_project_root
+
     log_dir = get_project_root() / "logs"
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / "app.log"
@@ -43,7 +47,7 @@ def _configure_logging():
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    fmt = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+    fmt = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
 
     file_handler = RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=2)
     file_handler.setFormatter(fmt)
@@ -55,27 +59,20 @@ def _configure_logging():
 
     return logger
 
+
 def create_app():
     """Application factory — creates, configures, and returns the Flask app."""
     logger = _configure_logging()
-
     app = Flask(__name__)
 
-    # ⚡ Bolt Optimization:
-    # Removed @app.teardown_appcontext hook for close_driver().
-    # Flask teardowns run at the end of every request. Closing the driver here
-    # destroys the Neo4j connection pool, forcing a costly reconnection for the next request.
-    # Allowing the global driver singleton to persist properly utilizes pooling.
-
-    # --- CORS ---
+    # ⚡ Bolt Optimization: Keep global Neo4j driver singleton alive across requests.
     allowed_origins_str = os.environ.get(
         "CORS_ORIGINS",
-        "http://localhost:5000,http://127.0.0.1:5000,http://localhost:6010,http://127.0.0.1:6010"
+        "http://localhost:5000,http://127.0.0.1:5000,http://localhost:6010,http://127.0.0.1:6010",
     )
     cors_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
     CORS(app, resources={r"/*": {"origins": cors_origins}})
 
-    # --- Register Blueprints ---
     from src.routes.static_routes import static_bp
     from src.routes.auth_routes import auth_bp
     from src.routes.journal_routes import journal_bp
@@ -86,49 +83,37 @@ def create_app():
     from src.routes.user_routes import user_bp
     from src.routes.jira_routes import jira_bp
 
-    # Static routes have no prefix — they serve /, /index.html, /js/*, etc.
     app.register_blueprint(static_bp)
-
-    # Auth routes: /api/login
-    app.register_blueprint(auth_bp, url_prefix='/api')
-
-    # Journal routes carry their own /api/ prefix for save_log and logs,
-    # but /process_journal stays at root for frontend backward compatibility
+    app.register_blueprint(auth_bp, url_prefix="/api")
     app.register_blueprint(journal_bp)
-
-    # Chat routes: /api/chat/porter
-    app.register_blueprint(chat_bp, url_prefix='/api')
-
-    # Calendar routes: /get_calendar_events at root (legacy frontend URL)
+    app.register_blueprint(chat_bp, url_prefix="/api")
     app.register_blueprint(calendar_bp)
+    app.register_blueprint(inventory_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp, url_prefix="/api")
+    app.register_blueprint(user_bp, url_prefix="/api/user")
+    app.register_blueprint(jira_bp, url_prefix="/api")
 
-    # Inventory routes: /api/inventory, /api/artifacts/*, /api/graph_data
-    app.register_blueprint(inventory_bp, url_prefix='/api')
-
-    # Admin routes: /api/admin/*, /api/wake_infrastructure
-    app.register_blueprint(admin_bp, url_prefix='/api')
-
-    # User routes: /api/user/*
-    app.register_blueprint(user_bp, url_prefix='/api/user')
-
-    # Jira & Jules Bridge routes: /api/integrations/*
-    app.register_blueprint(jira_bp, url_prefix='/api')
-
-    logger.info(f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 9 blueprints.")
+    logger.info(
+        f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 9 blueprints."
+    )
     return app
+
 
 # --- Entrypoint ---
 app = create_app()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logger = logging.getLogger("APP_ROUTER")
     logger.info("=" * 82)
     logger.warning("Starting the Agentic Personal Porter via Flask's built-in development server.")
     logger.warning("This server is not suitable for production deployments.")
-    logger.info("For a production WSGI server, please execute: ./run_production.sh (which uses Gunicorn)")
+    logger.info(
+        "For a production WSGI server, please execute: ./run_production.sh (which uses Gunicorn)"
+    )
     logger.info("=" * 82)
 
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    logger.info(f"Server starting on port 5090 (Debug Mode: {debug_mode})...")
+    debug_mode = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
+    run_host = os.environ.get("FLASK_RUN_HOST", "127.0.0.1")
+    logger.info(f"Server starting on {run_host}:5090 (Debug Mode: {debug_mode})...")
 
-    app.run(debug=debug_mode, host='0.0.0.0', port=5090)
+    app.run(debug=debug_mode, host=run_host, port=5090)

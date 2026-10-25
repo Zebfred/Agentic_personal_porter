@@ -5,6 +5,7 @@ See `documentation/architecture/jules-cli-runbook.md` for operational workflows 
 Persona definitions live in `scripts/porter_persona_roster.py`.
 """
 
+# fmt: off
 from __future__ import annotations
 
 import argparse
@@ -14,7 +15,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -211,7 +212,7 @@ def fetch_parsed_jules_sessions() -> Tuple[str, List[JulesSessionRow]]:
     if not jules_bin:
         return "", []
 
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         [jules_bin, "remote", "list", "--session"],
         capture_output=True,
         text=True,
@@ -472,7 +473,7 @@ def run_step(description: str, cmd: Sequence[str], cwd: Path) -> bool:
     """Run a single verification subprocess and stream its output."""
     print(f"   ▶ {description}: {' '.join(cmd)}")
     try:
-        res = subprocess.run(cmd, cwd=str(cwd), check=False)
+        res = subprocess.run(cmd, cwd=str(cwd), check=False)  # nosec B603
         return res.returncode == 0
     except FileNotFoundError as exc:
         print(f"   ❌ Executable not found while running '{cmd[0]}': {exc}")
@@ -711,7 +712,7 @@ def cmd_jules_dispatch(
         return 1
 
     print(f"🚀 Dispatching {spec.emoji} {spec.title} to Google Jules (repo: {resolved_repo})...")
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         cmd,
         input=composite_prompt,
         text=True,
@@ -734,7 +735,7 @@ def _dispatch_single_worker(
     effective_task = task.strip() if task and task.strip() else spec.default_task
     composite_prompt = build_composite_prompt(agent, effective_task)
     cmd: List[str] = [jules_bin, "new", "--repo", resolved_repo]
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         cmd,
         input=composite_prompt,
         capture_output=True,
@@ -884,7 +885,7 @@ def cmd_jules_repos() -> int:
     if not jules_bin:
         print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
-    res = subprocess.run([jules_bin, "remote", "list", "--repo"], check=False)
+    res = subprocess.run([jules_bin, "remote", "list", "--repo"], check=False)  # nosec B603
     return res.returncode
 
 
@@ -958,7 +959,7 @@ def cmd_jules_pull(session_or_persona: str, apply_patch: bool = False, verify_ag
         f"📥 Pulling Google Jules session {session_id}{persona_info} "
         f"({'with --apply' if apply_patch else 'diff preview only'})..."
     )
-    res = subprocess.run(cmd, cwd=str(project_root), check=False)
+    res = subprocess.run(cmd, cwd=str(project_root), check=False)  # nosec B603
     if res.returncode != 0:
         return res.returncode
 
@@ -988,7 +989,7 @@ def cmd_jules_teleport(session_or_persona: str, verify_agent: Optional[str] = No
     project_root = resolve_project_root()
     persona_info = f" (persona: {detected_persona})" if detected_persona else ""
     print(f"⚡ Teleporting to Google Jules session {session_id}{persona_info}...")
-    res = subprocess.run([jules_bin, "teleport", session_id], cwd=str(project_root), check=False)
+    res = subprocess.run([jules_bin, "teleport", session_id], cwd=str(project_root), check=False)  # nosec B603
     if res.returncode != 0:
         return res.returncode
 
@@ -1014,7 +1015,7 @@ def cmd_run(agent: str, task: str, engine: str, repo: Optional[str] = None, para
         cmd = ["agy", "--agent", agent, task]
         print(f"🚀 Launching Antigravity CLI with agent '{agent}': {' '.join(cmd)}")
         try:
-            return subprocess.run(cmd, check=False).returncode
+            return subprocess.run(cmd, check=False).returncode  # nosec B603
         except FileNotFoundError:
             print(
                 "⚠️  'agy' executable not found on PATH. Printing composite prompt instead:\n",

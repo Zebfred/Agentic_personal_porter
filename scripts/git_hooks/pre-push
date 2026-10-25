@@ -52,8 +52,8 @@ scan_diff_range() {
         return 0
     fi
 
-    # Pattern A: API Keys (Google/Gemini, OpenAI, Groq, GitHub, Slack, AWS)
-    API_MATCH=$(echo "$DIFF_CONTENT" | grep -iE '(AIza[a-zA-Z0-9_-]{35}|sk-proj-[a-zA-Z0-9_-]{20,}|sk-[a-zA-Z0-9]{20,}|gsk_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{50,}|glpat-[a-zA-Z0-9_-]{20,}|xox[baprs]-[a-zA-Z0-9-]{10,}|AKIA[0-9A-Z]{16})' || true)
+    # Pattern A: API Keys (Google/Gemini, OpenAI, Groq, GitHub, Slack, AWS, Atlassian Jira)
+    API_MATCH=$(echo "$DIFF_CONTENT" | grep -iE '(AIza[a-zA-Z0-9_-]{35}|sk-proj-[a-zA-Z0-9_-]{20,}|sk-[a-zA-Z0-9]{20,}|gsk_[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36}|github_pat_[a-zA-Z0-9_]{50,}|glpat-[a-zA-Z0-9_-]{20,}|xox[baprs]-[a-zA-Z0-9-]{10,}|AKIA[0-9A-Z]{16}|ATATT3xFfGF0[a-zA-Z0-9_-]{20,})' || true)
     if [ -n "$API_MATCH" ]; then
         echo "❌ PRE-PUSH REJECTED: Potential live API key detected in outgoing commits!"
         echo "$API_MATCH" | head -n 5

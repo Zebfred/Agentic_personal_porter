@@ -40,6 +40,8 @@ jobs:
 
       - name: 'Checkout repository'
         uses: 'actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8' # ratchet:actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: 'Pre-install Gemini CLI & Extensions'
         run: |
@@ -51,6 +53,7 @@ jobs:
         id: 'gemini_pr_review'
         env:
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          GITHUB_PERSONAL_ACCESS_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           ISSUE_TITLE: '${{ github.event.pull_request.title || github.event.issue.title }}'
           ISSUE_BODY: '${{ github.event.pull_request.body || github.event.issue.body }}'
           PULL_REQUEST_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
@@ -107,11 +110,16 @@ jobs:
               "tools": {
                 "core": [
                   "mcp_github_*",
+                  "ReadFileTool",
+                  "GrepTool",
+                  "GlobTool",
                   "run_shell_command(cat)",
                   "run_shell_command(echo)",
+                  "run_shell_command(gh)",
                   "run_shell_command(git)",
                   "run_shell_command(grep)",
                   "run_shell_command(head)",
+                  "run_shell_command(ls)",
                   "run_shell_command(tail)"
                 ]
               }

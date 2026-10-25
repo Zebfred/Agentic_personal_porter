@@ -48,6 +48,7 @@ jobs:
           DESCRIPTION: '${{ github.event.pull_request.body || github.event.issue.body }}'
           EVENT_NAME: '${{ github.event_name }}'
           GITHUB_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
+          GITHUB_PERSONAL_ACCESS_TOKEN: '${{ steps.mint_identity_token.outputs.token || secrets.GITHUB_TOKEN || github.token }}'
           IS_PULL_REQUEST: '${{ !!github.event.pull_request }}'
           ISSUE_NUMBER: '${{ github.event.pull_request.number || github.event.issue.number }}'
           REPOSITORY: '${{ github.repository }}'
@@ -111,10 +112,17 @@ jobs:
               },
               "tools": {
                 "core": [
+                  "mcp_github_*",
+                  "ReadFileTool",
+                  "GrepTool",
+                  "GlobTool",
                   "run_shell_command(cat)",
                   "run_shell_command(echo)",
+                  "run_shell_command(gh)",
+                  "run_shell_command(git)",
                   "run_shell_command(grep)",
                   "run_shell_command(head)",
+                  "run_shell_command(ls)",
                   "run_shell_command(tail)"
                 ]
               }

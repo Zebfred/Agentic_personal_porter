@@ -47,7 +47,7 @@ Conduct a comprehensive diagnostic evaluation of the **Agentic Personal Porter**
 | **III. Database Discipline** | Neo4j singleton pooling; MongoDB batched `bulk_write`; 1-month chunk backfills. | **PASS** | Driver singleton verified; bulk write requirement established. |
 | **IV. 20-Second Recon & A11y** | $\le 3$ clicks to log/verify; explicit `aria-label` on icon buttons; semantic CSS variables. | **PASS** | UX requirements explicitly scoped; A11y checklist established. |
 | **V. Non-Destructive Lifecycle** | Outdated files moved to `.legacy_hr/`; `.bk` files cleaned up; artifacts exported. | **PASS** | Active `.legacy_hr/` archive maintained and excluded in ignore files. |
-| **VI. Documentation Supremacy** | Lowercase `documentation/` directory; `kebab-case.md` naming convention. | **PASS** | Governed by updated `.agent/rules/rules.md` and spec-kit constitution. |
+| **VI. Documentation Supremacy** | Lowercase `documentation/` directory; `kebab-case.md` naming convention. | **PASS** | Governed by updated `.agents/rules/rules.md` and spec-kit constitution. |
 | **VII. Verification-Gated Delivery**| Definition of Done requires test suite or checklist; no bare `except:` passes. | **PASS** | Evaluation checklist and contract schema defined in Phase 1. |
 | **VIII. Preset Supremacy** | Project-local `constitution.md` takes precedence over Spec Kit fork presets. | **PASS** | Symlink `.specify/memory/constitution.md` active and intact. |
 
