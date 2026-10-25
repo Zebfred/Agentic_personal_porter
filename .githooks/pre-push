@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
-# Standardized Nexus LLC pre-push hook (Silas Constitutional Gate)
+# Standardized Porter pre-push hook (Silas Constitutional Gate)
 exec uv run --no-project python scripts/git_hooks_runner.py pre-push
