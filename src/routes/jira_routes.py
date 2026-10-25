@@ -54,7 +54,7 @@ def sync_jira_issues():
         client = JiraClient.from_env(project_key_override=validated.project_key)
     except JiraClientError as exc:
         logger.warning("Jira sync configuration error for %s: %s", user_email, exc)
-        return jsonify({"error": str(exc)}), 400
+        return jsonify({"error": "Invalid Jira configuration"}), 400
 
     storage = JiraStorage()
     flushed_count = 0
