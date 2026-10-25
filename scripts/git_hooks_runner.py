@@ -87,7 +87,7 @@ def _run_staged_linters(repo_root: Path, staged: Sequence[str], staged_py: Seque
     if not pyproject.exists() or not uv_bin:
         return errors
     cfg = pyproject.read_text(encoding="utf-8", errors="replace")
-    existing = [p for p in staged if (repo_root / p).exists()]
+    existing = [p for p in staged if (repo_root / p).exists() and Path(p).name != "uv.lock" and not p.endswith(".lock")]
     non_test_py = [p for p in staged_py if not p.replace("\\", "/").startswith("tests/")]
     checks = [
         ("Codespell", bool(existing) and "[tool.codespell]" in cfg, [uv_bin, "run", "codespell", *existing]),

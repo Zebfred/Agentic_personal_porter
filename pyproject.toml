@@ -101,7 +101,7 @@ ignore = [
 
 
 [tool.codespell]
-skip = "./node_modules,./backups,./data,*.json,*.mjs,*.js,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture,./uv.lock"
+skip = "./node_modules,./backups,./data,./.legacy_hr,./.logs,./.venv,*.json,*.mjs,*.js,*.lock,uv.lock,./uv.lock,./documentation/research,./documentation/outdated-doc,./documentation/architecture,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
 ignore-words-list = "rouge"
 
 [tool.mypy]

@@ -7,8 +7,6 @@ Validates frontend JavaScript and component architecture:
   3. Validates root CSS design tokens in frontend/css/input.css.
 """
 
-import glob
-import os
 import subprocess
 import sys
 from pathlib import Path
