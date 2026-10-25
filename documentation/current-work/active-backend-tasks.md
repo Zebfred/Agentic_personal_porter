@@ -59,9 +59,10 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [x] **Socratic Prompt Expansion:** Upgrade the reflection agent's system prompt to intelligently detect "The Fog of War" (untracked hours) and differentiate between "Restorative Rest" (positive) vs. "Mindless Stagnation" (negative). *(Verified: Added gap calculations algorithm and prompt parsing).*
 - [x] **Database Snapshots:** Set up automated cron-jobs or scripts ensuring regular, secure Neo4j graph exports to prevent catastrophic data loss during turbulent development phases. *(Verified: Created locally in `helper_scripts/neo4j_snapshot.py`).*
 
-## Cloud Operations (Mach 2)
-*Status: Architecture defined.*
+## Cloud Operations & Secret Synchronization (Mach 2 — Near-Future Priority)
+*Status: Architecture defined; multi-client secret sync queued for near-future implementation.*
 
+- [ ] **Encrypted Cloud `.auth/.env` Multi-Client Sync (PERTINENT NEAR-FUTURE TODO):** Configure `.auth/.env` provisioning to pull automatically from an encrypted cloud location (e.g., GCP Secret Manager, NordPass CLI, or encrypted cloud vault) across both laptop (Linux) and desktop (Windows) clients into the local `.auth/.env` file, eliminating manual credential drift between machines while keeping secrets strictly out of Git.
 - [x] **Cloud Cron Setup:** Configure a Cloud Scheduler (e.g., GCP Cloud Scheduler) to trigger automatic syncs. The scheduler must be configured to send an HTTP POST request to `/api/admin/sync_calendar` on a regular cadence, authenticated using the `Authorization: Bearer <PORTER_ADMIN_KEY>` header. No additional python development is required inside the container, as the endpoint is already built.
 - [x] **Dynamic Cloud Deployment:** Simplified `deploy_gcp.sh` to dynamically load all environment variables from `.auth/.env` instead of manual instantiation. *(Verified: Dynamic parsing logic implemented and tested.)*
 
@@ -88,9 +89,15 @@ This document tracks immediate, high-priority tasks for the Python backend infra
   - Integrated zero-cost local MongoDB architecture: added `mongomock` dev dependency with `mock_mongo` fixture in `tests/conftest.py`, and added `mongo:7.0` container to `docker-compose.yml`. Updated `.auth/.env` to local URI.
   - Implemented push-button `make verify-done` automated quality gate enforcing `ruff check`, `mypy`, and `pytest tests/unit`.
   - Verified: All 34 unit tests passing, static types validated (0 issues in 70 files), and linting clean.
-- **[Oct 2026 - Unified Spec-Kit / Atlassian Jira ↔ Google Jules Bridge (`002-jira-jules-bridge`)]**
-  - Implemented zero-trust read/write `JiraClient` (`src/integrations/jira_client.py`), batched `JiraStorage` with Neo4j `Quest:Intention` Cypher merge (`src/database/mongo_client/jira_storage.py`), Pydantic v2 contracts (`src/schemas/jira_models.py`), `JulesDispatcher` (`src/integrations/jules_dispatcher.py`), Spec-Kit orchestrator & CLI (`src/orchestrators/speckit_jira_bridge.py`), and Flask blueprint (`src/routes/jira_routes.py`).
-  - Wired `.specify/extensions.yml` hooks and `Makefile` targets (`make sync-jira`, `make jules-dispatch`).
-  - Verified via `tests/unit/test_jira_jules_bridge.py`, `make verify-done`, and `make test-roster`.
-
+- **[Oct 2026 - Git History Clean Slate, CI/CD SHA Remediation & Python 3.14 ChromaDB Fix]**
+  - Fixed invalid/fabricated 40-char commit SHAs across `.github/workflows/main.yml`, `pylint.yml`, and `pytest.yml` (`actions/cache@v4.2.0`, `astral-sh/setup-uv@v5.3.0`) and replaced slow Miniconda provisioning in `pytest.yml` with `actions/setup-python@v5.4.0`.
+  - Pinned all remaining mutable tag references (`actions/checkout@v4`, `gitleaks/gitleaks-action@v2`, `google-github-actions/run-gemini-cli@v0`) across all 11 workflow files (`verify_devops.py --strict` passing with 0 violations).
+  - Upgraded `chromadb~=1.5.9` and removed duplicate entries in `pyproject.toml`, resolving the `pydantic.v1.errors.ConfigError` crash on Python 3.14 across `tests/rag/`.
+  - Cleaned stale merged/closed local branches (`bolt/*`, `palette-*`, `sentinel-*`, `fix/sentinel-*`) and synchronized local `main` with `origin/main`.
+  - Verified: Full `make test-roster` (all 8 agent persona checks) and `pytest tests/` (93 tests) passing.
+- **[Oct 2026 - True CLI Agents, Google Jules Dispatcher & Hook Hardening (`feat/true-cli-jules-agents`)]**
+  - Rebased `feat/true-cli-jules-agents` onto `origin/main` (`f512964`), restoring stashed modular extraction (`scripts/porter_persona_roster.py` + `scripts/porter_cli_agents.py`) and path-redacted logging (`src/utils/path_utils.py`).
+  - Fixed multi-word timestamp parsing in `fetch_parsed_jules_sessions()`, added `.git/packed-refs` fallback in `resolve_dispatch_cwd()`, added `write_file`/`edit_file` inspection in `scripts/agent_lifecycle_hooks.py`, and enforced `ruff` + `mypy` in `scripts/git_hooks_runner.py` (`run_pre_push`).
+  - Standardized `.bk` archival to `.legacy_hr/DDMMYYYY/` (`24102026`) and upgraded `numpy>=2.1.0` in `pyproject.toml` for Python 3.14 Windows wheel compatibility.
+  - Verified: `verify_doc_hygiene.py`, `ruff check`, `mypy src` (70 files), and `pytest tests/unit` (34 passed) all passing.
 

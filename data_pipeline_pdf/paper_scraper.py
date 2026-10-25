@@ -242,7 +242,7 @@ class PaperScraper:
                 is_arxiv_entry = parsed_entry.netloc == 'arxiv.org' or parsed_entry.netloc.endswith('.arxiv.org')
                 # Entry ID format: http://arxiv.org/abs/1707.06347v2
                 # PDF URL format: https://arxiv.org/pdf/1707.06347v2.pdf
-                if '/abs/' in parsed_entry.path:
+                if is_arxiv_entry and '/abs/' in parsed_entry.path:
                     # Replace http with https and /abs/ with /pdf/, add .pdf
                     pdf_url = entry_id.replace('http://', 'https://').replace('/abs/', '/pdf/') + '.pdf'
                 elif is_arxiv_entry:

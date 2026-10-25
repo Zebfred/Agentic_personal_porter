@@ -120,3 +120,9 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# BEGIN AUTO-MANAGED LOGS RETENTION (scripts/log_run.py)
+# Recent logs (<= 3 months) remain visible to Gemini
+.logs/*_*/
+.logs/*.tar.gz
+# END AUTO-MANAGED LOGS RETENTION (scripts/log_run.py)

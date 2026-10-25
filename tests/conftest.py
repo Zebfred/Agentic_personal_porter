@@ -30,7 +30,8 @@ def mock_neo4j(monkeypatch):
     """Prevents slow network timeouts to remote Neo4j in unit tests."""
     mock_driver = MagicMock()
     mock_session = MagicMock()
-    mock_driver.session.return_value.__enter__.return_value = mock_session
+    mock_driver.session.return_value = mock_session
+    mock_session.__enter__.return_value = mock_session
     mock_session.execute_read.return_value = []
     mock_session.execute_write.return_value = []
     try:
