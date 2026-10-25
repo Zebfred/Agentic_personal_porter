@@ -38,7 +38,7 @@ This repository relies on a sprawling ecosystem of agents and meticulous documen
     *   **[`.jules/`](.jules/):** Chronological agent activity logs and operational playbooks.
 *   **[`documentation/`](documentation/):** The single source of truth for the project (strictly lowercase `kebab-case.md`).
     *   **[`documentation/current-work/`](documentation/current-work/):** Contains `active-*.md` tracker files (`active-backend-tasks.md`, `active-frontend-dev.md`, `active-agent-dev.md`).
-    *   **[`documentation/future-work/`](documentation/future-work/):** Contains `mach4-beyond-roadmap.md`, `future-extensions.md`, and `local-ollama-routing-blueprint.md`.
+    *   **[`documentation/future-work/`](documentation/future-work/):** Contains `mach4-beyond-roadmap.md` and `future-extensions.md`.
     *   **[`documentation/architecture/`](documentation/architecture/):** Contains [`spec-kit-constitution.md`](documentation/architecture/spec-kit-constitution.md), [`agent-roster.md`](documentation/architecture/agent-roster.md), [`cli-agents-guide.md`](documentation/architecture/cli-agents-guide.md), [`jules-cli-runbook.md`](documentation/architecture/jules-cli-runbook.md), [`agent-registry.md`](documentation/architecture/agent-registry.md), Neo4j [`database-schema.md`](documentation/architecture/database-schema.md), and [`script-registry.md`](documentation/architecture/script-registry.md).
 
 ## Setup & Installation
@@ -148,4 +148,4 @@ make jules-dispatch
 
 The **Mach 4** iteration focuses on advanced agent networking, Spec-Kit governance, multi-tenant architecture, and hybrid local/cloud inference. Key active and upcoming features include the **First-Serving Porter Hub API (`003-first-serving-hub-api`)**, **Hub Progress Metrics**, **Local Ollama SLM Triage**, and deep vector-semantic integration via Weaviate.
 
-Read the full future breakdown in [`documentation/future-work/mach4-beyond-roadmap.md`](documentation/future-work/mach4-beyond-roadmap.md) and [`documentation/future-work/local-ollama-routing-blueprint.md`](documentation/future-work/local-ollama-routing-blueprint.md).
+Read the full future breakdown in [`documentation/future-work/mach4-beyond-roadmap.md`](documentation/future-work/mach4-beyond-roadmap.md) and [`documentation/future-work/future-extensions.md`](documentation/future-work/future-extensions.md).
