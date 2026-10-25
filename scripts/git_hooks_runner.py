@@ -22,6 +22,23 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
 MAX_SCRIPT_LINES = 200
+
+
+def _sanitize_error_for_logging(message: str) -> str:
+    """Redact secret-like fragments before writing hook diagnostics to stdout."""
+    redacted = message
+    for pattern in SECRET_PATTERNS:
+        try:
+            redacted = re.sub(pattern, "[REDACTED_SECRET]", redacted, flags=re.IGNORECASE)
+        except re.error:
+            # Be defensive: malformed patterns must not break hook execution.
+            continue
+    redacted = re.sub(
+        r"(?i)\b(password|passwd|token|secret|api[_-]?key|access[_-]?key)\b\s*[:=]\s*([^\s,;]+)",
+        r"\1=[REDACTED_SECRET]",
+        redacted,
+    )
+    return redacted
 MAX_FUNCTION_LINES = 60
 LEGACY_EXEMPT_SCRIPTS = {"porter_cli_agents.py"}
 
@@ -141,7 +158,8 @@ def run_pre_commit(repo_root: Path) -> int:
             errors.append(f"JavaScript syntax check (node -c) failed for '{js_file}'.")
 
     if errors:
-        print("\n❌ [Nexus pre-commit BLOCKED]:\n   • " + "\n   • ".join(errors))
+        safe_errors = [_sanitize_error_for_logging(err) for err in errors]
+        print("\n❌ [Nexus pre-commit BLOCKED]:\n   • " + "\n   • ".join(safe_errors))
         return 1
     print(f"   ✅ pre-commit passed ({len(staged)} staged file(s) verified).")
     return 0
