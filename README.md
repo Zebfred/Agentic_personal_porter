@@ -21,19 +21,25 @@ We are currently developing within the **Mach 4** lifecycle—a system now opera
 This repository relies on a sprawling ecosystem of agents and meticulous documentation. **If you are contributing, you MUST read the respective documentation.**
 
 *   **[`src/`](src/):** The core intelligence engine containing:
-    *   `app.py` — Flask application factory with 8 registered Blueprints
+    *   `app.py` — Flask application factory with 9 registered Blueprints
     *   `src/agents/` — Specialized Agent architectures (First-Serving Porter, Socratic Coach, GTKY Librarian)
-    *   `src/database/` — Neo4j graph client, MongoDB storage, Weaviate/ChromaDB vector databases
-    *   `src/integrations/` — Google Calendar API, GCP Compute, embedding clients
-    *   `src/routes/` — Flask Blueprints for auth, journal, calendar, chat, inventory, admin, user
+    *   `src/database/` — Neo4j graph client, MongoDB storage (`mongomock` local TDD support), Weaviate/ChromaDB vector databases
+    *   `src/integrations/` — Google Calendar API, Atlassian Jira REST v3 client (`jira_client.py`), Google Jules CLI dispatcher (`jules_dispatcher.py`), GCP Compute, embedding clients
+    *   `src/orchestrators/` — Spec-Kit ↔ Jira/Jules bridge orchestrator (`speckit_jira_bridge.py`)
+    *   `src/routes/` — Flask Blueprints for auth, journal, calendar, chat, inventory, admin, user, and Jira/Jules integrations
+    *   `src/schemas/` — Contract-first Pydantic v2 boundary schemas (`api_models.py`, `jira_models.py`)
     *   `src/events/` — Redis-backed event publishing and worker processing
 *   **[`frontend/`](frontend/):** The client-side application featuring Vanilla JS and Tailwind CSS v4 to drive the interactive Hero's Hub and Activity Dashboards.
 *   **[`rag_system/`](rag_system/):** RAG pipeline for document ingestion and retrieval-augmented generation.
-*   **[`Documentation/`](Documentation/):** The single source of truth for the project.
-    *   **[`Documentation/Current_work/`](Documentation/Current_work/):** Contains `ACTIVE_*.md` tracker files mapping current development sprints.
-    *   **[`Documentation/Future_work/`](Documentation/Future_work/):** Contains the `MACH4_beyond_ROADMAP.md` and `FUTURE_EXTENSIONS.md`.
-    *   **[`Documentation/architecture/`](Documentation/architecture/):** Contains the definitive `AGENT_REGISTRY.md`, Neo4j `DATABASE_SCHEMA.md`, and the `SCRIPT_REGISTRY.md`.
-    *   **[`.agent/rules/`](.agent/rules/):** The strict operational boundaries for any AI operating inside this repository.
+*   **[`specs/`](specs/):** Spec-Kit feature specifications, plans, data models, contracts, and task breakdowns (`001-evaluate-project-state`, `002-jira-jules-bridge`, `003-first-serving-hub-api`).
+*   **[`.agents/`](.agents/) & [`.jules/`](.jules/):** Cross-surface agent configurations:
+    *   **[`.agents/agents/`](.agents/agents/):** The 12 True CLI Agent definitions (`silas`, `sentinel`, `bolt`, `palette`, `archie`, `docdoc`, `dave`, `crii`, `jovol`, `backend-porter`, `frontend-porter`, `agentic-porter`).
+    *   **[`.agents/rules/`](.agents/rules/):** Strict operational boundaries and protocols (`rules.md`, `Fiona_protocol.md`, `silas_protocol.md`).
+    *   **[`.jules/`](.jules/):** Chronological agent activity logs and operational playbooks.
+*   **[`documentation/`](documentation/):** The single source of truth for the project (strictly lowercase `kebab-case.md`).
+    *   **[`documentation/current-work/`](documentation/current-work/):** Contains `active-*.md` tracker files (`active-backend-tasks.md`, `active-frontend-dev.md`, `active-agent-dev.md`).
+    *   **[`documentation/future-work/`](documentation/future-work/):** Contains `mach4-beyond-roadmap.md`, `future-extensions.md`, and `local-ollama-routing-blueprint.md`.
+    *   **[`documentation/architecture/`](documentation/architecture/):** Contains [`spec-kit-constitution.md`](documentation/architecture/spec-kit-constitution.md), [`agent-roster.md`](documentation/architecture/agent-roster.md), [`cli-agents-guide.md`](documentation/architecture/cli-agents-guide.md), [`jules-cli-runbook.md`](documentation/architecture/jules-cli-runbook.md), [`agent-registry.md`](documentation/architecture/agent-registry.md), Neo4j [`database-schema.md`](documentation/architecture/database-schema.md), and [`script-registry.md`](documentation/architecture/script-registry.md).
 
 ## Setup & Installation
 
@@ -75,24 +81,27 @@ GOOGLE_CLOUD_LOCATION="us-central1"
 
 # --- Admin Identity ---
 NEXUS_ADMIN_EMAIL="<your_email@example.com>"
+
+# --- Optional: Atlassian Jira & Google Jules Bridge ---
+# JIRA_BASE_URL="https://your-org.atlassian.net"
+# JIRA_EMAIL="<your_jira_email@example.com>"
+# JIRA_API_TOKEN="<your_atlassian_api_token>"
+# JIRA_PROJECT_KEY="PORTER"
 ```
 
 Ensure your `category_mapping.json` (as shown in `data/category_mapping.example.json`) is also placed in `.auth/`.
 
 ### 2. Environment & Dependencies
-This project uses Python 3.12+. We manage Python dependencies using `uv` inside a Conda environment.
+This project targets **Python 3.12–3.14** and uses **`uv`** (`pyproject.toml` + `uv.lock`) exclusively for fast, reproducible virtual environment and dependency management (`.venv`).
 
 **Option A: Automatic Setup (via Makefile)**
 ```bash
 make install
 ```
 
-**Option B: Manual Setup**
+**Option B: Direct `uv` Setup**
 ```bash
-conda create --name agentic_porter python=3.12 nodejs -y
-conda activate agentic_porter
-# Ensure uv is installed, then sync the dependencies
-uv sync --dev
+uv sync --extra dev
 ```
 
 ### 3. Running the Ecosystem
@@ -108,13 +117,13 @@ make docker-run
 *Terminal 1 (Backend API):*
 ```bash
 make dev
-# Or directly: conda run -n agentic_porter uv run python src/app.py
+# Or directly: uv run python src/app.py
 ```
 
 *Terminal 2 (Frontend):*
 For local development, serve the frontend via a static file server or VS Code's Live Server extension pointed at `frontend/`.
 
-> **Windows Development Note:** This project is actively developed on both Windows and Unix/Linux. The Makefile uses `ifeq ($(OS),Windows_NT)` branching for cross-platform targets. PowerShell equivalents of bash utility scripts are available in `scripts/analyze_scripts/`. See the Makefile for available `make` targets via `make help`.
+> **Cross-Platform Development Note:** This project is actively developed on both Windows and Linux. Standardized Git hooks in `.githooks/` (`scripts/git_hooks_runner.py`) and `Makefile` targets run seamlessly across both OS environments. Run `make help` to view all available targets.
 
 ### 4. Building Frontend Assets
 ```bash
@@ -122,8 +131,21 @@ make build-css
 ```
 This compiles Tailwind CSS v4 from `frontend/css/input.css` to `frontend/css/style.css`.
 
+### 5. Verification Gates, Spec-Kit & True CLI Agents
+```bash
+# Push-button Silas Definition-of-Done Gate (DocDoc, Ruff, Mypy, Pytest unit suite)
+make verify-done
+
+# Execute all 8 specialized quality persona checks (Sentinel, Bolt, Palette, Archie, DocDoc, Dave, Crii, Jovol)
+make test-roster
+
+# Preview or push Spec-Kit tasks.md to Atlassian Jira & format Google Jules work orders
+make sync-jira
+make jules-dispatch
+```
+
 ## The Future: Mach 4 & Beyond
 
-The **Mach 4** iteration focuses on advanced agent networking, multi-tenant architecture, and cross-platform development. Key upcoming features include the **First-Serving Porter** (a front-man manager outputting weighted daily recommendations), **Hub Progress Metrics**, and deep vector-semantic integration via Weaviate.
+The **Mach 4** iteration focuses on advanced agent networking, Spec-Kit governance, multi-tenant architecture, and hybrid local/cloud inference. Key active and upcoming features include the **First-Serving Porter Hub API (`003-first-serving-hub-api`)**, **Hub Progress Metrics**, **Local Ollama SLM Triage**, and deep vector-semantic integration via Weaviate.
 
-Read the full future breakdown in [`Documentation/Future_work/MACH4_beyond_ROADMAP.md`](Documentation/Future_work/MACH4_beyond_ROADMAP.md).
+Read the full future breakdown in [`documentation/future-work/mach4-beyond-roadmap.md`](documentation/future-work/mach4-beyond-roadmap.md) and [`documentation/future-work/local-ollama-routing-blueprint.md`](documentation/future-work/local-ollama-routing-blueprint.md).

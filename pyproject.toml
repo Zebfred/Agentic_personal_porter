@@ -75,6 +75,8 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "bandit[toml]>=1.8.0",
+    "black>=24.10.0",
     "codespell>=2.4.2",
     "mypy>=2.0.0",
     "pytest>=9.0.3",
@@ -101,7 +103,7 @@ ignore = [
 
 
 [tool.codespell]
-skip = "./node_modules,./backups,./data,./.legacy_hr,./.logs,./.venv,*.json,*.mjs,*.js,*.lock,uv.lock,./uv.lock,./documentation/research,./documentation/outdated-doc,./documentation/architecture,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
+skip = "./.git,./node_modules,./backups,./data,./.legacy_hr,./.logs,./.venv,./scratch,./agentic-private-brain,*.json,*.mjs,*.js,*.lock,uv.lock,./uv.lock,./documentation/research,./documentation/outdated-doc,./documentation/architecture,./Documentation/Research,./Documentation/Outdated_Doc,./Documentation/notes,./Documentation/architecture"
 ignore-words-list = "rouge"
 
 [tool.mypy]
@@ -114,3 +116,54 @@ ignore_errors = true
 members = [
     "src/infrastructure/billing_killswitch/",
 ]
+
+# ============================================================================
+# BLACK — Deterministic Code Formatting
+# ============================================================================
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.auth
+  | \.legacy_hr
+  | \.logs
+  | data
+  | \.specify
+  | \.agents
+  | \.jules
+  | \.venv
+  | venv
+  | build
+  | dist
+)/
+'''
+
+# ============================================================================
+# BANDIT — Standalone AST Security Scanner (Sentinel 🛡️)
+# ============================================================================
+[tool.bandit]
+exclude_dirs = ["tests", "data", ".venv", "venv", ".auth", ".legacy_hr", ".logs", "build", "dist"]
+skips = ["B101"]
+
+# ============================================================================
+# PYTEST — Sub-Second Unit & Contract Test Gate
+# ============================================================================
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+junit_family = "xunit2"
+junit_logging = "all"
+addopts = "-v --tb=short --strict-markers --disable-warnings"
+markers = [
+    "unit: Fast, isolated unit tests using local mocks (< 1s execution)",
+    "integration: Integration tests requiring local containers or external service harnesses",
+    "slow: Tests that take a long time to run",
+    "requires_api: Tests that require external API access",
+]
+

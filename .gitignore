@@ -34,7 +34,6 @@ credentials.json
 data/*
 !data/.gitkeep
 !data/category_mapping.example.json
-documentation/.organization_discrete/
 *.bin
 src/data/chroma_db/*
 tailwindcss
@@ -43,14 +42,7 @@ node_modules/
 
 #Ignore Scratch work
 scratch/
-scripts/scratch/*
 scripts/analyze_scripts/sync_gcp_secrets.*
-
-#Potentially Sensitive documentation
-Documentation/issues_and_audit/*
-Documentation/Outdated_Doc/*
-Documentation/notes/*
-Documentation/Completed_Tasks/
-Documentation/Current_work/*
+scripts/deployment_scripts
 
 **/check_status.py

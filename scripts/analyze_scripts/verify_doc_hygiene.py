@@ -10,6 +10,7 @@ Validates project documentation standards:
 """
 
 import os
+import re
 import sys
 from pathlib import Path
 from typing import List, Tuple
@@ -20,6 +21,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ABSOLUTE_USER_PATH_RE = re.compile(r"(file:///(?:home|Users)/|/(?:home|Users)/[a-zA-Z0-9._-]+/)")
 
 
 def check_root_markdown() -> List[str]:
@@ -42,13 +44,16 @@ def check_documentation_naming() -> List[str]:
         return ["documentation/ directory not found!"]
 
     for root, dirs, files in os.walk(doc_dir):
+        dirs[:] = [d for d in dirs if d != ".organization_discrete"]
         rel_root = Path(root).relative_to(PROJECT_ROOT)
 
         for d in dirs:
             if any(c.isupper() for c in d):
                 violations.append(f"Directory contains uppercase letters: '{rel_root / d}'")
             if "_" in d:
-                violations.append(f"Directory uses snake_case instead of kebab-case: '{rel_root / d}'")
+                violations.append(
+                    f"Directory uses snake_case instead of kebab-case: '{rel_root / d}'"
+                )
 
         for f in files:
             if f.endswith(".md"):
@@ -56,7 +61,9 @@ def check_documentation_naming() -> List[str]:
                 if any(c.isupper() for c in file_stem):
                     violations.append(f"Markdown file contains uppercase letters: '{rel_root / f}'")
                 if "_" in file_stem:
-                    violations.append(f"Markdown file uses snake_case instead of kebab-case: '{rel_root / f}'")
+                    violations.append(
+                        f"Markdown file uses snake_case instead of kebab-case: '{rel_root / f}'"
+                    )
 
     return violations
 
@@ -76,6 +83,48 @@ def check_dangling_backups() -> List[str]:
     return violations
 
 
+def check_no_absolute_paths() -> List[str]:
+    """Ensure no hardcoded workstation-specific paths (/home/<user>/, /Users/<user>/, file:///home/) exist."""
+    violations: List[str] = []
+    scan_targets = [
+        PROJECT_ROOT / "README.md",
+        PROJECT_ROOT / "documentation",
+        PROJECT_ROOT / "specs",
+        PROJECT_ROOT / ".agents",
+        PROJECT_ROOT / ".jules",
+        PROJECT_ROOT / "src",
+        PROJECT_ROOT / "tests",
+    ]
+    allowed_exts = {".md", ".py", ".json", ".yml", ".yaml", ".js", ".html", ".css"}
+
+    files_to_scan: List[Path] = []
+    for target in scan_targets:
+        if target.is_file():
+            files_to_scan.append(target)
+        elif target.is_dir():
+            for p in target.rglob("*"):
+                if (
+                    p.is_file()
+                    and p.suffix in allowed_exts
+                    and "__pycache__" not in p.parts
+                    and ".organization_discrete" not in p.parts
+                ):
+                    files_to_scan.append(p)
+
+    for file_path in files_to_scan:
+        try:
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if ABSOLUTE_USER_PATH_RE.search(line):
+                rel = file_path.relative_to(PROJECT_ROOT)
+                violations.append(
+                    f"Hardcoded workstation absolute path in '{rel}:{lineno}'. Use project-relative paths."
+                )
+    return violations
+
+
 def run_all_checks() -> int:
     """Execute all DocDoc hygiene gates and report findings."""
     print("📚 Running DocDoc Documentation & Knowledge Governance Checks...")
@@ -83,6 +132,7 @@ def run_all_checks() -> int:
     all_violations: List[Tuple[str, List[str]]] = [
         ("Root Markdown Boundary", check_root_markdown()),
         ("Documentation Kebab-Case Naming", check_documentation_naming()),
+        ("Relative Path Portability (No Hardcoded User Paths)", check_no_absolute_paths()),
         ("Backup File Cleanup (.legacy_hr)", check_dangling_backups()),
     ]
 
@@ -97,7 +147,9 @@ def run_all_checks() -> int:
             print(f"✅ [PASSED] {category}")
 
     if failed:
-        print("\n⚠️  DocDoc verification failed. Please address documentation violations before committing.")
+        print(
+            "\n⚠️  DocDoc verification failed. Please address documentation violations before committing."
+        )
         return 1
 
     print("\n🎉 All DocDoc documentation hygiene gates passed successfully!")

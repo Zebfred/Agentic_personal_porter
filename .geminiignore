@@ -105,6 +105,7 @@ tests/fixtures/
 tests/data/
 
 # Build artifacts
+frontend/css/style.css
 *.o
 *.a
 *.lib

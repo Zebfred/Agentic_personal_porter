@@ -12,6 +12,7 @@ Usage:
     python scripts/analyze_scripts/trace_lineage.py --list          # List recent IDs
     python scripts/analyze_scripts/trace_lineage.py --list --limit 20
 """
+
 import sys
 import os
 import argparse
@@ -32,15 +33,17 @@ def _cleanup_connections():
     """Explicitly close database connections to suppress ResourceWarnings."""
     try:
         from src.database.mongo_client.connection import MongoConnectionManager
-        if hasattr(MongoConnectionManager, '_client') and MongoConnectionManager._client:
+
+        if hasattr(MongoConnectionManager, "_client") and MongoConnectionManager._client:
             MongoConnectionManager._client.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        console.print(f"[dim]Mongo cleanup skipped: {exc}[/dim]")
     try:
         from src.database.neo4j_client.connection import close_driver
+
         close_driver()
-    except Exception:
-        pass
+    except Exception as exc:
+        console.print(f"[dim]Neo4j cleanup skipped: {exc}[/dim]")
 
 
 atexit.register(_cleanup_connections)
@@ -52,6 +55,7 @@ def trace_mongo(correlation_id: str) -> dict:
     Returns a dict of {collection_name: [matching_docs]}.
     """
     from src.database.mongo_client.connection import MongoConnectionManager
+
     db = MongoConnectionManager.get_db()
     results = {}
 
@@ -61,19 +65,39 @@ def trace_mongo(correlation_id: str) -> dict:
     pipeline = [
         {"$project": {"month_id": 1, "user_id": 1, "weeks": {"$objectToArray": "$weeks"}}},
         {"$unwind": "$weeks"},
-        {"$project": {"month_id": 1, "user_id": 1, "week": "$weeks.k", "days": {"$objectToArray": "$weeks.v"}}},
+        {
+            "$project": {
+                "month_id": 1,
+                "user_id": 1,
+                "week": "$weeks.k",
+                "days": {"$objectToArray": "$weeks.v"},
+            }
+        },
         {"$unwind": "$days"},
-        {"$project": {"month_id": 1, "user_id": 1, "week": 1, "day": "$days.k", "chunks": {"$objectToArray": "$days.v.chunks"}}},
+        {
+            "$project": {
+                "month_id": 1,
+                "user_id": 1,
+                "week": 1,
+                "day": "$days.k",
+                "chunks": {"$objectToArray": "$days.v.chunks"},
+            }
+        },
         {"$unwind": "$chunks"},
         {"$match": {"chunks.v.correlation_id": correlation_id}},
-        {"$project": {
-            "month_id": 1, "user_id": 1, "week": 1, "day": 1,
-            "time_chunk": "$chunks.k",
-            "correlation_id": "$chunks.v.correlation_id",
-            "processed_at": "$chunks.v.processed_at",
-            "intention": "$chunks.v.intention",
-            "actual": "$chunks.v.actual",
-        }}
+        {
+            "$project": {
+                "month_id": 1,
+                "user_id": 1,
+                "week": 1,
+                "day": 1,
+                "time_chunk": "$chunks.k",
+                "correlation_id": "$chunks.v.correlation_id",
+                "processed_at": "$chunks.v.processed_at",
+                "intention": "$chunks.v.intention",
+                "actual": "$chunks.v.actual",
+            }
+        },
     ]
     try:
         journal_hits = list(journal_col.aggregate(pipeline))
@@ -84,28 +108,48 @@ def trace_mongo(correlation_id: str) -> dict:
 
     # 2. Freeform journals
     freeform_col = db["freeform_journals"]
-    freeform_hits = list(freeform_col.find(
-        {"correlation_id": correlation_id},
-        {"_id": 0, "date": 1, "user_id": 1, "correlation_id": 1, "updated_at": 1, "text": {"$substr": ["$text", 0, 120]}}
-    ))
+    freeform_hits = list(
+        freeform_col.find(
+            {"correlation_id": correlation_id},
+            {
+                "_id": 0,
+                "date": 1,
+                "user_id": 1,
+                "correlation_id": 1,
+                "updated_at": 1,
+                "text": {"$substr": ["$text", 0, 120]},
+            },
+        )
+    )
     if freeform_hits:
         results["freeform_journals"] = freeform_hits
 
     # 3. Weekly expectations
     weekly_col = db["weekly_expectations"]
-    weekly_hits = list(weekly_col.find(
-        {"correlation_id": correlation_id},
-        {"_id": 0, "user_id": 1, "week_start_date": 1, "correlation_id": 1, "updated_at": 1, "expectation_text": {"$substr": ["$expectation_text", 0, 120]}}
-    ))
+    weekly_hits = list(
+        weekly_col.find(
+            {"correlation_id": correlation_id},
+            {
+                "_id": 0,
+                "user_id": 1,
+                "week_start_date": 1,
+                "correlation_id": 1,
+                "updated_at": 1,
+                "expectation_text": {"$substr": ["$expectation_text", 0, 120]},
+            },
+        )
+    )
     if weekly_hits:
         results["weekly_expectations"] = weekly_hits
 
     # 4. Calendar actual events
     actual_col = db["calendar_actual_events"]
-    actual_hits = list(actual_col.find(
-        {"correlation_id": correlation_id},
-        {"_id": 1, "user_id": 1, "correlation_id": 1, "time_slot": 1}
-    ))
+    actual_hits = list(
+        actual_col.find(
+            {"correlation_id": correlation_id},
+            {"_id": 1, "user_id": 1, "correlation_id": 1, "time_slot": 1},
+        )
+    )
     if actual_hits:
         # Convert ObjectId to string for display
         for hit in actual_hits:
@@ -114,10 +158,12 @@ def trace_mongo(correlation_id: str) -> dict:
 
     # 5. Calendar unified events
     unified_col = db["calendar_unified_events"]
-    unified_hits = list(unified_col.find(
-        {"correlation_id": correlation_id},
-        {"_id": 1, "user_id": 1, "correlation_id": 1, "time_slot": 1}
-    ))
+    unified_hits = list(
+        unified_col.find(
+            {"correlation_id": correlation_id},
+            {"_id": 1, "user_id": 1, "correlation_id": 1, "time_slot": 1},
+        )
+    )
     if unified_hits:
         for hit in unified_hits:
             hit["_id"] = str(hit["_id"])
@@ -125,10 +171,12 @@ def trace_mongo(correlation_id: str) -> dict:
 
     # 6. Agent reflections
     reflections_col = db["agent_reflections"]
-    reflection_hits = list(reflections_col.find(
-        {"correlation_id": correlation_id},
-        {"_id": 0, "day": 1, "user_id": 1, "correlation_id": 1, "created_at": 1}
-    ))
+    reflection_hits = list(
+        reflections_col.find(
+            {"correlation_id": correlation_id},
+            {"_id": 0, "day": 1, "user_id": 1, "correlation_id": 1, "created_at": 1},
+        )
+    )
     if reflection_hits:
         results["agent_reflections"] = reflection_hits
 
@@ -142,6 +190,7 @@ def trace_neo4j(correlation_id: str) -> list:
     """
     try:
         from src.database.neo4j_client.connection import get_driver
+
         driver = get_driver()
         with driver.session() as session:
             # Query for any node that has this source_id
@@ -169,6 +218,7 @@ def trace_chromadb(correlation_id: str) -> list:
     """
     try:
         from src.database.vector_database.chromadb_client import ChromaExperimentalClient
+
         client = ChromaExperimentalClient()
         results = client.search_by_correlation_id(correlation_id)
         if results and isinstance(results, dict):
@@ -184,6 +234,7 @@ def trace_weaviate(correlation_id: str) -> list:
     """
     try:
         from src.database.vector_database.weaviate_client import WeaviateExperimentalClient
+
         client = WeaviateExperimentalClient()
         results = client.search_by_correlation_id(correlation_id)
         if results and isinstance(results, dict):
@@ -200,24 +251,33 @@ def list_recent_correlation_ids(limit: int = 10) -> list:
     Useful for discovering what IDs exist to trace.
     """
     from src.database.mongo_client.connection import MongoConnectionManager
+
     db = MongoConnectionManager.get_db()
     ids_found = []
 
     # Freeform journals (flat structure — easiest to query)
     freeform_col = db["freeform_journals"]
-    for doc in freeform_col.find(
-        {"correlation_id": {"$exists": True}},
-        {"correlation_id": 1, "date": 1, "user_id": 1, "updated_at": 1, "_id": 0}
-    ).sort("updated_at", -1).limit(limit):
+    for doc in (
+        freeform_col.find(
+            {"correlation_id": {"$exists": True}},
+            {"correlation_id": 1, "date": 1, "user_id": 1, "updated_at": 1, "_id": 0},
+        )
+        .sort("updated_at", -1)
+        .limit(limit)
+    ):
         doc["source"] = "freeform_journals"
         ids_found.append(doc)
 
     # Weekly expectations
     weekly_col = db["weekly_expectations"]
-    for doc in weekly_col.find(
-        {"correlation_id": {"$exists": True}},
-        {"correlation_id": 1, "week_start_date": 1, "user_id": 1, "updated_at": 1, "_id": 0}
-    ).sort("updated_at", -1).limit(limit):
+    for doc in (
+        weekly_col.find(
+            {"correlation_id": {"$exists": True}},
+            {"correlation_id": 1, "week_start_date": 1, "user_id": 1, "updated_at": 1, "_id": 0},
+        )
+        .sort("updated_at", -1)
+        .limit(limit)
+    ):
         doc["source"] = "weekly_expectations"
         ids_found.append(doc)
 
@@ -228,26 +288,34 @@ def list_recent_correlation_ids(limit: int = 10) -> list:
         {"$unwind": "$weeks"},
         {"$project": {"user_id": 1, "days": {"$objectToArray": "$weeks.v"}}},
         {"$unwind": "$days"},
-        {"$project": {"user_id": 1, "day": "$days.k", "chunks": {"$objectToArray": "$days.v.chunks"}}},
+        {
+            "$project": {
+                "user_id": 1,
+                "day": "$days.k",
+                "chunks": {"$objectToArray": "$days.v.chunks"},
+            }
+        },
         {"$unwind": "$chunks"},
         {"$match": {"chunks.v.correlation_id": {"$exists": True}}},
-        {"$project": {
-            "correlation_id": "$chunks.v.correlation_id",
-            "user_id": 1,
-            "day": 1,
-            "time_chunk": "$chunks.k",
-            "processed_at": "$chunks.v.processed_at",
-        }},
+        {
+            "$project": {
+                "correlation_id": "$chunks.v.correlation_id",
+                "user_id": 1,
+                "day": 1,
+                "time_chunk": "$chunks.k",
+                "processed_at": "$chunks.v.processed_at",
+            }
+        },
         {"$sort": {"processed_at": -1}},
-        {"$limit": limit}
+        {"$limit": limit},
     ]
     try:
         for doc in journal_col.aggregate(pipeline):
             doc["source"] = "journal_time_entries"
             doc.pop("_id", None)
             ids_found.append(doc)
-    except Exception:
-        pass
+    except Exception as exc:
+        console.print(f"[dim]Journal lineage aggregation skipped: {exc}[/dim]")
 
     # Sort all by most recent and deduplicate
     return ids_found[:limit]
@@ -257,11 +325,13 @@ def render_trace(correlation_id: str):
     """
     Main rendering function — queries all sources and prints a rich table.
     """
-    console.print(Panel(
-        f"[bold cyan]Tracing Correlation ID:[/bold cyan] [yellow]{correlation_id}[/yellow]",
-        title="🔍 Data Lineage Tracer",
-        border_style="cyan"
-    ))
+    console.print(
+        Panel(
+            f"[bold cyan]Tracing Correlation ID:[/bold cyan] [yellow]{correlation_id}[/yellow]",
+            title="🔍 Data Lineage Tracer",
+            border_style="cyan",
+        )
+    )
 
     # --- MongoDB ---
     console.print("\n[bold green]📦 MongoDB[/bold green]")
@@ -320,33 +390,49 @@ def render_trace(correlation_id: str):
     else:
         console.print(f"  Found [bold]{len(weaviate_results)}[/bold] vector(s)")
         for i, doc in enumerate(weaviate_results[:5]):
-            text_preview = str(doc.get('text', doc))[:120]
+            text_preview = str(doc.get("text", doc))[:120]
             console.print(f"    [{i+1}] {text_preview}...")
 
     # --- Summary ---
     total = sum(len(v) for v in mongo_results.values() if isinstance(v, list))
     total += len([n for n in neo4j_results if "error" not in n])
-    total += len(chroma_results) if chroma_results and not (isinstance(chroma_results[0], dict) and "error" in chroma_results[0]) else 0
-    total += len(weaviate_results) if weaviate_results and not (isinstance(weaviate_results[0], dict) and "error" in weaviate_results[0]) else 0
+    total += (
+        len(chroma_results)
+        if chroma_results
+        and not (isinstance(chroma_results[0], dict) and "error" in chroma_results[0])
+        else 0
+    )
+    total += (
+        len(weaviate_results)
+        if weaviate_results
+        and not (isinstance(weaviate_results[0], dict) and "error" in weaviate_results[0])
+        else 0
+    )
 
-    console.print(Panel(
-        f"[bold]Total records found: {total}[/bold]",
-        title="📊 Lineage Summary",
-        border_style="green" if total > 0 else "red"
-    ))
+    console.print(
+        Panel(
+            f"[bold]Total records found: {total}[/bold]",
+            title="📊 Lineage Summary",
+            border_style="green" if total > 0 else "red",
+        )
+    )
 
 
 def render_list(limit: int):
     """List recent correlation IDs across all collections."""
-    console.print(Panel(
-        f"[bold cyan]Listing {limit} most recent Correlation IDs[/bold cyan]",
-        title="📋 Recent Correlation IDs",
-        border_style="cyan"
-    ))
+    console.print(
+        Panel(
+            f"[bold cyan]Listing {limit} most recent Correlation IDs[/bold cyan]",
+            title="📋 Recent Correlation IDs",
+            border_style="cyan",
+        )
+    )
 
     ids = list_recent_correlation_ids(limit)
     if not ids:
-        console.print("[dim]No correlation IDs found yet. Save a journal entry to generate one.[/dim]")
+        console.print(
+            "[dim]No correlation IDs found yet. Save a journal entry to generate one.[/dim]"
+        )
         return
 
     table = Table(box=box.ROUNDED, show_lines=True)
@@ -376,11 +462,13 @@ Examples:
     python scripts/analyze_scripts/trace_lineage.py log-W27-2026-07-05-morning-Hero
     python scripts/analyze_scripts/trace_lineage.py --list
     python scripts/analyze_scripts/trace_lineage.py --list --limit 20
-        """
+        """,
     )
     parser.add_argument("correlation_id", nargs="?", help="The correlation ID to trace")
     parser.add_argument("--list", action="store_true", help="List recent correlation IDs")
-    parser.add_argument("--limit", type=int, default=10, help="Number of recent IDs to show (default: 10)")
+    parser.add_argument(
+        "--limit", type=int, default=10, help="Number of recent IDs to show (default: 10)"
+    )
 
     args = parser.parse_args()
 
@@ -390,7 +478,9 @@ Examples:
         render_trace(args.correlation_id)
     else:
         parser.print_help()
-        console.print("\n[yellow]Tip:[/yellow] Run with --list to discover existing correlation IDs")
+        console.print(
+            "\n[yellow]Tip:[/yellow] Run with --list to discover existing correlation IDs"
+        )
 
 
 if __name__ == "__main__":

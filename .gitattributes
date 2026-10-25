@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Treat compiled Tailwind CSS bundle as generated to prevent single-line minified diff noise
+frontend/css/style.css -diff linguist-generated=true

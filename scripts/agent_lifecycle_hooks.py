@@ -5,6 +5,7 @@ Enforces Nexus LLC guardrails at runtime across PreToolUse, PostToolUse, and Sto
 events while keeping generated scripts < 200 lines and functions < 60 lines.
 """
 
+# fmt: off
 from __future__ import annotations
 
 import datetime

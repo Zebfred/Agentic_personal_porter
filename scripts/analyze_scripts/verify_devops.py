@@ -9,7 +9,7 @@ Validates repository infrastructure and CI/CD security standards:
 """
 
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 from typing import List
@@ -20,7 +20,7 @@ if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SHA_PATTERN = re.compile(r'^[0-9a-f]{40}$')
+SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
 
 
 def check_github_actions_sha_pinning() -> List[str]:
@@ -30,7 +30,7 @@ def check_github_actions_sha_pinning() -> List[str]:
     if not workflows_dir.exists():
         return ["No .github/workflows directory found."]
 
-    uses_regex = re.compile(r'^\s*(?:-\s+)?uses:\s+([^\s#]+)(.*)$')
+    uses_regex = re.compile(r"^\s*(?:-\s+)?uses:\s+([^\s#]+)(.*)$")
 
     for wf_file in workflows_dir.glob("*.y*ml"):
         with open(wf_file, "r", encoding="utf-8") as f:
@@ -68,7 +68,7 @@ def check_docker_compose_config() -> List[str]:
         compose_file = alt_files[0]
 
     try:
-        res = subprocess.run(
+        res = subprocess.run(  # nosec B603 B607
             ["docker", "compose", "-f", str(compose_file), "config", "--quiet"],
             capture_output=True,
             text=True,
@@ -109,21 +109,29 @@ def run_all_checks(strict: bool = False) -> int:
     # GitHub Actions SHA Pinning
     if sha_violations:
         if strict:
-            print(f"❌ [FAILED] GitHub Actions SHA Pinning ({len(sha_violations)} unpinned actions):")
+            print(
+                f"❌ [FAILED] GitHub Actions SHA Pinning ({len(sha_violations)} unpinned actions):"
+            )
             for err in sha_violations:
                 print(f"   - {err}")
             failed = True
         else:
-            print(f"⚠️  [NOTICE] GitHub Actions SHA Pinning ({len(sha_violations)} unpinned actions to pin):")
+            print(
+                f"⚠️  [NOTICE] GitHub Actions SHA Pinning ({len(sha_violations)} unpinned actions to pin):"
+            )
             for err in sha_violations[:5]:
                 print(f"   - {err}")
             if len(sha_violations) > 5:
-                print(f"   - ... and {len(sha_violations) - 5} more unpinned actions (run with --strict to enforce)")
+                print(
+                    f"   - ... and {len(sha_violations) - 5} more unpinned actions (run with --strict to enforce)"
+                )
     else:
         print("✅ [PASSED] GitHub Actions SHA Pinning (All 40-character SHAs verified)")
 
     if failed:
-        print("\n⚠️  DevOps checks detected issues. Please review and secure infrastructure configurations.")
+        print(
+            "\n⚠️  DevOps checks detected issues. Please review and secure infrastructure configurations."
+        )
         return 1
 
     print("\n🎉 All DevOps infrastructure checks passed!")

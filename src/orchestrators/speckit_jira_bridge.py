@@ -1,4 +1,4 @@
-"""
+r"""
 Spec-Kit ↔ Atlassian Jira ↔ Google Jules Bridge Orchestrator & CLI.
 
 Parses `specs/NNN-feature/spec.md`, `plan.md`, and `tasks.md`:
@@ -7,6 +7,7 @@ Parses `specs/NNN-feature/spec.md`, `plan.md`, and `tasks.md`:
 3. Deduplicates tasks against existing local/remote Jira issues (`SC-002`).
 4. Formats and dispatches eligible tasks to `@google/jules` via `JulesDispatcher`.
 """
+
 import argparse
 import json
 import logging
@@ -44,21 +45,32 @@ def infer_persona_for_task(description: str, target_paths: list[str]) -> Persona
     """
     combined = f"{description} {' '.join(target_paths)}".lower()
 
-    if any(k in combined for k in ("auth_middleware", "zero-trust", "hmac", "urlparse", "security", "sentinel")):
+    if any(
+        k in combined
+        for k in ("auth_middleware", "zero-trust", "hmac", "urlparse", "security", "sentinel")
+    ):
         return "sentinel"
-    if any(k in combined for k in ("bulk_write", "projection", "jira_storage", "mongo_client", "neo4j", "bolt")):
+    if any(
+        k in combined
+        for k in ("bulk_write", "projection", "jira_storage", "mongo_client", "neo4j", "bolt")
+    ):
         return "bolt"
     if any(k in combined for k in ("frontend/", ".html", "wcag", "aria-label", "css", "palette")):
         return "palette"
     if any(k in combined for k in ("frontend/js", "spec-kit/", "component", "jovol")):
         return "jovol"
-    if any(k in combined for k in ("tests/unit/", "adversarial", "null-byte", "resilience", "crii")):
+    if any(
+        k in combined for k in ("tests/unit/", "adversarial", "null-byte", "resilience", "crii")
+    ):
         return "crii"
     if any(k in combined for k in ("src/schemas/", "pydantic", "architecture", "archie")):
         return "archie"
     if any(k in combined for k in ("documentation/", ".legacy_hr", "kebab-case", "docdoc")):
         return "docdoc"
-    if any(k in combined for k in ("dockerfile", "docker-compose", "makefile", ".github/workflows", "dave")):
+    if any(
+        k in combined
+        for k in ("dockerfile", "docker-compose", "makefile", ".github/workflows", "dave")
+    ):
         return "dave"
     return "silas"
 
@@ -67,7 +79,7 @@ def parse_speckit_tasks_markdown(
     tasks_path: Path,
     feature_id: str,
 ) -> list[SpecKitTaskItem]:
-    """
+    r"""
     Parse a Spec-Kit `tasks.md` file into validated `SpecKitTaskItem` objects.
     Handles task IDs of 3 or more digits (`\bT\d{3,}\b`, e.g., `T001`, `T1000`).
     """
@@ -114,44 +126,99 @@ def parse_speckit_tasks_markdown(
     return items
 
 
-def sync_feature_to_jira(
-    feature_dir: Path,
+def _resolve_task_jira_key(
+    item: SpecKitTaskItem,
+    formatted_desc: str,
+    project_key: str,
+    labels: list[str],
+    epic_key: str,
+    dry_run: bool,
+    jira_client: Optional[JiraClient],
+) -> tuple[str, str]:
+    """Determine `(jira_key, sync_state)` for a Spec-Kit task item."""
+    if dry_run:
+        return f"LOCAL-{item.task_id}", "synced"
+    if jira_client is None:
+        return f"LOCAL-{item.task_id}", "pending_upstream"
+    try:
+        key = jira_client.create_issue(
+            summary=item.title,
+            description=formatted_desc,
+            issue_type="Task",
+            project_key=project_key,
+            labels=labels,
+            epic_key=epic_key if not epic_key.startswith("LOCAL-") else None,
+        )
+        return key, "synced"
+    except JiraClientError as exc:
+        logger.warning("Queued %s as pending_upstream due to Jira error: %s", item.task_id, exc)
+        return f"LOCAL-{item.task_id}", "pending_upstream"
+
+
+def _create_or_stage_task_record(
+    item: SpecKitTaskItem,
+    feature_id: str,
+    spec_excerpt: str,
     user_email: str,
-    project_key: str = "PORTER",
-    dry_run: bool = True,
-    storage: Optional[JiraStorage] = None,
-    jira_client: Optional[JiraClient] = None,
-) -> dict[str, Any]:
-    """
-    Synchronize a Spec-Kit feature directory (`spec.md`, `tasks.md`) into
-    standardized Jira issues with strict `T001`+ deduplication (`FR-005`, `FR-006`).
-    """
-    resolved_dir = feature_dir.resolve()
-    feature_id = resolved_dir.name
-    tasks_file = resolved_dir / "tasks.md"
-    spec_file = resolved_dir / "spec.md"
+    project_key: str,
+    epic_key: str,
+    correlation_id: str,
+    dry_run: bool,
+    jira_client: Optional[JiraClient],
+) -> tuple[JiraIssueRecord, dict[str, Any]]:
+    """Create a remote or local Jira issue for a single Spec-Kit task item."""
+    labels = ["speckit", f"feature:{feature_id}", f"jules:{item.persona}"]
+    if item.is_parallel:
+        labels.append("parallel")
+    if item.user_story:
+        labels.append(item.user_story.lower())
 
-    task_items = parse_speckit_tasks_markdown(tasks_file, feature_id=feature_id)
-    spec_excerpt = (
-        spec_file.read_text(encoding="utf-8")[:2000]
-        if spec_file.exists()
-        else f"Feature {feature_id}"
+    formatted_desc = (
+        f"Feature: {feature_id}\nTask ID: {item.task_id}\n"
+        f"User Story: {item.user_story or 'Shared/Foundation'}\n"
+        f"Assigned Persona: {item.persona}\n"
+        f"Target Paths: {', '.join(item.target_paths) or 'N/A'}\n\n"
+        f"Task Requirement:\n{item.description}\n\n"
+        f"Specification Context:\n{spec_excerpt[:1000]}"
     )
-
-    jira_store = storage or JiraStorage()
-    existing_map = jira_store.get_existing_task_mappings(
+    jira_key, sync_state = _resolve_task_jira_key(
+        item, formatted_desc, project_key, labels, epic_key, dry_run, jira_client
+    )
+    record = JiraIssueRecord(
+        uuid=UUIDGenerator.generate_for_jira_issue(jira_key, user_email),
         user_email=user_email,
+        jira_key=jira_key,
         project_key=project_key,
+        issue_type="Task",
+        task_id=item.task_id,
+        feature_id=feature_id,
+        epic_key=epic_key,
+        summary=item.title,
+        description=formatted_desc,
+        status="Done" if item.completed else "To Do",
+        persona=item.persona,
+        labels=labels,
+        sync_status=sync_state,  # type: ignore[arg-type]
+        correlation_id=correlation_id,
     )
+    summary_dict = {
+        "task_id": item.task_id,
+        "jira_key": jira_key,
+        "summary": item.title,
+        "persona": item.persona,
+        "is_parallel": item.is_parallel,
+    }
+    return record, summary_dict
 
-    day_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    correlation_id = generate_correlation_id(
-        user_id=user_email,
-        day_str=day_str,
-        time_chunk=feature_id[:24],
-        entry_type="weekly",
-    )
 
+def _resolve_epic_key(
+    feature_id: str,
+    spec_excerpt: str,
+    project_key: str,
+    dry_run: bool,
+    jira_client: Optional[JiraClient],
+) -> str:
+    """Create or resolve the parent Epic key for a Spec-Kit feature."""
     epic_key = f"{project_key}-EPIC" if dry_run else f"{project_key}-1"
     if not dry_run and jira_client is not None:
         try:
@@ -165,6 +232,36 @@ def sync_feature_to_jira(
         except JiraClientError as exc:
             logger.warning("Epic creation fallback triggered: %s", exc)
             epic_key = "LOCAL-T000"
+    return epic_key
+
+
+def _read_spec_excerpt(spec_file: Path, feature_id: str) -> str:
+    """Return up to 2000 characters from `spec.md`, or a fallback label."""
+    return (
+        spec_file.read_text(encoding="utf-8")[:2000]
+        if spec_file.exists()
+        else f"Feature {feature_id}"
+    )
+
+
+def sync_feature_to_jira(
+    feature_dir: Path,
+    user_email: str,
+    project_key: str = "PORTER",
+    dry_run: bool = True,
+    storage: Optional[JiraStorage] = None,
+    jira_client: Optional[JiraClient] = None,
+) -> dict[str, Any]:
+    """Synchronize a Spec-Kit feature directory (`spec.md`, `tasks.md`) into Jira issues."""
+    resolved_dir = feature_dir.resolve()
+    feature_id = resolved_dir.name
+    task_items = parse_speckit_tasks_markdown(resolved_dir / "tasks.md", feature_id=feature_id)
+    spec_excerpt = _read_spec_excerpt(resolved_dir / "spec.md", feature_id)
+    jira_store = storage or JiraStorage()
+    existing_map = jira_store.get_existing_task_mappings(user_email, project_key)
+    day_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    correlation_id = generate_correlation_id(user_email, day_str, feature_id[:24], "weekly")
+    epic_key = _resolve_epic_key(feature_id, spec_excerpt, project_key, dry_run, jira_client)
 
     created_tasks: list[dict[str, Any]] = []
     skipped_tasks: list[str] = []
@@ -174,79 +271,19 @@ def sync_feature_to_jira(
         if item.task_id in existing_map:
             skipped_tasks.append(item.task_id)
             continue
-
-        labels = [
-            "speckit",
-            f"feature:{feature_id}",
-            f"jules:{item.persona}",
-        ]
-        if item.is_parallel:
-            labels.append("parallel")
-        if item.user_story:
-            labels.append(item.user_story.lower())
-
-        formatted_desc = (
-            f"Feature: {feature_id}\n"
-            f"Task ID: {item.task_id}\n"
-            f"User Story: {item.user_story or 'Shared/Foundation'}\n"
-            f"Assigned Persona: {item.persona}\n"
-            f"Target Paths: {', '.join(item.target_paths) or 'N/A'}\n\n"
-            f"Task Requirement:\n{item.description}\n\n"
-            f"Specification Context:\n{spec_excerpt[:1000]}"
-        )
-
-        sync_state: str = "synced"
-        if dry_run:
-            jira_key = f"LOCAL-{item.task_id}"
-        elif jira_client is not None:
-            try:
-                jira_key = jira_client.create_issue(
-                    summary=item.title,
-                    description=formatted_desc,
-                    issue_type="Task",
-                    project_key=project_key,
-                    labels=labels,
-                    epic_key=epic_key if not epic_key.startswith("LOCAL-") else None,
-                )
-            except JiraClientError as exc:
-                logger.warning(
-                    "Queued %s as pending_upstream due to Jira error: %s",
-                    item.task_id,
-                    exc,
-                )
-                jira_key = f"LOCAL-{item.task_id}"
-                sync_state = "pending_upstream"
-        else:
-            jira_key = f"LOCAL-{item.task_id}"
-            sync_state = "pending_upstream"
-
-        record = JiraIssueRecord(
-            uuid=UUIDGenerator.generate_for_jira_issue(jira_key, user_email),
-            user_email=user_email,
-            jira_key=jira_key,
-            project_key=project_key,
-            issue_type="Task",
-            task_id=item.task_id,
-            feature_id=feature_id,
-            epic_key=epic_key,
-            summary=item.title,
-            description=formatted_desc,
-            status="Done" if item.completed else "To Do",
-            persona=item.persona,
-            labels=labels,
-            sync_status=sync_state,  # type: ignore[arg-type]
-            correlation_id=correlation_id,
+        record, summary_dict = _create_or_stage_task_record(
+            item,
+            feature_id,
+            spec_excerpt,
+            user_email,
+            project_key,
+            epic_key,
+            correlation_id,
+            dry_run,
+            jira_client,
         )
         records_to_upsert.append(record)
-        created_tasks.append(
-            {
-                "task_id": item.task_id,
-                "jira_key": jira_key,
-                "summary": item.title,
-                "persona": item.persona,
-                "is_parallel": item.is_parallel,
-            }
-        )
+        created_tasks.append(summary_dict)
 
     if not dry_run and records_to_upsert:
         jira_store.bulk_upsert_issues(records_to_upsert)
@@ -275,8 +312,8 @@ def _resolve_default_feature_dir() -> Path:
     return (root / "specs" / "002-jira-jules-bridge").resolve()
 
 
-def main(argv: Optional[list[str]] = None) -> int:
-    """CLI entrypoint for Spec-Kit ↔ Jira ↔ Jules bridge."""
+def _build_bridge_arg_parser() -> argparse.ArgumentParser:
+    """Construct the CLI argument parser for the Spec-Kit / Jira / Jules bridge."""
     parser = argparse.ArgumentParser(
         description="Unified Spec-Kit / Atlassian Jira <-> Google Jules Bridge"
     )
@@ -286,12 +323,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         default=None,
         help="Path to Spec-Kit feature directory (defaults to .specify/feature.json)",
     )
-    parser.add_argument(
-        "--project-key",
-        type=str,
-        default="PORTER",
-        help="Target Jira project key (default: PORTER)",
-    )
+    parser.add_argument("--project-key", type=str, default="PORTER", help="Target Jira project key")
     parser.add_argument(
         "--user-email",
         type=str,
@@ -305,10 +337,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         help="Preview formatted Jira/Jules payloads without mutating remote systems",
     )
     parser.add_argument(
-        "--push",
-        action="store_true",
-        default=False,
-        help="Push Spec-Kit tasks live to Jira and local storage",
+        "--push", action="store_true", default=False, help="Push Spec-Kit tasks live"
     )
     parser.add_argument(
         "--dispatch-task",
@@ -322,55 +351,55 @@ def main(argv: Optional[list[str]] = None) -> int:
         default=False,
         help="Invoke @google/jules CLI live for --dispatch-task",
     )
+    return parser
 
+
+def _handle_cli_dispatch_task(args: argparse.Namespace, feature_dir: Path) -> int:
+    """Handle the `--dispatch-task` CLI workflow."""
+    items = parse_speckit_tasks_markdown(feature_dir / "tasks.md", feature_id=feature_dir.name)
+    matched = next((t for t in items if t.task_id == args.dispatch_task.strip().upper()), None)
+    if not matched:
+        print(
+            f"Error: Task '{args.dispatch_task}' not found in {feature_dir / 'tasks.md'}",
+            file=sys.stderr,
+        )
+        return 1
+
+    issue_rec = JiraIssueRecord(
+        uuid=UUIDGenerator.generate_for_jira_issue(f"LOCAL-{matched.task_id}", args.user_email),
+        user_email=args.user_email,
+        jira_key=f"LOCAL-{matched.task_id}",
+        project_key=args.project_key.upper(),
+        task_id=matched.task_id,
+        feature_id=feature_dir.name,
+        summary=matched.title,
+        description=matched.description,
+        persona=matched.persona,
+        correlation_id=f"cli-{feature_dir.name}-{matched.task_id}",
+    )
+    dispatcher = JulesDispatcher()
+    work_order = dispatcher.build_work_order(
+        issue=issue_rec,
+        target_paths=matched.target_paths,
+        dry_run=not args.execute_jules,
+    )
+    if args.execute_jules:
+        work_order = dispatcher.dispatch_work_order(work_order=work_order)
+    print(json.dumps(work_order.model_dump(), indent=2))
+    return 0
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    """CLI entrypoint for Spec-Kit ↔ Jira ↔ Jules bridge."""
+    parser = _build_bridge_arg_parser()
     args = parser.parse_args(argv)
     feature_dir = (
-        Path(args.feature_dir).resolve()
-        if args.feature_dir
-        else _resolve_default_feature_dir()
+        Path(args.feature_dir).resolve() if args.feature_dir else _resolve_default_feature_dir()
     )
     is_dry_run = args.dry_run or not (args.push or args.execute_jules)
 
     if args.dispatch_task:
-        items = parse_speckit_tasks_markdown(
-            feature_dir / "tasks.md",
-            feature_id=feature_dir.name,
-        )
-        matched = next(
-            (t for t in items if t.task_id == args.dispatch_task.strip().upper()),
-            None,
-        )
-        if not matched:
-            print(
-                f"Error: Task '{args.dispatch_task}' not found in {feature_dir / 'tasks.md'}",
-                file=sys.stderr,
-            )
-            return 1
-
-        issue_rec = JiraIssueRecord(
-            uuid=UUIDGenerator.generate_for_jira_issue(
-                f"LOCAL-{matched.task_id}", args.user_email
-            ),
-            user_email=args.user_email,
-            jira_key=f"LOCAL-{matched.task_id}",
-            project_key=args.project_key.upper(),
-            task_id=matched.task_id,
-            feature_id=feature_dir.name,
-            summary=matched.title,
-            description=matched.description,
-            persona=matched.persona,
-            correlation_id=f"cli-{feature_dir.name}-{matched.task_id}",
-        )
-        dispatcher = JulesDispatcher()
-        work_order = dispatcher.build_work_order(
-            issue=issue_rec,
-            target_paths=matched.target_paths,
-            dry_run=not args.execute_jules,
-        )
-        if args.execute_jules:
-            work_order = dispatcher.dispatch_work_order(work_order=work_order)
-        print(json.dumps(work_order.model_dump(), indent=2))
-        return 0
+        return _handle_cli_dispatch_task(args, feature_dir)
 
     client: Optional[JiraClient] = None
     if args.push and not is_dry_run:

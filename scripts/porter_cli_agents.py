@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tempfile
 from typing import Dict, List, Optional, Sequence, Tuple
@@ -38,7 +38,9 @@ if hasattr(sys.stderr, "reconfigure"):
 def resolve_project_root() -> Path:
     """Locate the repository root from script location or current working directory."""
     script_path = Path(__file__).resolve()
-    if (script_path.parents[1] / ".jules").exists() or (script_path.parents[1] / "Makefile").exists():
+    if (script_path.parents[1] / ".jules").exists() or (
+        script_path.parents[1] / "Makefile"
+    ).exists():
         return script_path.parents[1]
 
     cwd = Path.cwd().resolve()
@@ -211,7 +213,7 @@ def fetch_parsed_jules_sessions() -> Tuple[str, List[JulesSessionRow]]:
     if not jules_bin:
         return "", []
 
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         [jules_bin, "remote", "list", "--session"],
         capture_output=True,
         text=True,
@@ -426,13 +428,17 @@ def cmd_list() -> int:
             if repo_matches_filter(row.repo, row.raw_line, default_repo):
                 latest_by_persona[row.matched_persona] = row
 
-    print("========================================================================================================================")
+    print(
+        "========================================================================================================================"
+    )
     print("🏛️  AGENTIC PERSONAL PORTER — TRUE CLI & GOOGLE JULES AGENT ROSTER")
     print(
         f"   Branch: {git_branch} ({'pushed' if branch_pushed else 'local-only'}) | "
         f"Jules CLI: {'READY (native binary)' if jules_bin else 'NOT FOUND'}"
     )
-    print("========================================================================================================================")
+    print(
+        "========================================================================================================================"
+    )
     header = (
         f"{'AGENT':<18} {'CATEGORY':<14} {'PROJ':<6} {'SYS':<6} "
         f"{'PLAYBOOK':<14} {'LATEST JULES SESSION ID':<23} {'JULES STATUS':<18} {'VERIFY TARGET'}"
@@ -463,7 +469,9 @@ def cmd_list() -> int:
             f"{jules_status:<14} {latest_id:<23} {latest_state[:18]:<18} {spec.make_target}"
         )
 
-    print("========================================================================================================================")
+    print(
+        "========================================================================================================================"
+    )
     print("Runbook: documentation/architecture/jules-cli-runbook.md")
     return 0
 
@@ -472,7 +480,7 @@ def run_step(description: str, cmd: Sequence[str], cwd: Path) -> bool:
     """Run a single verification subprocess and stream its output."""
     print(f"   ▶ {description}: {' '.join(cmd)}")
     try:
-        res = subprocess.run(cmd, cwd=str(cwd), check=False)
+        res = subprocess.run(cmd, cwd=str(cwd), check=False)  # nosec B603
         return res.returncode == 0
     except FileNotFoundError as exc:
         print(f"   ❌ Executable not found while running '{cmd[0]}': {exc}")
@@ -488,7 +496,16 @@ def verify_single_persona(agent: str, project_root: Path) -> bool:
     if agent == "sentinel":
         return run_step(
             "Sentinel Auth/Security/Mock-Mongo Unit Suite",
-            [py, "-m", "pytest", "tests/unit", "-k", "auth or security or mock_mongo", "-v", "--tb=short"],
+            [
+                py,
+                "-m",
+                "pytest",
+                "tests/unit",
+                "-k",
+                "auth or security or mock_mongo",
+                "-v",
+                "--tb=short",
+            ],
             project_root,
         )
     if agent == "bolt":
@@ -499,12 +516,20 @@ def verify_single_persona(agent: str, project_root: Path) -> bool:
         )
     if agent == "palette":
         npm_cmd = "npm.cmd" if sys.platform.startswith("win") else "npm"
-        return run_step("Palette Tailwind CSS Build & Asset Validation", [npm_cmd, "run", "build:css"], project_root)
+        return run_step(
+            "Palette Tailwind CSS Build & Asset Validation",
+            [npm_cmd, "run", "build:css"],
+            project_root,
+        )
     if agent == "archie":
-        ok_ruff = run_step("Archie Modular Ruff Check", [py, "-m", "ruff", "check", "src"], project_root)
+        ok_ruff = run_step(
+            "Archie Modular Ruff Check", [py, "-m", "ruff", "check", "src"], project_root
+        )
         schemas_dir = project_root / "src" / "schemas"
         target_mypy = "src/schemas" if schemas_dir.exists() else "src"
-        ok_mypy = run_step("Archie Schema Mypy Check", [py, "-m", "mypy", target_mypy], project_root)
+        ok_mypy = run_step(
+            "Archie Schema Mypy Check", [py, "-m", "mypy", target_mypy], project_root
+        )
         return ok_ruff and ok_mypy
     if agent == "docdoc":
         return run_step(
@@ -521,7 +546,11 @@ def verify_single_persona(agent: str, project_root: Path) -> bool:
     if agent == "crii":
         test_targets = [
             t
-            for t in ("tests/unit/test_api_schemas.py", "tests/test_llm_resilience.py", "tests/unit/test_mock_mongo.py")
+            for t in (
+                "tests/unit/test_api_schemas.py",
+                "tests/test_llm_resilience.py",
+                "tests/unit/test_mock_mongo.py",
+            )
             if (project_root / t).exists()
         ]
         if not test_targets:
@@ -538,7 +567,9 @@ def verify_single_persona(agent: str, project_root: Path) -> bool:
             project_root,
         )
     if agent == "silas":
-        ok1 = run_step("Silas Gate 1/3 (Ruff)", [py, "-m", "ruff", "check", "src", "tests"], project_root)
+        ok1 = run_step(
+            "Silas Gate 1/3 (Ruff)", [py, "-m", "ruff", "check", "src", "tests"], project_root
+        )
         ok2 = run_step("Silas Gate 2/3 (Mypy)", [py, "-m", "mypy", "src"], project_root)
         ok3 = run_step(
             "Silas Gate 3/3 (Pytest Unit Suite)",
@@ -607,7 +638,9 @@ def build_composite_prompt(agent: str, task: Optional[str] = None) -> str:
       5. Mandatory Verification Gate instructions
     """
     if agent not in PERSONA_ROSTER:
-        raise ValueError(f"Unknown agent '{agent}'. Choose from: {', '.join(PERSONA_ROSTER.keys())}")
+        raise ValueError(
+            f"Unknown agent '{agent}'. Choose from: {', '.join(PERSONA_ROSTER.keys())}"
+        )
 
     project_root = resolve_project_root()
     system_root = resolve_system_config_dir()
@@ -711,7 +744,7 @@ def cmd_jules_dispatch(
         return 1
 
     print(f"🚀 Dispatching {spec.emoji} {spec.title} to Google Jules (repo: {resolved_repo})...")
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         cmd,
         input=composite_prompt,
         text=True,
@@ -734,7 +767,7 @@ def _dispatch_single_worker(
     effective_task = task.strip() if task and task.strip() else spec.default_task
     composite_prompt = build_composite_prompt(agent, effective_task)
     cmd: List[str] = [jules_bin, "new", "--repo", resolved_repo]
-    res = subprocess.run(
+    res = subprocess.run(  # nosec B603
         cmd,
         input=composite_prompt,
         capture_output=True,
@@ -775,7 +808,9 @@ def cmd_jules_dispatch_batch(
         if key == "new":
             expanded.extend(["archie", "docdoc", "dave", "crii", "jovol"])
         elif key == "roster":
-            expanded.extend(["sentinel", "bolt", "palette", "archie", "docdoc", "dave", "crii", "jovol"])
+            expanded.extend(
+                ["sentinel", "bolt", "palette", "archie", "docdoc", "dave", "crii", "jovol"]
+            )
         elif key in PERSONA_ROSTER:
             expanded.append(key)
         else:
@@ -791,9 +826,15 @@ def cmd_jules_dispatch_batch(
     dispatch_cwd = resolve_dispatch_cwd(project_root)
 
     if dry_run:
-        print("====================================================================================================")
-        print(f"🧪 [DRY RUN] Parallel Batch Dispatch ({len(target_agents)} Personas) -> {resolved_repo}")
-        print("====================================================================================================")
+        print(
+            "===================================================================================================="
+        )
+        print(
+            f"🧪 [DRY RUN] Parallel Batch Dispatch ({len(target_agents)} Personas) -> {resolved_repo}"
+        )
+        print(
+            "===================================================================================================="
+        )
         for agent in target_agents:
             spec = PERSONA_ROSTER[agent]
             eff_task = task_override or spec.default_task
@@ -805,9 +846,13 @@ def cmd_jules_dispatch_batch(
         print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
 
-    print("====================================================================================================")
+    print(
+        "===================================================================================================="
+    )
     print(f"🚀 PARALLEL GOOGLE JULES DISPATCH — {len(target_agents)} PERSONAS -> {resolved_repo}")
-    print("====================================================================================================")
+    print(
+        "===================================================================================================="
+    )
     for agent in target_agents:
         spec = PERSONA_ROSTER[agent]
         print(f"   ▶ Launching {spec.emoji} {spec.title}")
@@ -815,23 +860,36 @@ def cmd_jules_dispatch_batch(
     results_by_agent: Dict[str, Tuple[str, int, str]] = {}
     with ThreadPoolExecutor(max_workers=min(len(target_agents), 6)) as pool:
         future_map = {
-            pool.submit(_dispatch_single_worker, agent, task_override, resolved_repo, jules_bin, dispatch_cwd): agent
+            pool.submit(
+                _dispatch_single_worker,
+                agent,
+                task_override,
+                resolved_repo,
+                jules_bin,
+                dispatch_cwd,
+            ): agent
             for agent in target_agents
         }
         for future in as_completed(future_map):
             agent_name, code, summary = future.result()
             results_by_agent[agent_name] = (agent_name, code, summary)
 
-    print("\n====================================================================================================")
+    print(
+        "\n===================================================================================================="
+    )
     print("🛰️  PARALLEL DISPATCH RESULTS")
-    print("====================================================================================================")
+    print(
+        "===================================================================================================="
+    )
     exit_code = 0
     for agent in target_agents:
         _agent, code, summary = results_by_agent[agent]
         print(f"   {summary}")
         if code != 0:
             exit_code = code
-    print("====================================================================================================")
+    print(
+        "===================================================================================================="
+    )
     return exit_code
 
 
@@ -855,16 +913,24 @@ def cmd_jules_sessions(
                 continue
         if repo and not repo_matches_filter(row.repo, row.raw_line, repo):
             continue
-        if status and status.lower() not in row.status.lower() and status.lower() not in row.raw_line.lower():
+        if (
+            status
+            and status.lower() not in row.status.lower()
+            and status.lower() not in row.raw_line.lower()
+        ):
             continue
         filtered.append(row)
 
-    print("====================================================================================================================")
+    print(
+        "===================================================================================================================="
+    )
     print(
         f"🛰️  GOOGLE JULES REMOTE SESSIONS "
         f"(showing {min(len(filtered), limit)} of {len(filtered)} matching / {len(rows)} total)"
     )
-    print("====================================================================================================================")
+    print(
+        "===================================================================================================================="
+    )
     print(f"{'PERSONA':<14} {header}")
     print("-" * (len(header) + 15))
     for row in filtered[:limit]:
@@ -874,7 +940,9 @@ def cmd_jules_sessions(
         else:
             p_tag = "🤖 (custom)"
         print(f"{p_tag:<14} {row.raw_line}")
-    print("====================================================================================================================")
+    print(
+        "===================================================================================================================="
+    )
     return 0
 
 
@@ -884,7 +952,7 @@ def cmd_jules_repos() -> int:
     if not jules_bin:
         print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
-    res = subprocess.run([jules_bin, "remote", "list", "--repo"], check=False)
+    res = subprocess.run([jules_bin, "remote", "list", "--repo"], check=False)  # nosec B603
     return res.returncode
 
 
@@ -922,7 +990,9 @@ def resolve_session_target(session_or_persona: str) -> Tuple[Optional[str], Opti
             ):
                 return row.session_id, key
         for row in rows:
-            if row.matched_persona == key and repo_matches_filter(row.repo, row.raw_line, default_repo):
+            if row.matched_persona == key and repo_matches_filter(
+                row.repo, row.raw_line, default_repo
+            ):
                 return row.session_id, key
         for row in rows:
             if row.matched_persona == key:
@@ -932,7 +1002,9 @@ def resolve_session_target(session_or_persona: str) -> Tuple[Optional[str], Opti
     return None, None
 
 
-def cmd_jules_pull(session_or_persona: str, apply_patch: bool = False, verify_agent: Optional[str] = None) -> int:
+def cmd_jules_pull(
+    session_or_persona: str, apply_patch: bool = False, verify_agent: Optional[str] = None
+) -> int:
     """Pull a remote Google Jules session diff by Session ID OR by Persona Name."""
     jules_bin = resolve_jules_executable()
     if not jules_bin:
@@ -958,11 +1030,13 @@ def cmd_jules_pull(session_or_persona: str, apply_patch: bool = False, verify_ag
         f"📥 Pulling Google Jules session {session_id}{persona_info} "
         f"({'with --apply' if apply_patch else 'diff preview only'})..."
     )
-    res = subprocess.run(cmd, cwd=str(project_root), check=False)
+    res = subprocess.run(cmd, cwd=str(project_root), check=False)  # nosec B603
     if res.returncode != 0:
         return res.returncode
 
-    effective_verify = verify_agent or (detected_persona if apply_patch and detected_persona in PERSONA_ROSTER else None)
+    effective_verify = verify_agent or (
+        detected_persona if apply_patch and detected_persona in PERSONA_ROSTER else None
+    )
     if effective_verify:
         print(f"\n🔍 Running post-pull verification gate for '{effective_verify}'...")
         return cmd_verify(effective_verify)
@@ -988,7 +1062,9 @@ def cmd_jules_teleport(session_or_persona: str, verify_agent: Optional[str] = No
     project_root = resolve_project_root()
     persona_info = f" (persona: {detected_persona})" if detected_persona else ""
     print(f"⚡ Teleporting to Google Jules session {session_id}{persona_info}...")
-    res = subprocess.run([jules_bin, "teleport", session_id], cwd=str(project_root), check=False)
+    res = subprocess.run(
+        [jules_bin, "teleport", session_id], cwd=str(project_root), check=False
+    )  # nosec B603
     if res.returncode != 0:
         return res.returncode
 
@@ -998,7 +1074,9 @@ def cmd_jules_teleport(session_or_persona: str, verify_agent: Optional[str] = No
     return 0
 
 
-def cmd_run(agent: str, task: str, engine: str, repo: Optional[str] = None, parallel: int = 1) -> int:
+def cmd_run(
+    agent: str, task: str, engine: str, repo: Optional[str] = None, parallel: int = 1
+) -> int:
     """Dispatch a task to a persona via Antigravity CLI (`agy`), Google `jules` CLI, or stdout."""
     if agent not in PERSONA_ROSTER:
         print(f"❌ Error: Unknown agent '{agent}'.", file=sys.stderr)
@@ -1008,13 +1086,15 @@ def cmd_run(agent: str, task: str, engine: str, repo: Optional[str] = None, para
         return cmd_prompt(agent, task)
 
     if engine == "jules":
-        return cmd_jules_dispatch(agent=agent, task=task, repo=repo, parallel=parallel, dry_run=False)
+        return cmd_jules_dispatch(
+            agent=agent, task=task, repo=repo, parallel=parallel, dry_run=False
+        )
 
     if engine == "agy":
         cmd = ["agy", "--agent", agent, task]
         print(f"🚀 Launching Antigravity CLI with agent '{agent}': {' '.join(cmd)}")
         try:
-            return subprocess.run(cmd, check=False).returncode
+            return subprocess.run(cmd, check=False).returncode  # nosec B603
         except FileNotFoundError:
             print(
                 "⚠️  'agy' executable not found on PATH. Printing composite prompt instead:\n",
@@ -1065,7 +1145,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="List all 12 CLI personas, active branch, and latest remote Session IDs",
     )
 
-    p_sync = sub.add_parser("sync", help="Synchronize CLI agents and .jules playbooks between project and system")
+    p_sync = sub.add_parser(
+        "sync", help="Synchronize CLI agents and .jules playbooks between project and system"
+    )
     p_sync.add_argument(
         "--direction",
         choices=["both", "project-to-system", "system-to-project"],
@@ -1073,14 +1155,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Sync direction (default: both, newest file wins and backups go to .legacy_hr/)",
     )
 
-    p_verify = sub.add_parser("verify", help="Run automated verification gate for a persona, 'roster', or 'all'")
-    p_verify.add_argument("target", help="Persona name (e.g. sentinel, bolt, jovol, silas) or 'roster' / 'all'")
+    p_verify = sub.add_parser(
+        "verify", help="Run automated verification gate for a persona, 'roster', or 'all'"
+    )
+    p_verify.add_argument(
+        "target", help="Persona name (e.g. sentinel, bolt, jovol, silas) or 'roster' / 'all'"
+    )
 
-    p_prompt = sub.add_parser("prompt", help="Output composite system + .jules prompt for a persona")
+    p_prompt = sub.add_parser(
+        "prompt", help="Output composite system + .jules prompt for a persona"
+    )
     p_prompt.add_argument("agent", choices=list(PERSONA_ROSTER.keys()), help="Target persona name")
     p_prompt.add_argument("--task", default=None, help="Optional task description to append")
 
-    p_run = sub.add_parser("run", help="Run a task with a specific CLI persona via agy, jules, or stdout")
+    p_run = sub.add_parser(
+        "run", help="Run a task with a specific CLI persona via agy, jules, or stdout"
+    )
     p_run.add_argument("agent", choices=list(PERSONA_ROSTER.keys()), help="Target persona name")
     p_run.add_argument("task", help="Task instruction for the agent")
     p_run.add_argument(
@@ -1089,14 +1179,20 @@ def build_parser() -> argparse.ArgumentParser:
         default="agy",
         help="Execution engine: 'agy' (Antigravity CLI), 'jules' (Google Jules CLI), or 'print'",
     )
-    p_run.add_argument("--repo", default=None, help="Optional GitHub repo (owner/repo) when using --engine jules")
-    p_run.add_argument("--parallel", type=int, default=1, help="Number of parallel Jules sessions (1-5)")
+    p_run.add_argument(
+        "--repo", default=None, help="Optional GitHub repo (owner/repo) when using --engine jules"
+    )
+    p_run.add_argument(
+        "--parallel", type=int, default=1, help="Number of parallel Jules sessions (1-5)"
+    )
 
     p_jdisp = sub.add_parser(
         "jules-dispatch",
         help="Dispatch a persona + live .jules playbook session directly to Google Jules (`jules new`)",
     )
-    p_jdisp.add_argument("agent", choices=list(PERSONA_ROSTER.keys()), help="Target persona to dispatch to Jules")
+    p_jdisp.add_argument(
+        "agent", choices=list(PERSONA_ROSTER.keys()), help="Target persona to dispatch to Jules"
+    )
     p_jdisp.add_argument(
         "task",
         nargs="?",
@@ -1108,8 +1204,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Target GitHub repo (auto-detected from .git/config if omitted)",
     )
-    p_jdisp.add_argument("--parallel", type=int, default=1, help="Parallel Jules sessions to spawn (1-5)")
-    p_jdisp.add_argument("--dry-run", action="store_true", help="Preview the full composite prompt without dispatching")
+    p_jdisp.add_argument(
+        "--parallel", type=int, default=1, help="Parallel Jules sessions to spawn (1-5)"
+    )
+    p_jdisp.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the full composite prompt without dispatching",
+    )
 
     p_jbatch = sub.add_parser(
         "jules-dispatch-batch",
@@ -1126,15 +1228,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="Target GitHub repo (auto-detected from .git/config if omitted)",
     )
     p_jbatch.add_argument("--task", default=None, help="Optional shared task override")
-    p_jbatch.add_argument("--dry-run", action="store_true", help="Preview batch dispatch without creating remote sessions")
+    p_jbatch.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview batch dispatch without creating remote sessions",
+    )
 
-    p_jsess = sub.add_parser("jules-sessions", help="List and filter remote Google Jules sessions with persona tags")
-    p_jsess.add_argument("--persona", default=None, help="Filter sessions by persona (e.g. sentinel, bolt, archie)")
-    p_jsess.add_argument("--repo", default=None, help="Filter sessions by repository name (handles truncation)")
-    p_jsess.add_argument("--status", default=None, help="Filter sessions by status (e.g. Completed, Awaiting, Planning)")
-    p_jsess.add_argument("--limit", type=int, default=25, help="Max sessions to display (default: 25)")
+    p_jsess = sub.add_parser(
+        "jules-sessions", help="List and filter remote Google Jules sessions with persona tags"
+    )
+    p_jsess.add_argument(
+        "--persona", default=None, help="Filter sessions by persona (e.g. sentinel, bolt, archie)"
+    )
+    p_jsess.add_argument(
+        "--repo", default=None, help="Filter sessions by repository name (handles truncation)"
+    )
+    p_jsess.add_argument(
+        "--status",
+        default=None,
+        help="Filter sessions by status (e.g. Completed, Awaiting, Planning)",
+    )
+    p_jsess.add_argument(
+        "--limit", type=int, default=25, help="Max sessions to display (default: 25)"
+    )
 
-    sub.add_parser("jules-repos", help="List GitHub repositories connected to your Google Jules account")
+    sub.add_parser(
+        "jules-repos", help="List GitHub repositories connected to your Google Jules account"
+    )
 
     p_jpull = sub.add_parser(
         "jules-pull",
@@ -1144,7 +1264,9 @@ def build_parser() -> argparse.ArgumentParser:
         "session_id",
         help="The Google Jules Session ID, persona name (e.g. bolt, archie), or 'latest'",
     )
-    p_jpull.add_argument("--apply", action="store_true", help="Apply the pulled patch to the local repository")
+    p_jpull.add_argument(
+        "--apply", action="store_true", help="Apply the pulled patch to the local repository"
+    )
     p_jpull.add_argument(
         "--verify",
         choices=list(PERSONA_ROSTER.keys()) + ["roster", "all"],
@@ -1167,10 +1289,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the specified persona verification gate after teleporting",
     )
 
-    p_learn = sub.add_parser("learn", help="Append a new learning to .jules/<agent>.md and sync globally")
-    p_learn.add_argument("agent", choices=[k for k, v in PERSONA_ROSTER.items() if v.jules_file], help="Jules persona")
+    p_learn = sub.add_parser(
+        "learn", help="Append a new learning to .jules/<agent>.md and sync globally"
+    )
+    p_learn.add_argument(
+        "agent",
+        choices=[k for k, v in PERSONA_ROSTER.items() if v.jules_file],
+        help="Jules persona",
+    )
     p_learn.add_argument("--title", required=True, help="Short title for the learning")
-    p_learn.add_argument("--learning", required=True, help="What was learned or what vulnerability was found")
+    p_learn.add_argument(
+        "--learning", required=True, help="What was learned or what vulnerability was found"
+    )
     p_learn.add_argument("--action", required=True, help="Actionable rule or prevention measure")
 
     return parser
@@ -1190,7 +1320,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "prompt":
         return cmd_prompt(agent=args.agent, task=args.task)
     if args.command == "run":
-        return cmd_run(agent=args.agent, task=args.task, engine=args.engine, repo=args.repo, parallel=args.parallel)
+        return cmd_run(
+            agent=args.agent,
+            task=args.task,
+            engine=args.engine,
+            repo=args.repo,
+            parallel=args.parallel,
+        )
     if args.command == "jules-dispatch":
         return cmd_jules_dispatch(
             agent=args.agent,
@@ -1216,11 +1352,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "jules-repos":
         return cmd_jules_repos()
     if args.command == "jules-pull":
-        return cmd_jules_pull(session_or_persona=args.session_id, apply_patch=args.apply, verify_agent=args.verify)
+        return cmd_jules_pull(
+            session_or_persona=args.session_id, apply_patch=args.apply, verify_agent=args.verify
+        )
     if args.command == "jules-teleport":
         return cmd_jules_teleport(session_or_persona=args.session_id, verify_agent=args.verify)
     if args.command == "learn":
-        return cmd_learn(agent=args.agent, title=args.title, learning=args.learning, action=args.action)
+        return cmd_learn(
+            agent=args.agent, title=args.title, learning=args.learning, action=args.action
+        )
     return 0
 
 
