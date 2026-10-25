@@ -16,6 +16,7 @@ This document specifically scopes the requirements, prompts, and networking logi
 - [ ] Define the inter-agent communication payload structure (how the Porter sends task requests to the classifier agent).
 - [ ] **[URGENT] Update Agents for Formatted Events Pipeline:** The `sync_calendar_to_graph` orchestrator is currently bypassing GTKY agents via a "dry-run" placeholder because the agents are failing to return correctly structured payloads. Agents (Historian/Librarian) must be updated to output the precise schema required to write to `formatted_calendar_events`.
 - [ ] **[URGENT] Multi-Tenant Username Context:** Update all agent prompts and internal tracking to address and log data using the user's `username` instead of hardcoded terms like "Hero" or relying solely on their email address.
+- [ ] **[Spec-Kit Modularity Task] Split `scripts/porter_cli_agents.py` Subcommands (`< 200`L scripts, `< 60`L functions):** Decompose `scripts/porter_cli_agents.py` (currently 1,229 lines in `LEGACY_EXEMPT_SCRIPTS`) into dedicated `< 200`-line subcommand modules (`sync`, `verify`, `jules-*` remote session/dispatch/pull/teleport handlers, and `learn`), keep `scripts/porter_cli_agents.py` as a thin CLI router, and remove `"porter_cli_agents.py"` from `LEGACY_EXEMPT_SCRIPTS` in `scripts/git_hooks_runner.py`.
 
 ## The Oracle Predictions Agent (Future Feature)
 *Status: Placeholder architecture.*
