@@ -244,7 +244,8 @@ def dispatch_jira_to_jules():
                 jira_client=jira_client,
             )
     except JulesDispatchError as exc:
-        return jsonify({"error": str(exc)}), 400
+        logger.exception("Jules dispatch failed: %s", exc)
+        return jsonify({"error": "Unable to dispatch Jira issue to Jules"}), 400
 
     storage.save_work_order(work_order)
     return (
