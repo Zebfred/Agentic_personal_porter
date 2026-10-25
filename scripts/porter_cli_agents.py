@@ -1,39 +1,14 @@
 #!/usr/bin/env python3
 """
-Porter True CLI Agents — Dispatcher, Google Jules Integrator, Verifier & Sync Tool
-==================================================================================
-Provides project-level and system-level CLI agent management for the 12
-Agentic Personal Porter personas (8 Jules quality personas, Silas gatekeeper,
-and 3 Domain Porters) with first-class Google Jules CLI (`jules.exe`)
-and Antigravity CLI (`agy`) integration across laptop and desktop.
-
-How to Find Session IDs & Use Google Jules Commands:
-  1. See all 12 personas + their LATEST Google Jules Session ID & Status:
-       uv run python scripts/porter_cli_agents.py list
-
-  2. List & filter remote Google Jules sessions (handles truncated repo names automatically):
-       uv run python scripts/porter_cli_agents.py jules-sessions
-       uv run python scripts/porter_cli_agents.py jules-sessions --repo Agentic_personal_porter
-       uv run python scripts/porter_cli_agents.py jules-sessions --persona bolt
-
-  3. Dispatch a single persona (uses built-in audit task if task string is omitted):
-       uv run python scripts/porter_cli_agents.py jules-dispatch archie
-       uv run python scripts/porter_cli_agents.py jules-dispatch jovol "Audit Spec Kit primitives"
-
-  4. Dispatch multiple personas in parallel (uses direct jules.exe to avoid spawn EBUSY):
-       uv run python scripts/porter_cli_agents.py jules-dispatch-batch docdoc dave crii jovol
-       uv run python scripts/porter_cli_agents.py jules-dispatch-batch new
-
-  5. Pull or preview a remote session by Session ID OR by Persona Name (auto-resolves latest ID!):
-       uv run python scripts/porter_cli_agents.py jules-pull bolt
-       uv run python scripts/porter_cli_agents.py jules-pull 8225521754280442521 --apply --verify bolt
+Porter True CLI Agents — Dispatcher, Google Jules Integrator, Verifier & Sync Tool.
+See `documentation/architecture/jules-cli-runbook.md` for operational workflows and examples.
+Persona definitions live in `scripts/porter_persona_roster.py`.
 """
 
 from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
 import datetime
 import os
 from pathlib import Path
@@ -44,221 +19,24 @@ import sys
 import tempfile
 from typing import Dict, List, Optional, Sequence, Tuple
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from porter_persona_roster import (  # noqa: E402
+    PERSONA_ROSTER,
+    JulesSessionRow,
+    detect_persona_from_description,
+)
+
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 
-def ensure_git_on_path() -> Optional[str]:
-    """
-    Ensure `git` is available on os.environ['PATH'] even when Windows PATH was
-    temporarily modified during system upgrades.
-    """
-    existing = shutil.which("git")
-    if existing:
-        return existing
-
-    win_git_dirs = [
-        Path("C:/Program Files/Git/cmd"),
-        Path("C:/Program Files/Git/bin"),
-        Path("C:/Program Files (x86)/Git/cmd"),
-        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Git" / "cmd",
-    ]
-    added_dirs: List[str] = []
-    for git_dir in win_git_dirs:
-        if git_dir.exists() and (git_dir / "git.exe").exists():
-            added_dirs.append(str(git_dir))
-
-    if added_dirs:
-        os.environ["PATH"] = os.pathsep.join(added_dirs) + os.pathsep + os.environ.get("PATH", "")
-        return shutil.which("git")
-    return None
-
-
-# Always ensure git is on PATH before any subprocess calls (critical for jules.exe)
-ensure_git_on_path()
-
-
-@dataclass(frozen=True)
-class PersonaSpec:
-    """Metadata, Google Jules signature, default task, and verification contract for each CLI agent persona."""
-
-    name: str
-    emoji: str
-    title: str
-    category: str
-    jules_header: str
-    jules_file: Optional[str]
-    domain_doc: Optional[str]
-    make_target: str
-    default_task: str
-    partners: Tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class JulesSessionRow:
-    """Parsed row from `jules.exe remote list --session`."""
-
-    session_id: str
-    description: str
-    repo: str
-    last_active: str
-    status: str
-    raw_line: str
-    matched_persona: Optional[str] = None
-
-
-PERSONA_ROSTER: Dict[str, PersonaSpec] = {
-    "silas": PersonaSpec(
-        name="silas",
-        emoji="🏛️",
-        title="Silas — Systems Architect & Verification Gatekeeper",
-        category="Gatekeeper",
-        jules_header='Persona: You are "Silas," 🏛️ - a battle-hardened Principal Systems Architect and Constitutional Gatekeeper who enforces zero-slop, strict typing, and complete verification gates.',
-        jules_file=None,
-        domain_doc="documentation/architecture/spec-kit-constitution.md",
-        make_target="verify-done",
-        default_task="Perform a Principal Systems Architect audit across src/ and tests/, eliminate one high-friction or typing defect, and verify ruff, mypy, and pytest unit suites pass.",
-        partners=("sentinel", "bolt", "palette", "archie", "docdoc", "dave", "crii", "jovol"),
-    ),
-    "sentinel": PersonaSpec(
-        name="sentinel",
-        emoji="🛡️",
-        title="Sentinel — Security & Hardening Agent",
-        category="Jules Quality",
-        jules_header='You are "Sentinel" 🛡️ - a security-focused agent who protects the codebase from vulnerabilities, secret leaks, timing attacks, and unauthenticated endpoints.',
-        jules_file="sentinel.md",
-        domain_doc="documentation/current-work/active-backend-tasks.md",
-        make_target="test-sentinel",
-        default_task="Perform a surgical security audit of authentication, secret handling, and input sanitization across src/blueprints/ and src/services/, remediate one vulnerability or harden an endpoint with unit tests, and update .jules/sentinel.md.",
-    ),
-    "bolt": PersonaSpec(
-        name="bolt",
-        emoji="⚡",
-        title="Bolt — Performance & Database Optimization Agent",
-        category="Jules Quality",
-        jules_header='You are "Bolt" ⚡ - a performance-obsessed agent who makes the codebase faster by optimizing Neo4j connection pooling, MongoDB bulk_write batching, and query projections.',
-        jules_file="bolt.md",
-        domain_doc="documentation/current-work/active-backend-tasks.md",
-        make_target="test-bolt",
-        default_task="Audit database and service queries across src/database/ and src/services/ for N+1 loops, missing projections, or unbatched writes, implement one measurable optimization with unit tests, and update .jules/bolt.md.",
-    ),
-    "palette": PersonaSpec(
-        name="palette",
-        emoji="🎨",
-        title="Palette (Fiona) — Frontend, Aesthetics & Accessibility Agent",
-        category="Jules Quality",
-        jules_header='You are "Palette" 🎨 - a UX and accessibility-focused agent (honoring the Fiona Protocol) who enforces ARIA labels, semantic CSS tokens, async loading states, and the 20-Second Rule.',
-        jules_file="palette.md",
-        domain_doc="documentation/current-work/active-frontend-dev.md",
-        make_target="test-palette",
-        default_task="Audit templates/ and static/ for accessibility (ARIA labels, form label associations, focus states), semantic CSS variables, and perceived latency under the Fiona 20-Second Rule, implement one surgical UX/a11y enhancement, and update .jules/palette.md.",
-    ),
-    "archie": PersonaSpec(
-        name="archie",
-        emoji="🏛️",
-        title="Archie — System Architect Consultant",
-        category="Jules Quality",
-        jules_header='You are "Archie" 🏛️ - a System Architect Consultant who enforces contract-first Pydantic v2 schemas in src/schemas/, unidirectional layered decoupling, and dead-code elimination.',
-        jules_file="archie.md",
-        domain_doc="documentation/architecture/spec-kit-constitution.md",
-        make_target="test-archie",
-        default_task="Perform a surgical contract-first Pydantic v2 schema and unidirectional dependency audit across src/schemas/, src/services/, and src/blueprints/. Identify one unvalidated dictionary boundary or coupling smell, refactor it cleanly using strict Pydantic v2 models, and verify with ruff and mypy.",
-    ),
-    "docdoc": PersonaSpec(
-        name="docdoc",
-        emoji="📚",
-        title="DocDoc — Documentation & Knowledge Chronicler",
-        category="Jules Quality",
-        jules_header='You are "DocDoc" 📚 - a Documentation & Knowledge Chronicler who enforces lowercase kebab-case in documentation/, zero-deletion .legacy_hr/ archiving, and living chronicles.',
-        jules_file="docdoc.md",
-        domain_doc="documentation/architecture/agent-roster.md",
-        make_target="test-docdoc",
-        default_task="Perform a documentation governance and knowledge chronicle audit across documentation/ and README.md. Verify lowercase kebab-case naming, fix broken internal markdown links or outdated architecture references, ensure zero stray .bk files exist outside .legacy_hr/, and verify with scripts/analyze_scripts/verify_doc_hygiene.py.",
-    ),
-    "dave": PersonaSpec(
-        name="dave",
-        emoji="⚙️",
-        title="Dave — DevOps, CI/CD & Infrastructure Engineer",
-        category="Jules Quality",
-        jules_header='You are "Dave" ⚙️ - a DevOps & Infrastructure Engineer who enforces 40-character GitHub Actions SHA pinning, deterministic Docker Compose healthchecks, and FinOps billing killswitches.',
-        jules_file="dave.md",
-        domain_doc="documentation/current-work/active-backend-tasks.md",
-        make_target="test-dave",
-        default_task="Audit .github/workflows/, docker-compose.yml, Dockerfile, and deployment scripts for 40-character commit SHA pinning, deterministic container healthchecks, least-privilege GITHUB_TOKEN permissions, and FinOps guardrails. Harden one DevOps configuration and verify with scripts/analyze_scripts/verify_devops.py.",
-    ),
-    "crii": PersonaSpec(
-        name="crii",
-        emoji="🔍",
-        title="Crii — Adversarial Inquisitor & Failure Mode Hunter",
-        category="Jules Quality",
-        jules_header='You are "Crii" 🔍 - an Adversarial Inquisitor & Failure Mode Hunter who stress-tests boundary inputs, hunts concurrency race conditions and cursor exhaustion, and enforces resilient fallbacks.',
-        jules_file="crii.md",
-        domain_doc="documentation/current-work/active-agent-dev.md",
-        make_target="test-crii",
-        default_task="Perform an adversarial failure-mode and boundary-input audit across src/services/, src/blueprints/, and tests/. Identify one unhandled edge case (malformed payloads, cursor exhaustion, timeout/fallback gap, or race condition), harden the implementation, add adversarial unit tests, and update .jules/crii.md.",
-    ),
-    "jovol": PersonaSpec(
-        name="jovol",
-        emoji="⚛️",
-        title="Jovol — JS Functional Component & Spec Kit Specialist",
-        category="Jules Quality",
-        jules_header='You are "Jovol" ⚛️ - a JS Functional Component & Spec Kit Specialist who enforces atomic primitives in components/spec-kit/, React Server Components, strict TypeScript Props, and clean JS syntax.',
-        jules_file="jovol.md",
-        domain_doc="documentation/current-work/active-frontend-dev.md",
-        make_target="test-jovol",
-        default_task="Audit static/js/ and frontend component modules for clean functional JavaScript/TypeScript boundaries, defensive DOM hydration, semantic glassmorphic token usage, and zero syntax or console regressions. Improve one frontend module or component and verify with scripts/analyze_scripts/verify_components.py.",
-    ),
-    "backend-porter": PersonaSpec(
-        name="backend-porter",
-        emoji="🔧",
-        title="Backend Porter — Flask, MongoDB, Neo4j & Calendar Sync Specialist",
-        category="Domain Porter",
-        jules_header='You are "Backend Porter" 🔧 - the Backend Domain Specialist operating within active-backend-tasks.md in partnership with Sentinel, Bolt, and Archie.',
-        jules_file=None,
-        domain_doc="documentation/current-work/active-backend-tasks.md",
-        make_target="test-backend-porter",
-        default_task="Review documentation/current-work/active-backend-tasks.md and execute one high-priority backend hardening or schema alignment improvement across src/blueprints/, src/services/, or src/database/ with full unit test coverage.",
-        partners=("sentinel", "bolt", "archie"),
-    ),
-    "frontend-porter": PersonaSpec(
-        name="frontend-porter",
-        emoji="🖥️",
-        title="Frontend Porter — Hub UI, Tailwind v4 & Spec Kit Specialist",
-        category="Domain Porter",
-        jules_header='You are "Frontend Porter" 🖥️ - the Frontend Domain Specialist operating within active-frontend-dev.md in partnership with Palette and Jovol.',
-        jules_file=None,
-        domain_doc="documentation/current-work/active-frontend-dev.md",
-        make_target="test-frontend-porter",
-        default_task="Review documentation/current-work/active-frontend-dev.md and execute one high-impact UI, accessibility, or state-sync improvement across templates/ and static/ honoring the Fiona Protocol.",
-        partners=("palette", "jovol"),
-    ),
-    "agentic-porter": PersonaSpec(
-        name="agentic-porter",
-        emoji="🤖",
-        title="Agentic Porter — Multi-Agent Orchestration & Memory Specialist",
-        category="Domain Porter",
-        jules_header='You are "Agentic Porter" 🤖 - the Agentic Orchestration Specialist operating within active-agent-dev.md in partnership with Archie, Crii, and Dave.',
-        jules_file=None,
-        domain_doc="documentation/current-work/active-agent-dev.md",
-        make_target="test-agentic-porter",
-        default_task="Review documentation/current-work/active-agent-dev.md and execute one high-impact agentic orchestration, prompt contract, or resilience improvement with full unit test verification.",
-        partners=("archie", "crii", "dave"),
-    ),
-}
-
-KNOWN_REPO_ALIASES: Dict[str, str] = {
-    "agentic_personal_porter": "Zebfred/Agentic_personal_porter",
-    "nexus_website_code": "Zebfred/Nexus_Website_code",
-    "lauirl": "Zebfred/LaUIrl",
-    "notes_repo": "Zebfred/Notes_repo",
-    "project_x": "tparsons9/Project_X",
-}
-
-
 def resolve_project_root() -> Path:
-    """Locate the Agentic_personal_porter repository root from script or CWD."""
+    """Locate the repository root from script location or current working directory."""
     script_path = Path(__file__).resolve()
     if (script_path.parents[1] / ".jules").exists() or (script_path.parents[1] / "Makefile").exists():
         return script_path.parents[1]
@@ -267,41 +45,43 @@ def resolve_project_root() -> Path:
     for candidate in [cwd, *cwd.parents]:
         if (candidate / ".jules").exists() and (candidate / "Makefile").exists():
             return candidate
-        if (candidate / "Agentic_personal_porter" / ".jules").exists():
-            return candidate / "Agentic_personal_porter"
 
     return script_path.parents[1]
 
 
 def resolve_system_config_dir() -> Path:
-    """Return the user's global Antigravity configuration directory (~/.gemini/config)."""
+    """Return the global CLI configuration directory from `PORTER_SYSTEM_CONFIG_DIR` or `~/.gemini/config`."""
+    env_dir = os.environ.get("PORTER_SYSTEM_CONFIG_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser()
     return Path.home() / ".gemini" / "config"
 
 
 def resolve_jules_executable() -> Optional[str]:
     """
-    Locate the native compiled Go binary `jules.exe` FIRST before falling back to `jules.cmd`.
-    Why this matters on Windows:
-      `@google/jules/run.cjs` looks for a file named `jules` (without `.exe`), fails on Windows,
-      and re-downloads/extracts `jules_external_v0.1.42_windows_amd64.tar.gz` into `%TEMP%\\jules_tmp\\jules.exe`
-      on EVERY invocation — causing slow startup and `Error: spawn EBUSY` during parallel dispatch.
-      Using `jules.exe` directly is ~10x faster and 100% concurrency-safe.
+    Locate the native compiled `jules` binary first before falling back to wrapper scripts on `PATH`.
+    Avoids `@google/jules/run.cjs` re-downloading the tarball into `%TEMP%/jules_tmp` on every run
+    and prevents `Error: spawn EBUSY` during parallel dispatch.
     """
-    sys_bin_dir = resolve_system_config_dir() / "bin"
-    cached_exe = sys_bin_dir / ("jules.exe" if sys.platform.startswith("win") else "jules")
-    tmp_exe = Path(tempfile.gettempdir()) / "jules_tmp" / ("jules.exe" if sys.platform.startswith("win") else "jules")
-    npm_pkg_exe = Path("C:/nvm4w/nodejs/node_modules/@google/jules/jules.exe")
+    env_bin = os.environ.get("PORTER_JULES_BIN")
+    if env_bin:
+        expanded = Path(env_bin).expanduser()
+        if expanded.exists():
+            return str(expanded)
 
-    # If tmp_exe exists from @google/jules, cache a persistent copy in ~/.gemini/config/bin/jules.exe
+    exe_name = "jules.exe" if sys.platform.startswith("win") else "jules"
+    sys_bin_exe = resolve_system_config_dir() / "bin" / exe_name
+    tmp_exe = Path(tempfile.gettempdir()) / "jules_tmp" / exe_name
+
     if tmp_exe.exists():
         try:
-            sys_bin_dir.mkdir(parents=True, exist_ok=True)
-            if not cached_exe.exists() or tmp_exe.stat().st_mtime > cached_exe.stat().st_mtime:
-                shutil.copy2(tmp_exe, cached_exe)
+            sys_bin_exe.parent.mkdir(parents=True, exist_ok=True)
+            if not sys_bin_exe.exists() or tmp_exe.stat().st_mtime > sys_bin_exe.stat().st_mtime:
+                shutil.copy2(tmp_exe, sys_bin_exe)
         except OSError:
             pass
 
-    for direct_bin in (cached_exe, tmp_exe, npm_pkg_exe):
+    for direct_bin in (sys_bin_exe, tmp_exe):
         if direct_bin.exists():
             return str(direct_bin)
 
@@ -310,20 +90,11 @@ def resolve_jules_executable() -> Optional[str]:
         if found:
             return found
 
-    win_candidates = [
-        Path("C:/nvm4w/nodejs/jules.cmd"),
-        Path(os.environ.get("APPDATA", "")) / "npm" / "jules.cmd",
-        Path.home() / "AppData" / "Roaming" / "npm" / "jules.cmd",
-    ]
-    for candidate in win_candidates:
-        if candidate.exists():
-            return str(candidate)
-
     return None
 
 
 def resolve_current_git_branch(project_root: Path) -> str:
-    """Read the current git branch from .git/HEAD without requiring git.exe on Windows PATH."""
+    """Read the current git branch from `.git/HEAD` without requiring `git` on `PATH`."""
     head_file = project_root / ".git" / "HEAD"
     if head_file.exists():
         content = head_file.read_text(encoding="utf-8").strip()
@@ -333,24 +104,73 @@ def resolve_current_git_branch(project_root: Path) -> str:
     return "unknown"
 
 
+def is_current_branch_pushed_to_origin(project_root: Path) -> bool:
+    """
+    Check whether the active local branch exists on `origin` (via `.git/refs/remotes/origin/<branch>`
+    or `.git/packed-refs`).
+    """
+    branch = resolve_current_git_branch(project_root)
+    if not branch or branch == "unknown":
+        return False
+
+    remote_ref = project_root / ".git" / "refs" / "remotes" / "origin" / branch
+    if remote_ref.exists():
+        return True
+
+    packed_refs = project_root / ".git" / "packed-refs"
+    if packed_refs.exists():
+        text = packed_refs.read_text(encoding="utf-8", errors="replace")
+        if f"refs/remotes/origin/{branch}" in text:
+            return True
+
+    return False
+
+
+def resolve_dispatch_cwd(project_root: Path) -> Path:
+    """
+    Return `project_root` if the current local branch exists on `origin`.
+    If the active local branch has not been pushed to `origin` yet, `jules new` would otherwise
+    pass the unpushed branch name (or an empty branch if run outside git) to Google Jules Cloud,
+    causing the remote VM to fail at checkout. We prepare a lightweight git context directory
+    whose `HEAD` points to `refs/heads/main` so `git branch --show-current` reports `main`
+    without switching branches in the user's working tree.
+    """
+    if is_current_branch_pushed_to_origin(project_root):
+        return project_root
+
+    ctx_dir = Path(tempfile.gettempdir()) / "porter_jules_dispatch_ctx"
+    git_dir = ctx_dir / ".git"
+    refs_heads = git_dir / "refs" / "heads"
+    refs_heads.mkdir(parents=True, exist_ok=True)
+
+    (git_dir / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+    src_config = project_root / ".git" / "config"
+    if src_config.exists():
+        shutil.copy2(src_config, git_dir / "config")
+
+    main_ref = project_root / ".git" / "refs" / "remotes" / "origin" / "main"
+    if not main_ref.exists():
+        main_ref = project_root / ".git" / "refs" / "heads" / "main"
+    commit_sha = main_ref.read_text(encoding="utf-8").strip() if main_ref.exists() else ""
+    if not commit_sha:
+        packed_refs = project_root / ".git" / "packed-refs"
+        if packed_refs.exists():
+            for line in packed_refs.read_text(encoding="utf-8", errors="replace").splitlines():
+                if line.endswith((" refs/remotes/origin/main", " refs/heads/main")):
+                    commit_sha = line.split()[0]
+                    break
+    if not commit_sha:
+        commit_sha = "0000000000000000000000000000000000000000"
+    (refs_heads / "main").write_text(f"{commit_sha}\n", encoding="utf-8")
+    return ctx_dir
+
+
 def resolve_github_repo(project_root: Path, repo_arg: Optional[str] = None) -> str:
     """
-    Always resolve a full 'owner/repo' slug for Google Jules CLI (`jules.exe new --repo owner/repo`).
-    Prevents HTTP 404 errors when `--repo` is omitted or passed without `Zebfred/`.
+    Dynamically resolve the `<owner>/<repo>` slug from `.git/config` `origin` URL at runtime.
+    Zero personal usernames or external repository aliases are hardcoded.
     """
-    if repo_arg:
-        cleaned = repo_arg.strip().strip("/")
-        if cleaned.startswith("https://github.com/"):
-            cleaned = cleaned.replace("https://github.com/", "", 1)
-        if cleaned.endswith(".git"):
-            cleaned = cleaned[:-4]
-        if "/" in cleaned:
-            return cleaned
-        alias = KNOWN_REPO_ALIASES.get(cleaned.lower())
-        if alias:
-            return alias
-        return f"Zebfred/{cleaned}"
-
+    origin_slug = ""
     git_config = project_root / ".git" / "config"
     if git_config.exists():
         config_text = git_config.read_text(encoding="utf-8", errors="replace")
@@ -360,35 +180,33 @@ def resolve_github_repo(project_root: Path, repo_arg: Optional[str] = None) -> s
             re.MULTILINE,
         )
         if match:
-            return match.group(1)
+            origin_slug = match.group(1)
 
-    return "Zebfred/Agentic_personal_porter"
+    if repo_arg:
+        cleaned = repo_arg.strip().strip("/")
+        if cleaned.startswith("https://github.com/"):
+            cleaned = cleaned.replace("https://github.com/", "", 1)
+        if cleaned.endswith(".git"):
+            cleaned = cleaned[:-4]
+        if "/" in cleaned:
+            return cleaned
+        if origin_slug and "/" in origin_slug:
+            owner = origin_slug.split("/", 1)[0]
+            return f"{owner}/{cleaned}"
+        return cleaned
 
+    if origin_slug:
+        return origin_slug
 
-def detect_persona_from_description(description: str) -> Optional[str]:
-    """Identify which of the 12 personas owns a remote Google Jules session from its description."""
-    desc_lower = description.lower()
-    for name, spec in PERSONA_ROSTER.items():
-        if f'"{name}"' in desc_lower or f'"{name},' in desc_lower or f"you are {name}" in desc_lower:
-            return name
-        if spec.emoji and spec.emoji in description and name in desc_lower:
-            return name
-    # Also recognize legacy performance/security headers
-    if "bolt" in desc_lower or "performance optimization task" in desc_lower:
-        return "bolt"
-    if "sentinel" in desc_lower:
-        return "sentinel"
-    if "palette" in desc_lower or "fiona" in desc_lower:
-        return "palette"
-    if "silas" in desc_lower:
-        return "silas"
-    return None
+    env_repo = os.environ.get("PORTER_DEFAULT_REPO")
+    if env_repo:
+        return env_repo
+
+    return project_root.name
 
 
 def fetch_parsed_jules_sessions() -> Tuple[str, List[JulesSessionRow]]:
-    """
-    Query `jules.exe remote list --session` and parse each row into structured `JulesSessionRow` objects.
-    """
+    """Query `jules remote list --session` and parse each row into structured `JulesSessionRow` objects."""
     jules_bin = resolve_jules_executable()
     if not jules_bin:
         return "", []
@@ -411,7 +229,7 @@ def fetch_parsed_jules_sessions() -> Tuple[str, List[JulesSessionRow]]:
     header = lines[0]
     parsed_rows: List[JulesSessionRow] = []
     row_pattern = re.compile(
-        r"^\s*(\d+)\s+(.+?)\s+(Zebfred/\S+|tparsons9/\S+|\S+/\S+)\s+(\d+\S*(?:\s+ago)?)\s*(.*)$"
+        r"^\s*(\d+)\s+(.+?)\s+([A-Za-z0-9_.-]+/\S+)\s+(\d+(?:\s+[A-Za-z]+)?(?:\s+ago)?|\S+)\s*(.*)$"
     )
     for raw in lines[1:]:
         m = row_pattern.match(raw)
@@ -454,14 +272,13 @@ def fetch_parsed_jules_sessions() -> Tuple[str, List[JulesSessionRow]]:
 
 def repo_matches_filter(row_repo: str, row_raw: str, repo_filter: str) -> bool:
     """
-    Match `--repo` filter even when `jules.exe` truncates the Repo column in its table output
-    (e.g., `Zebfred/Agentic_personal_porter` is truncated by `jules.exe` to `Zebfred/Agentic_perso…`).
+    Match `--repo` filter even when `jules` truncates the Repo column in its table output
+    (e.g., `<owner>/Agentic_personal_porter` is truncated to `<owner>/Agentic_perso…`).
     """
     filt = repo_filter.strip().lower()
     if filt in row_raw.lower():
         return True
 
-    # Handle jules.exe 22-char table truncation (`Zebfred/Agentic_perso…`)
     cleaned_row_repo = row_repo.lower().rstrip("…").rstrip(".")
     if "/" in filt:
         owner, short = filt.split("/", 1)
@@ -478,14 +295,12 @@ def repo_matches_filter(row_repo: str, row_raw: str, repo_filter: str) -> bool:
 
 
 def backup_to_legacy_hr(target_file: Path, project_root: Path) -> Optional[Path]:
-    """
-    Create a .bk backup of an existing file and immediately archive it into .legacy_hr/
-    to comply with the Zero-Deletion & .legacy_hr Governance Rule.
-    """
+    """Create a `.bk` backup of an existing file and archive it into `.legacy_hr/DDMMYYYY/`."""
     if not target_file.exists():
         return None
 
-    legacy_dir = project_root / ".legacy_hr" / "cli_agent_sync_backups"
+    day_bucket = datetime.datetime.now().strftime("%d%m%Y")
+    legacy_dir = project_root / ".legacy_hr" / day_bucket
     legacy_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = legacy_dir / f"{target_file.name}.{timestamp}.bk"
@@ -499,10 +314,7 @@ def sync_file_pair(
     direction: str,
     project_root: Path,
 ) -> str:
-    """
-    Synchronize a single file between project and system directories with .bk archiving.
-    Returns a human-readable status label.
-    """
+    """Synchronize a single file between project and system directories with `.bk` archiving."""
     project_exists = project_file.exists()
     system_exists = system_file.exists()
 
@@ -552,7 +364,7 @@ def sync_file_pair(
 
 
 def cmd_sync(direction: str) -> int:
-    """Synchronize all 12 CLI agent definitions, 8 .jules playbooks, and global runner."""
+    """Synchronize all 12 CLI agent definitions, 8 `.jules` playbooks, and runner modules."""
     project_root = resolve_project_root()
     system_root = resolve_system_config_dir()
 
@@ -567,17 +379,16 @@ def cmd_sync(direction: str) -> int:
     sys_jules_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"🔄 Synchronizing Porter CLI Agents (direction: {direction})")
-    print(f"   Project Root : {project_root} (branch: {resolve_current_git_branch(project_root)})")
-    print(f"   System Config: {system_root}\n")
+    print(f"   Active Branch: {resolve_current_git_branch(project_root)}\n")
 
-    print("1. Custom Antigravity CLI Agents (.agents/agents/*.md <-> ~/.gemini/config/agents/*.md):")
+    print("1. Custom Antigravity CLI Agents (.agents/agents/*.md <-> system agents):")
     for name, spec in PERSONA_ROSTER.items():
         p_file = proj_agents_dir / f"{name}.md"
         s_file = sys_agents_dir / f"{name}.md"
         status = sync_file_pair(p_file, s_file, direction, project_root)
         print(f"   {spec.emoji} {name:<16} -> {status}")
 
-    print("\n2. Jules Operational Playbooks (.jules/*.md <-> ~/.gemini/config/jules/*.md):")
+    print("\n2. Jules Operational Playbooks (.jules/*.md <-> system jules):")
     for name, spec in PERSONA_ROSTER.items():
         if not spec.jules_file:
             continue
@@ -586,14 +397,12 @@ def cmd_sync(direction: str) -> int:
         status = sync_file_pair(p_jules, s_jules, direction, project_root)
         print(f"   {spec.emoji} {spec.jules_file:<16} -> {status}")
 
-    script_src = Path(__file__).resolve()
-    script_dst = sys_agents_dir / "porter_cli_agents.py"
-    if script_src != script_dst:
-        shutil.copy2(script_src, script_dst)
-        print(f"\n3. Installed System CLI Runner -> {script_dst}")
+    for script_name in ("porter_persona_roster.py", "porter_cli_agents.py"):
+        src_path = project_root / "scripts" / script_name
+        dst_path = sys_agents_dir / script_name
+        if src_path.exists() and src_path.resolve() != dst_path.resolve():
+            shutil.copy2(src_path, dst_path)
 
-    jules_exe = resolve_jules_executable()
-    print(f"4. Direct Google Jules Binary -> {jules_exe or 'NOT FOUND'}")
     print("\n✅ Synchronization complete! All 12 personas are ready at project and system levels.")
     return 0
 
@@ -601,25 +410,28 @@ def cmd_sync(direction: str) -> int:
 def cmd_list() -> int:
     """
     Display a formatted roster table of all 12 CLI agents, active Git branch,
-    direct `jules.exe` path, AND the latest Google Jules Session ID & Status per persona.
+    and the latest Google Jules Session ID & Status per persona.
     """
     project_root = resolve_project_root()
     system_root = resolve_system_config_dir()
     jules_bin = resolve_jules_executable()
-    git_bin = ensure_git_on_path()
     git_branch = resolve_current_git_branch(project_root)
+    branch_pushed = is_current_branch_pushed_to_origin(project_root)
+    default_repo = resolve_github_repo(project_root)
 
-    # Fetch latest remote session ID per persona on Agentic_personal_porter
     _, all_sessions = fetch_parsed_jules_sessions()
     latest_by_persona: Dict[str, JulesSessionRow] = {}
     for row in all_sessions:
         if row.matched_persona and row.matched_persona not in latest_by_persona:
-            if repo_matches_filter(row.repo, row.raw_line, "Agentic_personal_porter"):
+            if repo_matches_filter(row.repo, row.raw_line, default_repo):
                 latest_by_persona[row.matched_persona] = row
 
     print("========================================================================================================================")
     print("🏛️  AGENTIC PERSONAL PORTER — TRUE CLI & GOOGLE JULES AGENT ROSTER")
-    print(f"   Active Branch: {git_branch} | Git: {git_bin or 'MISSING'} | Jules Binary: {jules_bin or 'NOT FOUND'}")
+    print(
+        f"   Branch: {git_branch} ({'pushed' if branch_pushed else 'local-only'}) | "
+        f"Jules CLI: {'READY (native binary)' if jules_bin else 'NOT FOUND'}"
+    )
     print("========================================================================================================================")
     header = (
         f"{'AGENT':<18} {'CATEGORY':<14} {'PROJ':<6} {'SYS':<6} "
@@ -652,12 +464,7 @@ def cmd_list() -> int:
         )
 
     print("========================================================================================================================")
-    print("Quick Commands:")
-    print("  • See Remote Sessions : `uv run python scripts/porter_cli_agents.py jules-sessions --repo Agentic_personal_porter`")
-    print("  • Dispatch 1 Persona  : `uv run python scripts/porter_cli_agents.py jules-dispatch <agent> [\"<task>\"]`")
-    print("  • Dispatch Parallel   : `uv run python scripts/porter_cli_agents.py jules-dispatch-batch docdoc dave crii jovol`")
-    print("  • Pull by Name or ID  : `uv run python scripts/porter_cli_agents.py jules-pull <agent_or_session_id> [--apply]`")
-    print("  • Verify Locally      : `uv run python scripts/porter_cli_agents.py verify <agent|roster>`")
+    print("Runbook: documentation/architecture/jules-cli-runbook.md")
     return 0
 
 
@@ -781,7 +588,7 @@ def cmd_verify(target: str) -> int:
 
 
 def strip_yaml_frontmatter(markdown_text: str) -> str:
-    """Remove YAML frontmatter from an agent .md file when constructing a Jules session prompt."""
+    """Remove YAML frontmatter from an agent `.md` file when constructing a Jules session prompt."""
     lines = markdown_text.splitlines()
     if lines and lines[0].strip() == "---":
         for idx in range(1, len(lines)):
@@ -795,8 +602,8 @@ def build_composite_prompt(agent: str, task: Optional[str] = None) -> str:
     Assemble the full composite prompt combining:
       1. The 1-line Google Jules persona signature header (so `jules remote list --session` is scannable)
       2. The Assigned Task
-      3. The Agent's System Prompt & Core Directives (from .agents/agents/<agent>.md)
-      4. The Live Operational Playbook (from .jules/<agent>.md)
+      3. The Agent's System Prompt & Core Directives (from `.agents/agents/<agent>.md`)
+      4. The Live Operational Playbook (from `.jules/<agent>.md`)
       5. Mandatory Verification Gate instructions
     """
     if agent not in PERSONA_ROSTER:
@@ -851,7 +658,7 @@ def build_composite_prompt(agent: str, task: Optional[str] = None) -> str:
 
 
 def cmd_prompt(agent: str, task: Optional[str]) -> int:
-    """Print the composite prompt for an agent so it can be piped to `jules.exe new` or `agy`."""
+    """Print the composite prompt for an agent so it can be piped to `jules new` or `agy`."""
     try:
         print(build_composite_prompt(agent, task))
         return 0
@@ -868,8 +675,8 @@ def cmd_jules_dispatch(
     dry_run: bool = False,
 ) -> int:
     """
-    Dispatch a persona-aligned coding session to Google Jules CLI (`jules.exe new`)
-    by piping the composite persona + .jules playbook prompt via stdin.
+    Dispatch a persona-aligned coding session to Google Jules CLI (`jules new`)
+    by piping the composite persona + `.jules` playbook prompt via stdin.
     """
     if agent not in PERSONA_ROSTER:
         print(f"❌ Error: Unknown agent '{agent}'.", file=sys.stderr)
@@ -881,17 +688,16 @@ def cmd_jules_dispatch(
     resolved_repo = resolve_github_repo(project_root, repo)
     composite_prompt = build_composite_prompt(agent, effective_task)
     jules_bin = resolve_jules_executable()
+    dispatch_cwd = resolve_dispatch_cwd(project_root)
 
-    cmd: List[str] = [jules_bin or "jules.exe", "new", "--repo", resolved_repo]
+    cmd: List[str] = [jules_bin or "jules", "new", "--repo", resolved_repo]
     if parallel > 1:
         cmd.extend(["--parallel", str(parallel)])
 
     if dry_run:
         print("================================================================================")
         print(f"🧪 [DRY RUN] Google Jules Dispatch Preview for {spec.emoji} {spec.title}")
-        print(f"   Command : {' '.join(cmd)} (piping {len(composite_prompt)} bytes via stdin)")
         print(f"   Repo    : {resolved_repo}")
-        print(f"   Branch  : {resolve_current_git_branch(project_root)}")
         print(f"   Parallel: {parallel}")
         print("================================================================================")
         print(composite_prompt)
@@ -899,22 +705,18 @@ def cmd_jules_dispatch(
 
     if not jules_bin:
         print(
-            "❌ Error: Google Jules CLI ('jules.exe') not found. Install via `npm install -g @google/jules`.",
+            "❌ Error: Google Jules CLI ('jules') not found. Install via `npm install -g @google/jules`.",
             file=sys.stderr,
         )
         return 1
 
-    print(
-        f"🚀 Dispatching {spec.emoji} {spec.title} to Google Jules "
-        f"(repo: {resolved_repo}, branch: {resolve_current_git_branch(project_root)})..."
-    )
-    print(f"   Binary : {jules_bin}")
+    print(f"🚀 Dispatching {spec.emoji} {spec.title} to Google Jules (repo: {resolved_repo})...")
     res = subprocess.run(
         cmd,
         input=composite_prompt,
         text=True,
         encoding="utf-8",
-        cwd=str(project_root),
+        cwd=str(dispatch_cwd),
         check=False,
     )
     return res.returncode
@@ -925,9 +727,9 @@ def _dispatch_single_worker(
     task: Optional[str],
     resolved_repo: str,
     jules_bin: str,
-    project_root: Path,
+    dispatch_cwd: Path,
 ) -> Tuple[str, int, str]:
-    """Worker function for parallel multi-persona dispatch using direct `jules.exe`."""
+    """Worker function for parallel multi-persona dispatch using direct `jules` binary."""
     spec = PERSONA_ROSTER[agent]
     effective_task = task.strip() if task and task.strip() else spec.default_task
     composite_prompt = build_composite_prompt(agent, effective_task)
@@ -939,7 +741,7 @@ def _dispatch_single_worker(
         text=True,
         encoding="utf-8",
         errors="replace",
-        cwd=str(project_root),
+        cwd=str(dispatch_cwd),
         check=False,
     )
     output = (res.stdout or "") + (f"\n{res.stderr}" if res.stderr else "")
@@ -964,7 +766,7 @@ def cmd_jules_dispatch_batch(
     dry_run: bool = False,
 ) -> int:
     """
-    Dispatch multiple personas in parallel to Google Jules CLI using `jules.exe` + `ThreadPoolExecutor`.
+    Dispatch multiple personas in parallel to Google Jules CLI using `ThreadPoolExecutor`.
     Accepts explicit persona names or preset groups ('new' -> archie, docdoc, dave, crii, jovol; 'roster' -> all 8).
     """
     expanded: List[str] = []
@@ -986,11 +788,11 @@ def cmd_jules_dispatch_batch(
     target_agents = list(dict.fromkeys(expanded))
     project_root = resolve_project_root()
     resolved_repo = resolve_github_repo(project_root, repo)
-    branch = resolve_current_git_branch(project_root)
+    dispatch_cwd = resolve_dispatch_cwd(project_root)
 
     if dry_run:
         print("====================================================================================================")
-        print(f"🧪 [DRY RUN] Parallel Batch Dispatch ({len(target_agents)} Personas) -> {resolved_repo} (branch: {branch})")
+        print(f"🧪 [DRY RUN] Parallel Batch Dispatch ({len(target_agents)} Personas) -> {resolved_repo}")
         print("====================================================================================================")
         for agent in target_agents:
             spec = PERSONA_ROSTER[agent]
@@ -1000,12 +802,11 @@ def cmd_jules_dispatch_batch(
 
     jules_bin = resolve_jules_executable()
     if not jules_bin:
-        print("❌ Error: Google Jules CLI ('jules.exe') not found.", file=sys.stderr)
+        print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
 
     print("====================================================================================================")
-    print(f"🚀 PARALLEL GOOGLE JULES DISPATCH — {len(target_agents)} PERSONAS -> {resolved_repo} (branch: {branch})")
-    print(f"   Using Direct Native Binary: {jules_bin}")
+    print(f"🚀 PARALLEL GOOGLE JULES DISPATCH — {len(target_agents)} PERSONAS -> {resolved_repo}")
     print("====================================================================================================")
     for agent in target_agents:
         spec = PERSONA_ROSTER[agent]
@@ -1014,7 +815,7 @@ def cmd_jules_dispatch_batch(
     results_by_agent: Dict[str, Tuple[str, int, str]] = {}
     with ThreadPoolExecutor(max_workers=min(len(target_agents), 6)) as pool:
         future_map = {
-            pool.submit(_dispatch_single_worker, agent, task_override, resolved_repo, jules_bin, project_root): agent
+            pool.submit(_dispatch_single_worker, agent, task_override, resolved_repo, jules_bin, dispatch_cwd): agent
             for agent in target_agents
         }
         for future in as_completed(future_map):
@@ -1040,10 +841,7 @@ def cmd_jules_sessions(
     status: Optional[str] = None,
     limit: int = 25,
 ) -> int:
-    """
-    List remote Google Jules sessions with smart filtering that handles `jules.exe`
-    truncated repository names (`Zebfred/Agentic_perso…`) and tags each row with its Persona.
-    """
+    """List remote Google Jules sessions with truncation-safe repo filtering and persona tags."""
     header, rows = fetch_parsed_jules_sessions()
     if not rows:
         print("No remote Jules sessions found.")
@@ -1077,9 +875,6 @@ def cmd_jules_sessions(
             p_tag = "🤖 (custom)"
         print(f"{p_tag:<14} {row.raw_line}")
     print("====================================================================================================================")
-    print("Tips:")
-    print("  • Pull by Session ID   : `uv run python scripts/porter_cli_agents.py jules-pull <SESSION_ID> [--apply]`")
-    print("  • Pull by Persona Name : `uv run python scripts/porter_cli_agents.py jules-pull <persona> [--apply]`")
     return 0
 
 
@@ -1087,7 +882,7 @@ def cmd_jules_repos() -> int:
     """List all GitHub repositories connected to Google Jules CLI."""
     jules_bin = resolve_jules_executable()
     if not jules_bin:
-        print("❌ Error: Google Jules CLI ('jules.exe') not found.", file=sys.stderr)
+        print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
     res = subprocess.run([jules_bin, "remote", "list", "--repo"], check=False)
     return res.returncode
@@ -1095,10 +890,12 @@ def cmd_jules_repos() -> int:
 
 def resolve_session_target(session_or_persona: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Resolve either a numeric Session ID ('8225521754280442521'), 'latest', or a persona name ('bolt', 'archie', etc.)
-    into `(session_id, matched_persona)`. Prevents 404 errors when users pass a persona name or want the latest session!
+    Resolve either a numeric Session ID, 'latest', or a persona name ('bolt', 'archie', etc.)
+    into `(session_id, matched_persona)`.
     """
     cleaned = session_or_persona.strip()
+    project_root = resolve_project_root()
+    default_repo = resolve_github_repo(project_root)
     _, rows = fetch_parsed_jules_sessions()
 
     if cleaned.isdigit():
@@ -1110,23 +907,22 @@ def resolve_session_target(session_or_persona: str) -> Tuple[Optional[str], Opti
     key = cleaned.lower()
     if key == "latest":
         for row in rows:
-            if repo_matches_filter(row.repo, row.raw_line, "Agentic_personal_porter"):
+            if repo_matches_filter(row.repo, row.raw_line, default_repo):
                 return row.session_id, row.matched_persona
         if rows:
             return rows[0].session_id, rows[0].matched_persona
         return None, None
 
     if key in PERSONA_ROSTER:
-        # Prefer non-Failed sessions on Agentic_personal_porter first, then any session for that persona
         for row in rows:
             if (
                 row.matched_persona == key
-                and repo_matches_filter(row.repo, row.raw_line, "Agentic_personal_porter")
+                and repo_matches_filter(row.repo, row.raw_line, default_repo)
                 and "failed" not in row.status.lower()
             ):
                 return row.session_id, key
         for row in rows:
-            if row.matched_persona == key and repo_matches_filter(row.repo, row.raw_line, "Agentic_personal_porter"):
+            if row.matched_persona == key and repo_matches_filter(row.repo, row.raw_line, default_repo):
                 return row.session_id, key
         for row in rows:
             if row.matched_persona == key:
@@ -1137,20 +933,17 @@ def resolve_session_target(session_or_persona: str) -> Tuple[Optional[str], Opti
 
 
 def cmd_jules_pull(session_or_persona: str, apply_patch: bool = False, verify_agent: Optional[str] = None) -> int:
-    """
-    Pull a remote Google Jules session diff by Session ID OR by Persona Name
-    (e.g. `jules-pull bolt` or `jules-pull 8225521754280442521`).
-    """
+    """Pull a remote Google Jules session diff by Session ID OR by Persona Name."""
     jules_bin = resolve_jules_executable()
     if not jules_bin:
-        print("❌ Error: Google Jules CLI ('jules.exe') not found.", file=sys.stderr)
+        print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
 
     session_id, detected_persona = resolve_session_target(session_or_persona)
     if not session_id:
         print(
             f"❌ Could not find a remote Google Jules session matching '{session_or_persona}'.\n"
-            f"   Run `uv run python scripts/porter_cli_agents.py jules-sessions` to view active Session IDs.",
+            f"   Run `uv run python scripts/porter_cli_agents.py list` to view active Session IDs.",
             file=sys.stderr,
         )
         return 1
@@ -1180,14 +973,14 @@ def cmd_jules_teleport(session_or_persona: str, verify_agent: Optional[str] = No
     """Teleport local workspace to a Google Jules session (by ID or persona name) and optionally verify."""
     jules_bin = resolve_jules_executable()
     if not jules_bin:
-        print("❌ Error: Google Jules CLI ('jules.exe') not found.", file=sys.stderr)
+        print("❌ Error: Google Jules CLI ('jules') not found.", file=sys.stderr)
         return 1
 
     session_id, detected_persona = resolve_session_target(session_or_persona)
     if not session_id:
         print(
             f"❌ Could not find a remote Google Jules session matching '{session_or_persona}'.\n"
-            f"   Run `uv run python scripts/porter_cli_agents.py jules-sessions` to view active Session IDs.",
+            f"   Run `uv run python scripts/porter_cli_agents.py list` to view active Session IDs.",
             file=sys.stderr,
         )
         return 1
@@ -1234,7 +1027,7 @@ def cmd_run(agent: str, task: str, engine: str, repo: Optional[str] = None, para
 
 
 def cmd_learn(agent: str, title: str, learning: str, action: str) -> int:
-    """Append a dated learning entry to .jules/<agent>.md and sync to system config."""
+    """Append a dated learning entry to `.jules/<agent>.md` and sync to system config."""
     if agent not in PERSONA_ROSTER or not PERSONA_ROSTER[agent].jules_file:
         print(
             f"❌ Error: Agent '{agent}' does not have a dedicated .jules/*.md playbook.",
@@ -1269,7 +1062,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser(
         "list",
-        help="List all 12 CLI personas, active branch, direct jules.exe binary, and latest remote Session IDs",
+        help="List all 12 CLI personas, active branch, and latest remote Session IDs",
     )
 
     p_sync = sub.add_parser("sync", help="Synchronize CLI agents and .jules playbooks between project and system")
@@ -1301,7 +1094,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_jdisp = sub.add_parser(
         "jules-dispatch",
-        help="Dispatch a persona + live .jules playbook session directly to Google Jules (`jules.exe new`)",
+        help="Dispatch a persona + live .jules playbook session directly to Google Jules (`jules new`)",
     )
     p_jdisp.add_argument("agent", choices=list(PERSONA_ROSTER.keys()), help="Target persona to dispatch to Jules")
     p_jdisp.add_argument(
@@ -1313,7 +1106,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_jdisp.add_argument(
         "--repo",
         default=None,
-        help="Target GitHub repo (auto-detected from .git/config as Zebfred/Agentic_personal_porter if omitted)",
+        help="Target GitHub repo (auto-detected from .git/config if omitted)",
     )
     p_jdisp.add_argument("--parallel", type=int, default=1, help="Parallel Jules sessions to spawn (1-5)")
     p_jdisp.add_argument("--dry-run", action="store_true", help="Preview the full composite prompt without dispatching")
@@ -1330,7 +1123,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_jbatch.add_argument(
         "--repo",
         default=None,
-        help="Target GitHub repo (auto-detected from .git/config as Zebfred/Agentic_personal_porter if omitted)",
+        help="Target GitHub repo (auto-detected from .git/config if omitted)",
     )
     p_jbatch.add_argument("--task", default=None, help="Optional shared task override")
     p_jbatch.add_argument("--dry-run", action="store_true", help="Preview batch dispatch without creating remote sessions")
@@ -1349,7 +1142,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_jpull.add_argument(
         "session_id",
-        help="The Google Jules Session ID (e.g. 8225521754280442521), persona name (e.g. bolt, archie), or 'latest'",
+        help="The Google Jules Session ID, persona name (e.g. bolt, archie), or 'latest'",
     )
     p_jpull.add_argument("--apply", action="store_true", help="Apply the pulled patch to the local repository")
     p_jpull.add_argument(

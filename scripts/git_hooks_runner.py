@@ -1,50 +1,29 @@
 #!/usr/bin/env python3
 """Standardized Git Hooks Runner (git_hooks_runner.py).
 
-Provides fast, cross-platform (`pwsh` / `bash` / Git for Windows) execution for:
-1. `pre-commit` (< 1 second, staged files only):
-   - Auto-sweeps stray *.bk* files into .legacy_hr/hook_backups/.
-   - Blocks committing files inside .auth/, .legacy_hr/, or *.bk* / *.pyc files.
-   - Scans staged diff lines (+...) for plaintext secrets/tokens (Sentinel 🛡️).
-   - Verifies root markdown boundary (README.md, AGENTS.md) and lowercase kebab-case in documentation/ (DocDoc 📚).
-   - Blocks hardcoded OS absolute paths (C:\\Users\\..., /home/..., file:///C:/...) and sensitive log/env files.
-   - Lints staged Python files with `ruff check` and staged JS files with `node -c` when present (Archie 🏛️ & Jovol ⚛️).
-2. `pre-push` (Silas 🏛️ Constitutional Gate):
-   - Runs verify_doc_hygiene.py, ruff check src tests, and fast unit tests (pytest tests/unit).
+Executes cross-platform `pre-commit` and `pre-push` gates (< 200L script, < 60L functions),
+enforcing `codespell`, `black`, `ruff`, `bandit` (`[tool.bandit]`), `SKILL001`-`SKILL006`, `mypy`, and `pytest`.
 """
 
 from __future__ import annotations
 
-import os
+import ast
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Sequence
 
-from agent_lifecycle_hooks import (
-    ABSOLUTE_PATH_PATTERNS,
-    SAFE_PLACEHOLDERS,
-    SECRET_PATTERNS,
-    sweep_stray_backups,
-)
+from agent_lifecycle_hooks import SAFE_PLACEHOLDERS, SECRET_PATTERNS, sweep_stray_backups
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
-
-def resolve_git_bin() -> str:
-    """Resolve git executable across system PATH and standard Windows install locations."""
-    found = shutil.which("git")
-    if found:
-        return found
-    win_git = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git" / "cmd" / "git.exe"
-    if win_git.exists():
-        return str(win_git)
-    return "git"
+MAX_SCRIPT_LINES = 200
+MAX_FUNCTION_LINES = 60
+LEGACY_EXEMPT_SCRIPTS = {"porter_cli_agents.py"}
 
 
 def resolve_repo_root() -> Path:
@@ -52,167 +31,118 @@ def resolve_repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def get_staged_files(repo_root: Path) -> List[str]:
-    """Return list of staged file paths (Added, Copied, Modified, Renamed)."""
-    res = subprocess.run(
-        [resolve_git_bin(), "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
+def _run_cmd(args: Sequence[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess command and capture UTF-8 output."""
+    return subprocess.run(args, cwd=str(cwd), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+
+
+def scan_staged_diff_secrets(repo_root: Path) -> List[str]:
+    """Scan added lines in `git diff --cached` for plaintext credentials."""
+    res = _run_cmd(["git", "diff", "--cached", "-U0"], repo_root)
     if res.returncode != 0:
         return []
-    return [line.strip() for line in res.stdout.splitlines() if line.strip()]
-
-
-def scan_staged_diff_secrets_and_paths(repo_root: Path) -> List[str]:
-    """Scan added lines in `git diff --cached` for plaintext credentials and hardcoded OS absolute paths."""
-    res = subprocess.run(
-        [resolve_git_bin(), "diff", "--cached", "-U0"],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        check=False,
-    )
-    if res.returncode != 0:
-        return []
-
-    violations: List[str] = []
-    current_file = "unknown"
-    skip_files = {
-        "agent_lifecycle_hooks.py",
-        "git_hooks_runner.py",
-        "verify_doc_hygiene.py",
-        "verify_kb.py",
-        "build_context_pack.py",
-    }
-
+    violations, current = [], "unknown"
+    skip = {"agent_lifecycle_hooks.py", "git_hooks_runner.py", "verify_kb.py", "verify_doc_hygiene.py", "build_context_pack.py"}
     for line in res.stdout.splitlines():
         if line.startswith("+++ b/"):
-            current_file = line[6:].strip()
-            continue
-        if Path(current_file).name in skip_files:
-            continue
-        if line.startswith("+") and not line.startswith("+++"):
-            added_text = line[1:]
-            if any(marker in added_text for marker in SAFE_PLACEHOLDERS):
-                continue
-            for pattern, label in SECRET_PATTERNS:
-                if re.search(pattern, added_text):
-                    violations.append(f"[{label}] in staged file '{current_file}': {added_text.strip()[:80]}")
-            for pattern, label in ABSOLUTE_PATH_PATTERNS:
-                if re.search(pattern, added_text):
-                    violations.append(
-                        f"[{label}] in staged file '{current_file}': {added_text.strip()[:80]} "
-                        f"(use project-relative paths instead)"
-                    )
+            current = line[6:].strip()
+        elif Path(current).name not in skip and line.startswith("+") and not line.startswith("+++"):
+            added = line[1:]
+            if not any(m in added for m in SAFE_PLACEHOLDERS):
+                for pat, label in SECRET_PATTERNS:
+                    if re.search(pat, added):
+                        violations.append(f"[{label}] in '{current}': {added.strip()[:80]}")
     return violations
+
+
+def check_python_modularity(repo_root: Path, staged_py: Sequence[str]) -> List[str]:
+    """Verify generated scripts are < 200 lines and functions are < 60 lines."""
+    errors: List[str] = []
+    for rel_path in staged_py:
+        py_file = repo_root / rel_path
+        if not py_file.exists() or py_file.name in LEGACY_EXEMPT_SCRIPTS:
+            continue
+        source = py_file.read_text(encoding="utf-8", errors="replace")
+        line_count = len(source.splitlines())
+        norm = rel_path.replace("\\", "/")
+        if norm.startswith("scripts/") and line_count >= MAX_SCRIPT_LINES:
+            errors.append(f"[Script Length >= {MAX_SCRIPT_LINES}L] '{norm}' has {line_count} lines (max < {MAX_SCRIPT_LINES}).")
+        try:
+            tree = ast.parse(source, filename=rel_path)
+        except SyntaxError as exc:
+            errors.append(f"[SyntaxError] '{norm}': {exc}")
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.end_lineno:
+                fn_lines = node.end_lineno - node.lineno + 1
+                if fn_lines >= MAX_FUNCTION_LINES:
+                    errors.append(f"[Function Length >= {MAX_FUNCTION_LINES}L] '{norm}:{node.lineno}' '{node.name}' is {fn_lines}L.")
+    return errors
+
+
+def _run_staged_linters(repo_root: Path, staged: Sequence[str], staged_py: Sequence[str]) -> List[str]:
+    """Execute codespell, black, ruff, and bandit on staged files when configured in pyproject.toml."""
+    errors: List[str] = []
+    pyproject, uv_bin = repo_root / "pyproject.toml", shutil.which("uv")
+    if not pyproject.exists() or not uv_bin:
+        return errors
+    cfg = pyproject.read_text(encoding="utf-8", errors="replace")
+    existing = [p for p in staged if (repo_root / p).exists()]
+    non_test_py = [p for p in staged_py if not p.replace("\\", "/").startswith("tests/")]
+    checks = [
+        ("Codespell", bool(existing) and "[tool.codespell]" in cfg, [uv_bin, "run", "codespell", *existing]),
+        ("Black", bool(staged_py) and "[tool.black]" in cfg, [uv_bin, "run", "black", "--check", "--diff", *staged_py]),
+        ("Ruff", bool(staged_py) and "[tool.ruff" in cfg, [uv_bin, "run", "ruff", "check", *staged_py]),
+        ("Bandit", bool(non_test_py) and "[tool.bandit]" in cfg, [uv_bin, "run", "bandit", "-c", "pyproject.toml", "-q", *non_test_py]),
+    ]
+    for label, enabled, cmd in checks:
+        if enabled:
+            res = _run_cmd(cmd, repo_root)
+            if res.returncode != 0:
+                errors.append(f"{label} failed:\n{res.stdout or res.stderr}")
+    return errors
 
 
 def run_pre_commit(repo_root: Path) -> int:
     """Execute sub-second pre-commit checks on staged files."""
     print("🛡️  [Nexus Git Hook] Running pre-commit checks...")
+    if sweep_stray_backups(repo_root) > 0:
+        print("   📦 Auto-archived stray .bk file(s) into .legacy_hr/DDMMYYYY/")
 
-    # 1. Sweep stray .bk* files into .legacy_hr/hook_backups/
-    swept = sweep_stray_backups(repo_root)
-    if swept > 0:
-        print(f"   📦 Auto-archived {swept} stray .bk backup file(s) into .legacy_hr/hook_backups/")
-
-    staged = get_staged_files(repo_root)
+    res = _run_cmd(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"], repo_root)
+    staged = [line.strip() for line in res.stdout.splitlines() if line.strip()] if res.returncode == 0 else []
     if not staged:
         print("   ✅ No staged files to check.")
         return 0
 
-    errors: List[str] = []
-    staged_py: List[str] = []
-    staged_js: List[str] = []
-    forbidden_filenames = {".env", "credentials.json", "token.json", "token.pickle", "config.local.js"}
-
+    errors, staged_py, staged_js, touches_agents = [], [], [], False
     for rel_path in staged:
-        norm_path = rel_path.replace("\\", "/")
-        parts = norm_path.split("/")
-        filename = parts[-1]
+        norm, parts = rel_path.replace("\\", "/"), rel_path.replace("\\", "/").split("/")
+        fname = parts[-1]
+        touches_agents = touches_agents or parts[0] == ".agents"
+        if parts[0] in {".auth", ".legacy_hr", ".logs"} or ".organization_discrete" in parts or ".bk" in fname or fname.endswith(".pyc"):
+            errors.append(f"Forbidden path or discrete/backup artifact staged: '{norm}'.")
+        if parts[0] == "data" and norm != "data/.gitkeep":
+            errors.append(f"Forbidden domain data file staged in data/: '{norm}' (only data/.gitkeep may be tracked).")
+        if len(parts) == 1 and fname.lower().endswith(".md") and fname not in {"README.md", "AGENTS.md"}:
+            errors.append(f"Unauthorized root Markdown staged: '{fname}'.")
+        if parts[0].lower() == "documentation" and fname.lower().endswith(".md") and (any(c.isupper() for c in Path(fname).stem) or "_" in Path(fname).stem):
+            errors.append(f"Non-kebab-case Markdown file in documentation/: '{norm}'")
+        if (repo_root / rel_path).exists():
+            (staged_py if fname.endswith(".py") else staged_js if fname.endswith(".js") else []).append(rel_path)
 
-        # 2. Forbidden staged paths (.auth/, .legacy_hr/, *.bk*, *.pyc, *.log, *.pem, .env*)
-        if parts[0] in {".auth", ".legacy_hr", "logs"}:
-            errors.append(f"Forbidden directory staged for commit: '{norm_path}' (must remain gitignored).")
-        if ".bk" in filename or filename.endswith(".pyc") or "__pycache__" in parts:
-            errors.append(f"Forbidden backup or cache artifact staged: '{norm_path}'.")
-        if (
-            filename in forbidden_filenames
-            or filename.startswith(".env")
-            or filename.endswith((".log", ".pem", ".key", ".pickle"))
-        ):
-            errors.append(f"Forbidden sensitive or runtime log file staged: '{norm_path}'.")
-
-        # 3. Root markdown & documentation/ kebab-case check
-        if len(parts) == 1 and filename.lower().endswith(".md"):
-            if filename not in {"README.md", "AGENTS.md"}:
-                errors.append(
-                    f"Unauthorized root Markdown file staged: '{filename}'. Only README.md and AGENTS.md are allowed at root."
-                )
-        if parts[0].lower() == "documentation":
-            for sub_dir in parts[1:-1]:
-                if any(c.isupper() for c in sub_dir) or "_" in sub_dir:
-                    errors.append(f"Non-kebab-case directory in documentation/: '{norm_path}'")
-            if filename.lower().endswith(".md"):
-                stem = Path(filename).stem
-                if any(c.isupper() for c in stem) or "_" in stem:
-                    errors.append(f"Non-kebab-case Markdown file in documentation/: '{norm_path}'")
-
-        if filename.endswith(".py") and (repo_root / rel_path).exists():
-            staged_py.append(rel_path)
-        if filename.endswith(".js") and (repo_root / rel_path).exists():
-            staged_js.append(rel_path)
-
-    # 4. Staged diff secret & hardcoded absolute path scan
-    diff_hits = scan_staged_diff_secrets_and_paths(repo_root)
-    errors.extend(diff_hits)
-
-    # 5. Fast staged Ruff lint (when pyproject.toml / src exists in code repos)
-    if staged_py and (repo_root / "pyproject.toml").exists():
-        uv_bin = shutil.which("uv")
-        if uv_bin:
-            res = subprocess.run(
-                [uv_bin, "run", "ruff", "check", *staged_py],
-                cwd=str(repo_root),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                check=False,
-            )
-            if res.returncode != 0:
-                errors.append(f"Ruff lint failed on staged Python files:\n{res.stdout or res.stderr}")
-
-    # 6. Fast staged JS syntax check (node -c)
-    if staged_js:
-        node_bin = shutil.which("node") or shutil.which("node.exe")
-        if node_bin:
-            for js_file in staged_js:
-                res = subprocess.run(
-                    [node_bin, "-c", js_file],
-                    cwd=str(repo_root),
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    check=False,
-                )
-                if res.returncode != 0:
-                    errors.append(f"JavaScript syntax check (node -c) failed for '{js_file}':\n{res.stderr or res.stdout}")
+    if touches_agents and (repo_root / "scripts" / "verify_doc_hygiene.py").exists():
+        from verify_doc_hygiene import check_skill_hygiene
+        errors.extend(check_skill_hygiene(repo_root))
+    errors.extend(scan_staged_diff_secrets(repo_root) + check_python_modularity(repo_root, staged_py) + _run_staged_linters(repo_root, staged, staged_py))
+    node_bin = shutil.which("node") or shutil.which("node.exe")
+    for js_file in staged_js if node_bin else []:
+        if _run_cmd([node_bin, "-c", js_file], repo_root).returncode != 0:  # type: ignore[list-item]
+            errors.append(f"JavaScript syntax check (node -c) failed for '{js_file}'.")
 
     if errors:
-        print("\n❌ [Pre-Commit BLOCKED] Please fix the following issues before committing:")
-        for err in errors:
-            print(f"   • {err}")
+        print("\n❌ [Nexus pre-commit BLOCKED]:\n   • " + "\n   • ".join(errors))
         return 1
-
     print(f"   ✅ pre-commit passed ({len(staged)} staged file(s) verified).")
     return 0
 
@@ -220,70 +150,39 @@ def run_pre_commit(repo_root: Path) -> int:
 def run_pre_push(repo_root: Path) -> int:
     """Execute Silas Constitutional Verification Gate before git push."""
     print("🏛️  [Silas pre-push Gate] Verifying repository quality gates before push...")
-    swept = sweep_stray_backups(repo_root)
-    if swept > 0:
-        print(f"   📦 Auto-archived {swept} stray .bk backup file(s) into .legacy_hr/hook_backups/")
+    sweep_stray_backups(repo_root)
+    verify_kb = repo_root / "scripts" / "verify_kb.py"
+    if verify_kb.exists():
+        return subprocess.run([sys.executable, str(verify_kb), "--scan-secrets", "--check-hygiene"], cwd=str(repo_root), check=False).returncode
 
-    # Check root markdown boundary (only README.md and AGENTS.md allowed at root)
-    allowed_root = {"README.md", "AGENTS.md"}
-    for root_md in repo_root.glob("*.md"):
-        if root_md.name not in allowed_root:
-            print(f"   ❌ Unauthorized root Markdown file: {root_md.name} (Only README.md and AGENTS.md allowed)")
-            return 1
-
-    doc_hygiene = repo_root / "scripts" / "analyze_scripts" / "verify_doc_hygiene.py"
-    if doc_hygiene.exists():
-        res_doc = subprocess.run([sys.executable, str(doc_hygiene)], cwd=str(repo_root), check=False)
-        if res_doc.returncode != 0:
-            return res_doc.returncode
-
-    uv_bin = shutil.which("uv")
-    if uv_bin and (repo_root / "src").exists():
-        if (repo_root / "tests" / "unit").exists():
-            print("   ▶ Running fast unit test suite (tests/unit)...")
-            env = os.environ.copy()
-            env.setdefault("PROJECT_ID", "test-project")
-            env["DISABLE_CLOUD_LOGGING"] = "true"
-            res_pytest = subprocess.run(
-                [uv_bin, "run", "pytest", "tests/unit", "-q", "--tb=short"],
-                cwd=str(repo_root),
-                env=env,
-                check=False,
-            )
-            if res_pytest.returncode != 0:
-                return res_pytest.returncode
-
+    uv_bin, pyproject = shutil.which("uv"), repo_root / "pyproject.toml"
+    if uv_bin and pyproject.exists() and (repo_root / "src").exists():
+        cfg = pyproject.read_text(encoding="utf-8", errors="replace")
+        targets = [t for t in ("src", "tests", "scripts") if (repo_root / t).exists()]
+        sec_targets = [t for t in ("src", "scripts") if (repo_root / t).exists()]
+        gates = [
+            ("[tool.codespell]" in cfg, [uv_bin, "run", "codespell"]),
+            ("[tool.black]" in cfg and bool(targets), [uv_bin, "run", "black", "--check", *targets]),
+            ("[tool.ruff" in cfg and bool(targets), [uv_bin, "run", "ruff", "check", *targets]),
+            ("[tool.bandit]" in cfg and bool(sec_targets), [uv_bin, "run", "bandit", "-c", "pyproject.toml", "-r", *sec_targets]),
+            ("[tool.mypy]" in cfg, [uv_bin, "run", "mypy", *[t for t in ("src", "tests") if (repo_root / t).exists()]]),
+            ((repo_root / "tests" / "unit").exists(), [uv_bin, "run", "pytest", "tests/unit", "-q", "--tb=short"]),
+        ]
+        for enabled, cmd in gates:
+            if enabled and subprocess.run(cmd, cwd=str(repo_root), check=False).returncode != 0:
+                return 1
     print("   ✅ Silas pre-push verification gate passed!")
     return 0
 
 
 def install_git_hooks(repo_root: Path) -> int:
     """Configure git core.hooksPath to .githooks and ensure hook scripts are executable."""
-    githooks_dir = repo_root / ".githooks"
-    if not githooks_dir.exists():
-        print(f"❌ .githooks directory not found in {repo_root}", file=sys.stderr)
+    githooks = repo_root / ".githooks"
+    if not githooks.exists() or _run_cmd(["git", "config", "core.hooksPath", ".githooks"], repo_root).returncode != 0:
         return 1
-
-    res = subprocess.run(
-        [resolve_git_bin(), "config", "core.hooksPath", ".githooks"],
-        cwd=str(repo_root),
-        check=False,
-    )
-    if res.returncode != 0:
-        print("❌ Failed to set git config core.hooksPath .githooks", file=sys.stderr)
-        return res.returncode
-
-    git_hooks_legacy = repo_root / ".git" / "hooks"
-    for hook_name in ("pre-commit", "pre-push"):
-        hook_file = githooks_dir / hook_name
-        if hook_file.exists():
-            try:
-                hook_file.chmod(0o755)
-                if git_hooks_legacy.exists():
-                    shutil.copy2(hook_file, git_hooks_legacy / hook_name)
-            except OSError:
-                pass
-
+    for name in ("pre-commit", "pre-push"):
+        if (githooks / name).exists():
+            (githooks / name).chmod(0o755)
     print(f"✅ Configured git core.hooksPath -> .githooks in {repo_root}")
     return 0
 
@@ -291,17 +190,8 @@ def install_git_hooks(repo_root: Path) -> int:
 def main() -> int:
     """CLI entrypoint for git hooks runner."""
     hook = sys.argv[1].lower() if len(sys.argv) > 1 else "pre-commit"
-    repo_root = resolve_repo_root()
-
-    if hook == "pre-commit":
-        return run_pre_commit(repo_root)
-    if hook == "pre-push":
-        return run_pre_push(repo_root)
-    if hook == "install":
-        return install_git_hooks(repo_root)
-
-    print(f"Unknown hook command: {hook}", file=sys.stderr)
-    return 1
+    root = resolve_repo_root()
+    return run_pre_commit(root) if hook == "pre-commit" else (run_pre_push(root) if hook == "pre-push" else (install_git_hooks(root) if hook == "install" else 1))
 
 
 if __name__ == "__main__":

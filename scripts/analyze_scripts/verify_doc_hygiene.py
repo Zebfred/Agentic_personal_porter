@@ -23,10 +23,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def check_root_markdown() -> List[str]:
-    """Ensure no markdown files other than README.md exist in the project root."""
+    """Ensure no markdown files other than README.md and AGENTS.md exist in the project root."""
     violations = []
+    allowed_root = {"README.md", "AGENTS.md"}
     for file_path in PROJECT_ROOT.glob("*.md"):
-        if file_path.name != "README.md":
+        if file_path.name not in allowed_root:
             violations.append(
                 f"Unauthorized root markdown file: '{file_path.name}'. Move to documentation/ in kebab-case."
             )
@@ -42,6 +43,7 @@ def check_documentation_naming() -> List[str]:
 
     for root, dirs, files in os.walk(doc_dir):
         rel_root = Path(root).relative_to(PROJECT_ROOT)
+
         for d in dirs:
             if any(c.isupper() for c in d):
                 violations.append(f"Directory contains uppercase letters: '{rel_root / d}'")
@@ -77,11 +79,13 @@ def check_dangling_backups() -> List[str]:
 def run_all_checks() -> int:
     """Execute all DocDoc hygiene gates and report findings."""
     print("📚 Running DocDoc Documentation & Knowledge Governance Checks...")
+
     all_violations: List[Tuple[str, List[str]]] = [
         ("Root Markdown Boundary", check_root_markdown()),
         ("Documentation Kebab-Case Naming", check_documentation_naming()),
         ("Backup File Cleanup (.legacy_hr)", check_dangling_backups()),
     ]
+
     failed = False
     for category, errs in all_violations:
         if errs:

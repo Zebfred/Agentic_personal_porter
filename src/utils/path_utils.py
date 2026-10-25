@@ -27,14 +27,14 @@ def _get_fallback_env_paths() -> list[Path]:
     """
     Returns platform-specific fallback paths for the .auth/.env file.
 
-    On Windows:  Checks %USERPROFILE%\\.auth\\.env
+    On Windows:  Checks <user_home>/.auth/.env
     On Unix:     Checks /etc/porter/.env and /.auth/.env (container root)
 
-    Why: The old code hardcoded Unix-absolute paths (Path("/.auth/.env"))
-    which resolve to C:\\.auth\\.env on Windows — always dead code.
+    Why: Using Path.home() avoids hardcoded OS drive roots and resolves
+    reliably across Windows and Unix environments.
     """
     if is_windows():
-        user_home = Path(os.environ.get("USERPROFILE", "C:\\Users\\Default"))
+        user_home = Path(os.environ["USERPROFILE"]) if os.environ.get("USERPROFILE") else Path.home()
         return [
             user_home / ".auth" / ".env",
             user_home / ".auth" / "Porter_auth_env",
@@ -45,6 +45,18 @@ def _get_fallback_env_paths() -> list[Path]:
             Path("/.auth/.env"),
             Path("/.auth/Porter_auth_env"),
         ]
+
+
+def _redact_path_for_log(path: Path, root: Path) -> str:
+    """Format a path relative to project root or user home so OS usernames are never written to logs."""
+    try:
+        return str(path.resolve().relative_to(root.resolve()))
+    except ValueError:
+        pass
+    try:
+        return str(Path("~") / path.resolve().relative_to(Path.home().resolve()))
+    except ValueError:
+        return path.name
 
 
 def load_env_vars():
@@ -65,7 +77,7 @@ def load_env_vars():
     for env_path in possible_paths:
         if env_path.exists():
             load_dotenv(dotenv_path=env_path)
-            logger.info(f"Loaded environment variables from: {env_path}")
+            logger.info(f"Loaded environment variables from: {_redact_path_for_log(env_path, root)}")
             loaded = True
             break
 
@@ -74,7 +86,7 @@ def load_env_vars():
         # crash scripts that don't actually need the .env
         logger.warning(
             "⚠️ .env file not found at any expected path. Searched: %s",
-            [str(p) for p in possible_paths],
+            [_redact_path_for_log(p, root) for p in possible_paths],
         )
 
 
