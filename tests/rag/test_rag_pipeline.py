@@ -2,7 +2,6 @@
 Integration tests for the complete RAG pipeline.
 """
 
-
 # Add project root to Python path
 
 
@@ -15,6 +14,7 @@ from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.query_engine import RAGQueryEngine
 import os
 
+
 @pytest.fixture
 def temp_data_dir():
     """Create temporary data directory."""
@@ -22,11 +22,13 @@ def temp_data_dir():
     yield temp_dir
     # Run GC to release any open file handles (e.g. from VectorStore) before deleting on Windows
     import gc
+
     gc.collect()
     try:
         shutil.rmtree(temp_dir)
     except PermissionError:
         pass
+
 
 @pytest.mark.integration
 def test_end_to_end_pipeline(temp_data_dir):
@@ -61,37 +63,34 @@ def test_end_to_end_pipeline(temp_data_dir):
     # Step 1: Chunk the text
     chunker = DocumentChunker(FixedSizeChunking(chunk_size=200, overlap=50))
     chunks = chunker.chunk_document(
-        text=sample_text,
-        title="Introduction to Reinforcement Learning"
+        text=sample_text, title="Introduction to Reinforcement Learning"
     )
 
     assert len(chunks) > 0
 
     # Step 2: Generate embeddings
     embedder = SciBERTEmbedder()
-    texts = [chunk['text'] for chunk in chunks]
+    texts = [chunk["text"] for chunk in chunks]
     embeddings = embedder.embed_batch(texts)
 
     assert embeddings.shape[0] == len(chunks)
 
     # Step 3: Store in vector database
-    vector_store = VectorStore(
-        collection_name="test_pipeline",
-        persist_directory=temp_data_dir
-    )
+    vector_store = VectorStore(collection_name="test_pipeline", persist_directory=temp_data_dir)
 
     # Add paper metadata to chunks
     for chunk in chunks:
-        chunk['paper_title'] = "Introduction to Reinforcement Learning"
+        chunk["paper_title"] = "Introduction to Reinforcement Learning"
 
     vector_store.add_chunks(chunks, embeddings)
 
     assert vector_store.get_collection_size() == len(chunks)
 
     # Step 4: Query
-    if os.getenv('GROQ_API_KEY') or True: # Force test execution via mock
+    if os.getenv("GROQ_API_KEY") or True:  # Force test execution via mock
         from unittest.mock import patch, MagicMock
-        with patch('rag_system.rag_core.query_engine.ChatGroq') as MockChatGroq:
+
+        with patch("rag_system.rag_core.query_engine.ChatGroq") as MockChatGroq:
             # Setup mock response
             mock_client = MagicMock()
             mock_message = MagicMock()
@@ -105,9 +104,8 @@ def test_end_to_end_pipeline(temp_data_dir):
 
                 result = engine.answer_question("What is Q-learning?", top_k=2)
 
-                assert 'answer' in result
-                assert 'sources' in result
-                assert len(result['sources']) > 0
+                assert "answer" in result
+                assert "sources" in result
+                assert len(result["sources"]) > 0
     else:
         pytest.skip("GROQ_API_KEY not set, skipping query test")
-

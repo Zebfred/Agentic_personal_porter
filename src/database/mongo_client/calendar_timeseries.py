@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 from datetime import datetime, timezone
 
@@ -6,11 +7,13 @@ from src.config import MongoConfig
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.database.mongo_client.event_processor import EventProcessorClient
 
+
 class CalendarTimeseriesClient:
     """
     Handles the raw ingestion (Timeseries collection) of Google Calendar events,
     acting as the unchanged audit trail buffer before agent parsing.
     """
+
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         collection_name = MongoConfig.RAW_TIMESERIES_COLLECTION
@@ -21,10 +24,10 @@ class CalendarTimeseriesClient:
                 self.db.create_collection(
                     collection_name,
                     timeseries={
-                        'timeField': 'start_time',
-                        'metaField': 'metadata',
-                        'granularity': 'minutes'
-                    }
+                        "timeField": "start_time",
+                        "metaField": "metadata",
+                        "granularity": "minutes",
+                    },
                 )
                 logger.info(f"Created native Time-Series collection: {collection_name}")
             except Exception as e:
@@ -38,21 +41,25 @@ class CalendarTimeseriesClient:
         Upserts the completely raw JSON from google calendar into the timeseries collection.
         Automatically triggers the downstream processor to route to intent/actual schemas.
         """
-        gcal_id = gcal_event.get('id')
+        gcal_id = gcal_event.get("id")
         if not gcal_id:
             return False
 
         # Parse Google Calendar start time to python datetime for timeField
-        start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
+        start_raw = gcal_event.get("start", {}).get("dateTime") or gcal_event.get("start", {}).get(
+            "date"
+        )
         if not start_raw:
             return False
 
         try:
-            if start_raw.endswith('Z'):
-                start_raw = start_raw.replace('Z', '+00:00')
+            if start_raw.endswith("Z"):
+                start_raw = start_raw.replace("Z", "+00:00")
             start_dt = datetime.fromisoformat(start_raw)
         except Exception as e:
-            logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
+            logger.warning(
+                f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}"
+            )
             start_dt = datetime.now(timezone.utc)
 
         payload = {
@@ -61,10 +68,10 @@ class CalendarTimeseriesClient:
                 "gcal_id": str(gcal_id),
                 "user_email": user_email,
                 "sync_status": "staged",
-                "event_type": str(gcal_event.get("eventType", "default"))
+                "event_type": str(gcal_event.get("eventType", "default")),
             },
             "raw_data": gcal_event,
-            "porter_ingested_at": datetime.now(timezone.utc)
+            "porter_ingested_at": datetime.now(timezone.utc),
         }
 
         # Insert as a true timeseries historical event audit log
@@ -76,11 +83,11 @@ class CalendarTimeseriesClient:
 
         # Trigger downstream processor to split into schemas
         try:
-           self.processor.process_and_route_event(gcal_event, user_email)
-           return True
+            self.processor.process_and_route_event(gcal_event, user_email)
+            return True
         except Exception as e:
-           logger.info(f"Error processing event {gcal_id}: {e}")
-           return False
+            logger.info(f"Error processing event {gcal_id}: {e}")
+            return False
 
     def stage_raw_events_batch(self, gcal_events: list[dict], user_email: str = "Hero") -> bool:
         """
@@ -93,34 +100,40 @@ class CalendarTimeseriesClient:
         payloads = []
         valid_events = []
         for gcal_event in gcal_events:
-            gcal_id = gcal_event.get('id')
+            gcal_id = gcal_event.get("id")
             if not gcal_id:
                 continue
 
             # Parse Google Calendar start time to python datetime for timeField
-            start_raw = gcal_event.get('start', {}).get('dateTime') or gcal_event.get('start', {}).get('date')
+            start_raw = gcal_event.get("start", {}).get("dateTime") or gcal_event.get(
+                "start", {}
+            ).get("date")
             if not start_raw:
                 continue
 
             try:
-                if start_raw.endswith('Z'):
-                    start_raw = start_raw.replace('Z', '+00:00')
+                if start_raw.endswith("Z"):
+                    start_raw = start_raw.replace("Z", "+00:00")
                 start_dt = datetime.fromisoformat(start_raw)
             except Exception as e:
-                logger.warning(f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}")
+                logger.warning(
+                    f"Failed to parse event start time '{start_raw}' for event {gcal_id}, defaulting to now: {e}"
+                )
                 start_dt = datetime.now(timezone.utc)
 
-            payloads.append({
-                "start_time": start_dt,
-                "metadata": {
-                    "gcal_id": str(gcal_id),
-                    "user_email": user_email,
-                    "sync_status": "staged",
-                    "event_type": str(gcal_event.get("eventType", "default"))
-                },
-                "raw_data": gcal_event,
-                "porter_ingested_at": datetime.now(timezone.utc)
-            })
+            payloads.append(
+                {
+                    "start_time": start_dt,
+                    "metadata": {
+                        "gcal_id": str(gcal_id),
+                        "user_email": user_email,
+                        "sync_status": "staged",
+                        "event_type": str(gcal_event.get("eventType", "default")),
+                    },
+                    "raw_data": gcal_event,
+                    "porter_ingested_at": datetime.now(timezone.utc),
+                }
+            )
             valid_events.append(gcal_event)
 
         if payloads:

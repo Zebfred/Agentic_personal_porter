@@ -4,6 +4,7 @@ Calendar routes.
 Handles Google Calendar event fetching for both direct API access
 and internal consumption by the journal reflection pipeline.
 """
+
 import logging
 from datetime import datetime, time
 from flask import Blueprint, request, jsonify
@@ -13,11 +14,12 @@ from src.routes.auth_middleware import require_api_key
 from src.integrations.google_calendar import get_calendar_service
 from src.schemas.api_models import CalendarRequestSchema
 
-calendar_bp = Blueprint('calendar', __name__)
+calendar_bp = Blueprint("calendar", __name__)
 logger = logging.getLogger("APP_ROUTER")
 
 # Lazy-initialized calendar service singleton
 _calendar_service = None
+
 
 def get_calendar_service_instance():
     """Get or create Google Calendar service instance."""
@@ -25,6 +27,7 @@ def get_calendar_service_instance():
     if _calendar_service is None:
         _calendar_service = get_calendar_service()
     return _calendar_service
+
 
 def fetch_calendar_events_for_date(target_date_str: str, email: str | None = None):
     """
@@ -40,14 +43,19 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str | None = Non
     """
     try:
         from src.database.mongo_storage import SovereignMongoStorage
-        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user, get_calendar_credentials
+        from src.integrations.google_calendar_authentication_helper import (
+            get_calendar_credentials_for_user,
+            get_calendar_credentials,
+        )
         from googleapiclient.discovery import build
 
         if email and email != "system_script@localhost":
             mongo = SovereignMongoStorage()
             user_doc = mongo.users_col.find_one({"email": email})
             if not user_doc or "google_refresh_token" not in user_doc:
-                logger.warning(f"No refresh token available for user {email}. Cannot fetch personalized events.")
+                logger.warning(
+                    f"No refresh token available for user {email}. Cannot fetch personalized events."
+                )
                 return []
 
             creds = get_calendar_credentials_for_user(user_doc["google_refresh_token"])
@@ -55,28 +63,33 @@ def fetch_calendar_events_for_date(target_date_str: str, email: str | None = Non
             # Fall back to global credentials for system state
             creds = get_calendar_credentials()
 
-        service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
 
-        target_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+        target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
 
-        time_min = datetime.combine(target_date, time.min).isoformat() + 'Z'
-        time_max = datetime.combine(target_date, time.max).isoformat() + 'Z'
+        time_min = datetime.combine(target_date, time.min).isoformat() + "Z"
+        time_max = datetime.combine(target_date, time.max).isoformat() + "Z"
 
-        events_result = service.events().list(
-            calendarId='primary',
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy='startTime'
-        ).execute()
+        events_result = (
+            service.events()
+            .list(
+                calendarId="primary",
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+            )
+            .execute()
+        )
 
-        events = events_result.get('items', [])
+        events = events_result.get("items", [])
         return events
     except Exception as e:
         logger.error(f"Error fetching calendar events internally: {e}")
         return []
 
-@calendar_bp.route('/get_calendar_events', methods=['GET'])
+
+@calendar_bp.route("/get_calendar_events", methods=["GET"])
 @require_api_key
 def get_calendar_events():
     """
@@ -94,19 +107,19 @@ def get_calendar_events():
     """
     try:
         try:
-            req = CalendarRequestSchema(date=request.args.get('date'))
+            req = CalendarRequestSchema(date=request.args.get("date"))
         except ValidationError as e:
             return jsonify({"error": "Invalid query parameters"}), 400
 
         date_str = req.date
         if not date_str:
-            date_str = datetime.now().strftime('%Y-%m-%d')
+            date_str = datetime.now().strftime("%Y-%m-%d")
 
         # Validate date format strictly
         try:
             if len(date_str) != 10:
                 raise ValueError("Strict length check failed")
-            datetime.strptime(date_str, '%Y-%m-%d')
+            datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
             return jsonify({"error": "Invalid date format. Use strict YYYY-MM-DD."}), 400
 
@@ -114,7 +127,7 @@ def get_calendar_events():
 
         # Fetch events using helper function
         try:
-            events = fetch_calendar_events_for_date(date_str, getattr(request, 'user_email', None))
+            events = fetch_calendar_events_for_date(date_str, getattr(request, "user_email", None))
         except FileNotFoundError as e:
             return jsonify({"error": f"Google Calendar credentials not found: {e}"}), 500
         except Exception as e:
@@ -123,42 +136,44 @@ def get_calendar_events():
         # Format events for front-end
         formatted_events = []
         for event in events:
-            start = event['start'].get('dateTime', event['start'].get('date'))
-            end = event['end'].get('dateTime', event['end'].get('date'))
+            start = event["start"].get("dateTime", event["start"].get("date"))
+            end = event["end"].get("dateTime", event["end"].get("date"))
 
-            formatted_events.append({
-                'title': event.get('summary', 'No Title'),
-                'start': start,
-                'end': end,
-                'description': event.get('description', ''),
-                'location': event.get('location', ''),
-                'id': event.get('id', '')
-            })
+            formatted_events.append(
+                {
+                    "title": event.get("summary", "No Title"),
+                    "start": start,
+                    "end": end,
+                    "description": event.get("description", ""),
+                    "location": event.get("location", ""),
+                    "id": event.get("id", ""),
+                }
+            )
 
         logger.info(f"Found {len(formatted_events)} events for {date_str}")
 
-        return jsonify({
-            "date": date_str,
-            "events": formatted_events,
-            "count": len(formatted_events)
-        })
+        return jsonify(
+            {"date": date_str, "events": formatted_events, "count": len(formatted_events)}
+        )
 
     except Exception as e:
         logger.error(f"Error fetching calendar events: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/unverified_audits', methods=['GET'])
+
+@calendar_bp.route("/api/calendar/unverified_audits", methods=["GET"])
 @require_api_key
 def get_unverified_audits():
     """
     Fetches the unverified records queue for the Verification Dashboard.
     """
     try:
-        user_email = getattr(request, 'user_email', None)
+        user_email = getattr(request, "user_email", None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
         from src.agents.audit_inspector import AuditInspector
+
         inspector = AuditInspector()
         records = inspector.batch_unverified_records(user_email=user_email)
         return jsonify({"status": "success", "records": records})
@@ -166,18 +181,20 @@ def get_unverified_audits():
         logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/verified_history', methods=['GET'])
+
+@calendar_bp.route("/api/calendar/verified_history", methods=["GET"])
 @require_api_key
 def get_verified_history():
     """
     Fetches the deeply confirmed historical audits for the Verification Dashboard.
     """
     try:
-        user_email = getattr(request, 'user_email', None)
+        user_email = getattr(request, "user_email", None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
         from src.agents.audit_inspector import AuditInspector
+
         inspector = AuditInspector()
         records = inspector.get_recently_verified_records(user_email=user_email, limit=10)
         return jsonify({"status": "success", "records": records})
@@ -185,23 +202,25 @@ def get_verified_history():
         logger.error(f"Error fetching verified history: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/approve_audits', methods=['POST'])
+
+@calendar_bp.route("/api/calendar/approve_audits", methods=["POST"])
 @require_api_key
 def approve_audits():
     """
     Batch approves a list of record gcal_ids.
     """
     try:
-        user_email = getattr(request, 'user_email', None)
+        user_email = getattr(request, "user_email", None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
         data = request.json
-        gcal_ids = data.get('gcal_ids', [])
+        gcal_ids = data.get("gcal_ids", [])
         if not gcal_ids:
             return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
 
         from src.agents.audit_inspector import AuditInspector
+
         inspector = AuditInspector()
         modified = inspector.approve_batch(gcal_ids, user_email=user_email)
         return jsonify({"status": "success", "modified_count": modified})
@@ -209,7 +228,8 @@ def approve_audits():
         logger.error(f"Error approving audits: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/adventure_log', methods=['GET'])
+
+@calendar_bp.route("/api/calendar/adventure_log", methods=["GET"])
 @require_api_key
 def get_adventure_log():
     """
@@ -218,28 +238,33 @@ def get_adventure_log():
     try:
         from src.database.mongo_storage import SovereignMongoStorage
         from src.config import MongoConfig
+
         mongo = SovereignMongoStorage()
 
-        user_email = getattr(request, 'user_email', None)
+        user_email = getattr(request, "user_email", None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
         # Calculate full suite of metrics for the Hub
         intentions_count = mongo.db["event_intentions"].count_documents({"user_id": user_email})
 
-        actuals_count = mongo.db["event_actuals"].count_documents({"user_id": user_email}) + \
-                        mongo.db["unified_events"].count_documents({"user_id": user_email})
+        actuals_count = mongo.db["event_actuals"].count_documents(
+            {"user_id": user_email}
+        ) + mongo.db["unified_events"].count_documents({"user_id": user_email})
 
-        unclassified_count = mongo.db[MongoConfig.RAW_TIMESERIES_COLLECTION].count_documents({
-            "metadata.user_email": user_email,
-            "metadata.sync_status": "staged"
-        })
+        unclassified_count = mongo.db[MongoConfig.RAW_TIMESERIES_COLLECTION].count_documents(
+            {"metadata.user_email": user_email, "metadata.sync_status": "staged"}
+        )
 
         matched_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
 
         total_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email})
-        valuable_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "valuable"})
-        detrimental_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email, "actual.detour_type": "detrimental"})
+        valuable_detours = mongo.db["event_actuals"].count_documents(
+            {"user_id": user_email, "actual.detour_type": "valuable"}
+        )
+        detrimental_detours = mongo.db["event_actuals"].count_documents(
+            {"user_id": user_email, "actual.detour_type": "detrimental"}
+        )
 
         if valuable_detours == 0 and detrimental_detours == 0 and total_detours > 0:
             valuable_detours = total_detours
@@ -251,24 +276,26 @@ def get_adventure_log():
             "matched": matched_count,
             "valuable_detours": valuable_detours,
             "detrimental_detours": detrimental_detours,
-            "detrimental_delta": "↓ 0%"
+            "detrimental_delta": "↓ 0%",
         }
         return jsonify({"status": "success", "data": analysis})
     except Exception as e:
         logger.error(f"Error getting adventure log delta: {e}")
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/user_sync', methods=['POST', 'OPTIONS'])
+
+@calendar_bp.route("/api/calendar/user_sync", methods=["POST", "OPTIONS"])
 @require_api_key
 def user_sync_calendar():
     """
     Triggers the Google Calendar sync pipeline to Neo4j specifically for the calling user.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    if request.method == "OPTIONS":
+        return "", 204
     try:
         from src.orchestrators.sync_calendar_to_graph import run_sync_pipeline
-        user_email = getattr(request, 'user_email', None)
+
+        user_email = getattr(request, "user_email", None)
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
@@ -278,27 +305,28 @@ def user_sync_calendar():
         logger.error(f"Error syncing user calendar: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
-@calendar_bp.route('/api/calendar/push_to_gcal', methods=['POST', 'OPTIONS'])
+
+@calendar_bp.route("/api/calendar/push_to_gcal", methods=["POST", "OPTIONS"])
 @require_api_key
 def push_to_gcal():
     """
     Bi-Directional Sync: Executes explicit overwrites (Update/Delete) natively on Google Cloud.
     """
-    if request.method == 'OPTIONS':
-        return '', 204
+    if request.method == "OPTIONS":
+        return "", 204
     try:
         data = request.get_json()
-        if not data or 'action' not in data or 'gcal_id' not in data:
+        if not data or "action" not in data or "gcal_id" not in data:
             return jsonify({"error": "Missing required fields (action, gcal_id)"}), 400
 
-        action = data['action']
-        gcal_id = data['gcal_id']
+        action = data["action"]
+        gcal_id = data["gcal_id"]
 
         service = get_calendar_service_instance()
 
-        if action == 'delete':
+        if action == "delete":
             try:
-                service.events().delete(calendarId='primary', eventId=gcal_id).execute()
+                service.events().delete(calendarId="primary", eventId=gcal_id).execute()
                 logger.info(f"Successfully deleted GCal event: {gcal_id}")
             except Exception as e:
                 # If it's already deleted on google or not found, just pass
@@ -306,29 +334,41 @@ def push_to_gcal():
 
             # Delete from Mongo Native Collection
             from src.database.mongo_storage import SovereignMongoStorage
+
             mongo = SovereignMongoStorage()
             mongo.raw_col.delete_one({"gcal_id": gcal_id})
             mongo.formatted_col.delete_one({"gcal_id": gcal_id})
 
-            return jsonify({"status": "success", "message": "Event annihilated from Google Cloud and Mongo."})
+            return jsonify(
+                {"status": "success", "message": "Event annihilated from Google Cloud and Mongo."}
+            )
 
-        elif action == 'update':
+        elif action == "update":
             # e.g., Title change or Time shift
-            new_title = data.get('summary')
+            new_title = data.get("summary")
             try:
-                event = service.events().get(calendarId='primary', eventId=gcal_id).execute()
+                event = service.events().get(calendarId="primary", eventId=gcal_id).execute()
                 if new_title:
-                    event['summary'] = new_title
-                updated_event = service.events().update(calendarId='primary', eventId=gcal_id, body=event).execute()
+                    event["summary"] = new_title
+                updated_event = (
+                    service.events()
+                    .update(calendarId="primary", eventId=gcal_id, body=event)
+                    .execute()
+                )
 
                 # Update Mongo Native Collection
                 from src.database.mongo_storage import SovereignMongoStorage
+
                 mongo = SovereignMongoStorage()
                 if new_title:
                     mongo.raw_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
-                    mongo.formatted_col.update_one({"gcal_id": gcal_id}, {"$set": {"summary": new_title}})
+                    mongo.formatted_col.update_one(
+                        {"gcal_id": gcal_id}, {"$set": {"summary": new_title}}
+                    )
 
-                return jsonify({"status": "success", "message": "Event updated successfully on Google Cloud."})
+                return jsonify(
+                    {"status": "success", "message": "Event updated successfully on Google Cloud."}
+                )
             except Exception as e:
                 return jsonify({"error": f"Failed to update GCal Event: {e}"}), 500
 

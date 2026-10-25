@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import os
 import platform
@@ -34,7 +35,9 @@ def _get_fallback_env_paths() -> list[Path]:
     reliably across Windows and Unix environments.
     """
     if is_windows():
-        user_home = Path(os.environ["USERPROFILE"]) if os.environ.get("USERPROFILE") else Path.home()
+        user_home = (
+            Path(os.environ["USERPROFILE"]) if os.environ.get("USERPROFILE") else Path.home()
+        )
         return [
             user_home / ".auth" / ".env",
             user_home / ".auth" / "Porter_auth_env",
@@ -77,7 +80,9 @@ def load_env_vars():
     for env_path in possible_paths:
         if env_path.exists():
             load_dotenv(dotenv_path=env_path)
-            logger.info(f"Loaded environment variables from: {_redact_path_for_log(env_path, root)}")
+            logger.info(
+                f"Loaded environment variables from: {_redact_path_for_log(env_path, root)}"
+            )
             loaded = True
             break
 

@@ -3,7 +3,9 @@ Quick MongoDB connection health check.
 
 Tests connectivity to Mongo Atlas and lists available databases.
 """
+
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import os
 from pymongo import MongoClient
@@ -14,6 +16,7 @@ from src.utils.path_utils import load_env_vars
 load_env_vars()
 
 MONGO_URI = os.getenv("MONGO_URI")
+
 
 def test_mongo_connection():
     """Verify MongoDB Atlas connectivity and list databases."""
@@ -26,7 +29,7 @@ def test_mongo_connection():
         client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 
         # Issue a cheap ping command to the admin database
-        client.admin.command('ping')
+        client.admin.command("ping")
         logger.info("✅ MongoDB Connection Successful! (GCP project can reach Mongo Atlas)")
 
         # Verify database access
@@ -35,13 +38,16 @@ def test_mongo_connection():
             logger.info(f"  - {db_name}")
 
     except ConnectionFailure as e:
-        logger.info("❌ MongoDB Connection Timed Out! Ensure this IP is Whitelisted in Atlas Network Access.")
+        logger.info(
+            "❌ MongoDB Connection Timed Out! Ensure this IP is Whitelisted in Atlas Network Access."
+        )
         logger.info(f"   Details: {e}")
     except OperationFailure as e:
         logger.info("❌ MongoDB Authentication Failed! Check username/password in MONGO_URI.")
         logger.info(f"   Details: {e}")
     except Exception as e:
         logger.info(f"❌ Unexpected Error: {e}")
+
 
 if __name__ == "__main__":
     test_mongo_connection()

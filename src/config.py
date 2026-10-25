@@ -5,10 +5,12 @@ from src.utils.path_utils import load_env_vars
 # Find root and load .env once
 load_env_vars()
 
+
 class NeoConfig:
     NEO4J_URI = os.getenv("NEO4J_URI")
     NEO4J_USER = os.getenv("NEO4J_USERNAME")
     NEO4J_PASS = os.getenv("NEO4J_PASSWORD")
+
 
 # Activate LangSmith Tracing if API Key is detected
 if os.getenv("LANGCHAIN_API_KEY") and os.getenv("LANGCHAIN_API_KEY") != "YOUR_API_KEY_HERE":
@@ -16,6 +18,7 @@ if os.getenv("LANGCHAIN_API_KEY") and os.getenv("LANGCHAIN_API_KEY") != "YOUR_AP
     os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
     if not os.getenv("LANGCHAIN_PROJECT"):
         os.environ["LANGCHAIN_PROJECT"] = "porter_mach_3"
+
 
 class MongoConfig:
     MONGO_URI = os.getenv("MONGO_URI")

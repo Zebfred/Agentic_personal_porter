@@ -6,6 +6,7 @@ Covers:
 - US2 (T011): Spec-Kit tasks.md parsing (\bT\d{3,}\b), persona domain mapping, idempotent deduplication, and /api/integrations/jira/speckit-push
 - US3 (T014): JulesDispatcher work order assembly, .jules/<persona>.md playbook injection, shell=False subprocess safety, Jira session annotation, and /api/integrations/jules/dispatch
 """
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 import jwt
@@ -41,6 +42,7 @@ def _isolate_jira_mongo(mock_mongo: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 # Phase 1 & 2 Foundational Contract Tests (UUIDs, Schemas, Batched Storage)
 # ---------------------------------------------------------------------------
+
 
 def test_uuid_generator_jira_deterministic_and_tenant_isolated() -> None:
     """Verify composite UUIDv5 generation is deterministic and isolated by user_email."""
@@ -114,6 +116,7 @@ def test_jira_storage_bulk_upsert_and_projected_dedup(mock_mongo: MagicMock) -> 
 # ---------------------------------------------------------------------------
 # User Story 1 Tests (T007): Bi-Directional Jira Client & Sync
 # ---------------------------------------------------------------------------
+
 
 def test_us1_jira_client_validates_credentials_and_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure JiraClient fails fast on missing credentials or insecure URLs (Sentinel)."""
@@ -189,9 +192,7 @@ def test_us1_jira_client_read_and_write_operations() -> None:
         # 3. Transition issue
         mock_resp_trans_get = MagicMock()
         mock_resp_trans_get.status_code = 200
-        mock_resp_trans_get.json.return_value = {
-            "transitions": [{"id": "31", "name": "Done"}]
-        }
+        mock_resp_trans_get.json.return_value = {"transitions": [{"id": "31", "name": "Done"}]}
         mock_resp_trans_post = MagicMock()
         mock_resp_trans_post.status_code = 204
         mock_req.side_effect = [mock_resp_trans_get, mock_resp_trans_post]
@@ -257,6 +258,7 @@ def test_us1_jira_sync_endpoint_and_neo4j_merge(monkeypatch: pytest.MonkeyPatch)
 # ---------------------------------------------------------------------------
 # User Story 2 Tests (T011): Spec-Kit tasks.md Parsing & Jira Deduplication
 # ---------------------------------------------------------------------------
+
 
 def test_us2_parse_speckit_tasks_and_infer_personas(tmp_path: Path) -> None:
     """Verify tasks.md regex parsing (\bT\d{3,}\b) and persona domain inference."""
@@ -332,6 +334,7 @@ def test_us2_sync_feature_to_jira_deduplicates_existing_tasks(tmp_path: Path) ->
 # ---------------------------------------------------------------------------
 # User Story 3 Tests (T014): Jules Work Order Formatter & Dispatcher
 # ---------------------------------------------------------------------------
+
 
 def test_us3_jules_dispatcher_builds_work_order_with_playbook_and_gates() -> None:
     """Verify JulesDispatcher injects .jules/<persona>.md rules and verification commands (SC-003)."""

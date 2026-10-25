@@ -4,10 +4,10 @@ Tests for the centralized LLM Resilience Factory.
 Validates that get_resilient_llm() returns a properly configured
 three-tier fallback chain with circuit breaking.
 """
+
 import os
 import sys
 from unittest.mock import patch, MagicMock
-
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

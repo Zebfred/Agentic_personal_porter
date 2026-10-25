@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 from datetime import datetime, timezone
 from dateutil import parser
@@ -9,6 +10,7 @@ from src.database.mongo_storage import SovereignMongoStorage
 from src.database.inject_hero_calendar import SovereignGraphInjector
 from src.agents.gtky_librarian import GTKYLibrarian
 from src.agents.gtky_historian import GTKYHistorian
+
 
 def run_sync_pipeline(target_date=None, target_user_email=None):
     if target_date is None:
@@ -32,8 +34,16 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
     historian = GTKYHistorian()
 
     from src.database.mongo_client.agent_health import AgentHeartbeatManager
+
     health_manager = AgentHeartbeatManager()
-    run_id = health_manager.start_agent_run("calendar_sync_orchestrator", {"target_date": target_date.isoformat() if hasattr(target_date, 'isoformat') else str(target_date)})
+    run_id = health_manager.start_agent_run(
+        "calendar_sync_orchestrator",
+        {
+            "target_date": (
+                target_date.isoformat() if hasattr(target_date, "isoformat") else str(target_date)
+            )
+        },
+    )
 
     global_success = True
 
@@ -47,6 +57,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
             global_success = True
 
         from src.database.calendar_raw_sync_to_mongo import SovereignCalendarSync
+
         cal_sync = SovereignCalendarSync()
 
         for user in users:
@@ -67,7 +78,7 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                     ops_count, new_cursor = cal_sync.pull_historical_backlog(
                         user_email=user_email,
                         refresh_token=refresh_token,
-                        oldest_cursor=oldest_cursor
+                        oldest_cursor=oldest_cursor,
                     )
                     storage.update_historical_sync_cursor(user_email, new_cursor)
                 except Exception as e:
@@ -79,35 +90,44 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                 # We don't fail global success here, just skip
 
             # Phase 1/2: Gather Unstaged and Classify (Twin-Tracked)
-            start_of_day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            start_of_day = datetime.now(timezone.utc).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
 
             from src.database.mongo_client.connection import MongoConnectionManager
             from src.config import MongoConfig
+
             db = MongoConnectionManager.get_db()
             timeseries_col = db[MongoConfig.RAW_TIMESERIES_COLLECTION]
             daily_cat_col = db[MongoConfig.DAILY_CATEGORIZED_EVENTS]
 
             # Phase 3: Identify events that haven't hit the Graph yet from unified_events
-            formatted_events = list(db["unified_events"].find({"neo4j_synced": {"$ne": True}, "user_id": user_email}))
+            formatted_events = list(
+                db["unified_events"].find({"neo4j_synced": {"$ne": True}, "user_id": user_email})
+            )
 
             if not formatted_events:
                 logger.info(f"No new formatted events ready for Neo4j for {user_email}.")
                 continue
 
-            logger.info(f"Attempting to inject {len(formatted_events)} events into the Identity Graph for {user_email}...")
+            logger.info(
+                f"Attempting to inject {len(formatted_events)} events into the Identity Graph for {user_email}..."
+            )
 
             # Fetch username for partitioning
             user_doc = storage.get_user_by_email(user_email)
             username = user_doc.get("username", "unknown") if user_doc else "unknown"
 
             # Phase 4: Push to Neo4j
-            injected_count = injector.inject_calendar_to_graph(formatted_events, user_email=user_email, username=username)
+            injected_count = injector.inject_calendar_to_graph(
+                formatted_events, user_email=user_email, username=username
+            )
 
             if injected_count > 0:
                 # Map gcal_ids correctly from the unified_events payload (can be inside intent or top level depending on event_processor)
                 gcal_ids = []
                 for e in formatted_events:
-                    gcal_id = e.get('gcal_id')
+                    gcal_id = e.get("gcal_id")
                     if gcal_id:
                         gcal_ids.append(gcal_id)
 
@@ -118,9 +138,9 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
                         {
                             "$set": {
                                 "neo4j_synced": True,
-                                "neo4j_last_sync": datetime.now(timezone.utc)
+                                "neo4j_last_sync": datetime.now(timezone.utc),
                             }
-                        }
+                        },
                     )
                 logger.info(f"Successfully synchronized {injected_count} events to Neo4j.")
             else:
@@ -138,15 +158,19 @@ def run_sync_pipeline(target_date=None, target_user_email=None):
         health_manager.end_agent_run(run_id, status="success" if global_success else "fail")
 
         try:
-            storage.upsert_system_status("calendar_sync", {
-                "status": "success" if global_success else "fail",
-                "Sync_Integrity": global_success,
-                "last_gcal_sync": datetime.now(timezone.utc).isoformat()
-            })
+            storage.upsert_system_status(
+                "calendar_sync",
+                {
+                    "status": "success" if global_success else "fail",
+                    "Sync_Integrity": global_success,
+                    "last_gcal_sync": datetime.now(timezone.utc).isoformat(),
+                },
+            )
         except Exception as log_e:
             logger.info(f"Failed to log sync status: {log_e}")
 
         logger.info("--- Pipeline Execution Finished ---")
+
 
 if __name__ == "__main__":
     run_sync_pipeline()

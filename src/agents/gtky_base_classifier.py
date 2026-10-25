@@ -9,13 +9,16 @@ from src.utils.path_utils import load_env_vars
 
 logger = logging.getLogger(__name__)
 
+
 class GTKYBaseClassifier:
     """
     Base class for GTKY agents that classify calendar events into Golden Objects.
     """
+
     def __init__(self):
         load_env_vars()
         from src.database.mongo_storage import SovereignMongoStorage
+
         self.storage = SovereignMongoStorage()
 
     def _load_artifact(self, artifact_name: str, username: str = "system") -> Dict[str, Any]:
@@ -26,7 +29,9 @@ class GTKYBaseClassifier:
             return {}
         return data
 
-    def _classify_batch(self, events: List[Dict], username: str, agent_role: str, time_context: str, log_emoji: str) -> List[Dict]:
+    def _classify_batch(
+        self, events: List[Dict], username: str, agent_role: str, time_context: str, log_emoji: str
+    ) -> List[Dict]:
         """
         Processes a batch of raw events, bundles them with Hero Context,
         and uses LLM classification to mint "Golden Objects".
@@ -66,10 +71,15 @@ Schema per object:
 Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
 """
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("human", f"Here is the {time_context} batch of calendar events:\n{{events_batch}}")
-        ])
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_prompt),
+                (
+                    "human",
+                    f"Here is the {time_context} batch of calendar events:\n{{events_batch}}",
+                ),
+            ]
+        )
 
         # Three-tier resilient LLM: Groq -> Gemini Flash -> Gemini Pro
         llm_with_fallback = get_resilient_llm(task="gtky_classifier")
@@ -77,11 +87,12 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
         chain = prompt | llm_with_fallback
 
         import time
+
         golden_objects = []
         chunk_size = 25  # Increased to reduce total API calls
 
         for i in range(0, len(events), chunk_size):
-            chunk = events[i:i + chunk_size]
+            chunk = events[i : i + chunk_size]
             events_subset = []
             for ev in chunk:
                 gcal_id = ev.get("id") or ev.get("gcal_id")
@@ -96,22 +107,27 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                 if start_iso and end_iso:
                     try:
                         from dateutil import parser
+
                         st = parser.parse(start_iso)
                         et = parser.parse(end_iso)
                         duration_minutes = int((et - st).total_seconds() / 60)
                     except Exception as e:
                         logger.warning(f"Failed to parse event dates for {gcal_id}: {e}")
-                
-                # Simplification: we forward 'start', 'duration_minutes', 'title', 'gcal_id'
-                events_subset.append({
-                    "gcal_id": gcal_id,
-                    "title": ev.get("summary", "Untitled Event"),
-                    "start": start_iso,
-                    "duration_minutes": duration_minutes,
-                    "description": ev.get("description", "")
-                })
 
-            logger.info(f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}...")
+                # Simplification: we forward 'start', 'duration_minutes', 'title', 'gcal_id'
+                events_subset.append(
+                    {
+                        "gcal_id": gcal_id,
+                        "title": ev.get("summary", "Untitled Event"),
+                        "start": start_iso,
+                        "duration_minutes": duration_minutes,
+                        "description": ev.get("description", ""),
+                    }
+                )
+
+            logger.info(
+                f"{log_emoji} {agent_role} processing {time_context} batch {i} to {i + len(chunk)}..."
+            )
 
             try:
                 response = invoke_with_retry(
@@ -120,14 +136,14 @@ Output ONLY the raw JSON array. No markdown blocks, no chat formatting.
                         "origin": json.dumps(origin_ctx),
                         "ambition": json.dumps(ambition_ctx),
                         "category_mapping": json.dumps(mapping_ctx) if mapping_ctx else "{}",
-                        "events_batch": json.dumps(events_subset, indent=2)
-                    }
+                        "events_batch": json.dumps(events_subset, indent=2),
+                    },
                 )
 
                 # Cleanup the markdown if it hallucinates it
                 raw_json = response.content.strip()
-                raw_json = re.sub(r'^```json|^```', '', raw_json, flags=re.MULTILINE)
-                raw_json = raw_json.strip('`').strip()
+                raw_json = re.sub(r"^```json|^```", "", raw_json, flags=re.MULTILINE)
+                raw_json = raw_json.strip("`").strip()
 
                 parsed_objects = json.loads(raw_json)
 

@@ -1,4 +1,5 @@
 """Porter Manager — orchestrates agent routing and conversation flow."""
+
 import os
 import logging
 from datetime import datetime
@@ -22,6 +23,7 @@ raw_api_key = os.getenv("GROQ_API_KEY")
 
 logger = logging.getLogger(__name__)
 
+
 # State definition
 class ReflectionState(TypedDict, total=False):
     journal_entry: str
@@ -32,18 +34,23 @@ class ReflectionState(TypedDict, total=False):
     curator_result: Dict[str, str]
     final_output: str
 
+
 # Structured output for Categorizer
 class CategorizationResult(BaseModel):
-    Pillar: str = Field(description="Name of the Pillar (1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, 6. Community, 7. Leisure, 8. Spirit, 9. Duty)")
+    Pillar: str = Field(
+        description="Name of the Pillar (1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, 6. Community, 7. Leisure, 8. Spirit, 9. Duty)"
+    )
     Reason: str = Field(description="1-sentence strict analytical reason")
-    Confidence_Score: int = Field(description="an integer from 0 to 100 representing how certain you are of this pillar mapping")
+    Confidence_Score: int = Field(
+        description="an integer from 0 to 100 representing how certain you are of this pillar mapping"
+    )
+
 
 from google.adk.runners import InMemoryRunner
 
+
 def _create_adk_runner(
-    agent_name: str,
-    instruction: str,
-    model_name: str = "groq/llama-3.3-70b-versatile"
+    agent_name: str, instruction: str, model_name: str = "groq/llama-3.3-70b-versatile"
 ) -> InMemoryRunner:
     """
     Factory function to instantiate the ADK LiteLlm, Agent, and InMemoryRunner.
@@ -60,12 +67,9 @@ def _create_adk_runner(
     from google.adk.models.lite_llm import LiteLlm
 
     adk_model = LiteLlm(model=model_name)
-    agent = Agent(
-        name=agent_name,
-        model=adk_model,
-        instruction=instruction
-    )
+    agent = Agent(name=agent_name, model=adk_model, instruction=instruction)
     return InMemoryRunner(agent=agent, app_name="porter")
+
 
 # Node Functions
 def setup_node(state: ReflectionState) -> ReflectionState:
@@ -84,8 +88,11 @@ def setup_node(state: ReflectionState) -> ReflectionState:
 
     # Fetching Ground Truth Data for the Recon Task
     storage = SovereignMongoStorage()
-    mongo_actuals = list(storage.formatted_col.find({"record_type": "Actual"}).sort("start", -1).limit(5))
+    mongo_actuals = list(
+        storage.formatted_col.find({"record_type": "Actual"}).sort("start", -1).limit(5)
+    )
     return {"actuals_list": mongo_actuals}
+
 
 def categorizer_node(state: ReflectionState) -> ReflectionState:
     """
@@ -106,45 +113,70 @@ def categorizer_node(state: ReflectionState) -> ReflectionState:
     instruction = "You are 'The Categorizer'. You are no longer a deep contextual philosophical coach. Your sole responsibility is to evaluate daily events and definitively map them to exactly one of the designated 9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\nGoal: Perform strict, low-latency categorization of Intention vs. Actual events across the 9 Core Pillars.\n\nIMPORTANT: Your output MUST be ONLY a raw JSON block with the following keys:\n- 'Pillar': Name of the Pillar (e.g. '1. Core Identity')\n- 'Reason': 1-sentence strict analytical reason\n- 'Confidence_Score': integer from 0 to 100\nDo not include markdown tags like ```json."
     runner = _create_adk_runner(agent_name="The_Categorizer", instruction=instruction)
 
-    actuals_str = "\n".join([f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})" for e in (state.get('actuals_list') or [])]) or "No recent actual events found."
+    actuals_str = (
+        "\n".join(
+            [
+                f"- {e.get('title', 'Unknown')} ({e.get('pillar', 'Uncategorized')})"
+                for e in (state.get("actuals_list") or [])
+            ]
+        )
+        or "No recent actual events found."
+    )
     query = f"1. Analyze the following FRONTEND PAYLOAD quickly submitted by {state['username']}:\n'{state['journal_entry']}'\n\n2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n3. Identify EXACTLY which of the 9 Hero pillars this combination represents."
 
     @with_llm_retry
     async def run_adk():
-        session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
+        session = await runner.session_service.create_session(
+            app_name="porter", user_id="porter_user"
+        )
         user_msg = types.Content(role="user", parts=[types.Part(text=query)])
 
         final_text = ""
         total_tokens = 0
         from src.utils.token_circuit_breaker import TokenLimitExceededError
 
-        for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
+        for response in runner.run(
+            user_id="porter_user", session_id=session.id, new_message=user_msg
+        ):
             # ADK Token Circuit Breaker Logic
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                total_tokens += getattr(response.usage_metadata, "total_token_count", 0)
                 if total_tokens > 25000:
-                    logger.error(f"[CIRCUIT BROKEN] Categorizer exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
-                    raise TokenLimitExceededError("Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+                    logger.error(
+                        f"[CIRCUIT BROKEN] Categorizer exceeded 25000 tokens! Total used: {total_tokens}. Force halting."
+                    )
+                    raise TokenLimitExceededError(
+                        "Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens."
+                    )
 
-            if hasattr(response, 'content') and response.content and response.content.parts:
+            if hasattr(response, "content") and response.content and response.content.parts:
                 for part in response.content.parts:
-                    if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == runner.agent.name:
+                    if hasattr(part, "text") and part.text:
+                        if getattr(response, "author", "") == runner.agent.name:
                             final_text = part.text
         return final_text
 
     result_text = asyncio.run(run_adk())
 
     # Parse the returned JSON
-    result_text = result_text.replace('```json', '').replace('```', '').strip()
+    result_text = result_text.replace("```json", "").replace("```", "").strip()
     try:
         data = json.loads(result_text)
     except Exception as e:
         logger.error(f"Failed to parse ADK Categorizer response: {e}", exc_info=True)
-        data = {"Pillar": "Parse Error", "Reason": f"Failed to parse ADK Categorizer response: {str(e)}", "Confidence_Score": 0}
+        data = {
+            "Pillar": "Parse Error",
+            "Reason": f"Failed to parse ADK Categorizer response: {str(e)}",
+            "Confidence_Score": 0,
+        }
     if not isinstance(data, dict):
-        data = {"Pillar": "Parse Error", "Reason": f"Parsed response is not a JSON object (got {type(data).__name__})", "Confidence_Score": 0}
+        data = {
+            "Pillar": "Parse Error",
+            "Reason": f"Parsed response is not a JSON object (got {type(data).__name__})",
+            "Confidence_Score": 0,
+        }
     return {"recon_result": data}
+
 
 def should_curate(state: ReflectionState) -> str:
     """
@@ -157,9 +189,10 @@ def should_curate(state: ReflectionState) -> str:
         str: The name of the next node to route to ("curator_node" or "save_results_node").
     """
     log_data = state.get("log_data")
-    if log_data and log_data.get('isValuableDetour'):
+    if log_data and log_data.get("isValuableDetour"):
         return "curator_node"
     return "save_results_node"
+
 
 def curator_node(state: ReflectionState) -> ReflectionState:
     """
@@ -180,37 +213,46 @@ def curator_node(state: ReflectionState) -> ReflectionState:
     runner = _create_adk_runner(agent_name="GTKY_Librarian", instruction=instruction)
 
     log_data = state.get("log_data") or {}
-    inventory_note = log_data.get('inventoryNote', 'Gained unforeseen experience.')
+    inventory_note = log_data.get("inventoryNote", "Gained unforeseen experience.")
 
     query = f"{state['username']} has declared the recent activity a 'Valuable Detour'.\nHis note: '{inventory_note}'\nEvaluate this new 'acquired skill' against his overall Origin Story.\nExpected output: A concise 2-sentence summary of the new skill appended to the end of the Recon Report under an 'Acquired Inventory' header."
 
     @with_llm_retry
     async def run_adk():
-        session = await runner.session_service.create_session(app_name="porter", user_id="porter_user")
+        session = await runner.session_service.create_session(
+            app_name="porter", user_id="porter_user"
+        )
         user_msg = types.Content(role="user", parts=[types.Part(text=query)])
 
         final_text = ""
         total_tokens = 0
         from src.utils.token_circuit_breaker import TokenLimitExceededError
 
-        for response in runner.run(user_id="porter_user", session_id=session.id, new_message=user_msg):
+        for response in runner.run(
+            user_id="porter_user", session_id=session.id, new_message=user_msg
+        ):
             # ADK Token Circuit Breaker Logic
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                total_tokens += getattr(response.usage_metadata, 'total_token_count', 0)
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                total_tokens += getattr(response.usage_metadata, "total_token_count", 0)
                 if total_tokens > 25000:
-                    logger.error(f"[CIRCUIT BROKEN] Curator exceeded 25000 tokens! Total used: {total_tokens}. Force halting.")
-                    raise TokenLimitExceededError("Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens.")
+                    logger.error(
+                        f"[CIRCUIT BROKEN] Curator exceeded 25000 tokens! Total used: {total_tokens}. Force halting."
+                    )
+                    raise TokenLimitExceededError(
+                        "Agent trapped in hallucination loop. Exceeded API safety cap of 25000 tokens."
+                    )
 
-            if hasattr(response, 'content') and response.content and response.content.parts:
+            if hasattr(response, "content") and response.content and response.content.parts:
                 for part in response.content.parts:
-                    if hasattr(part, 'text') and part.text:
-                        if getattr(response, 'author', '') == runner.agent.name:
+                    if hasattr(part, "text") and part.text:
+                        if getattr(response, "author", "") == runner.agent.name:
                             final_text = part.text
         return final_text
 
     result_text = asyncio.run(run_adk())
 
     return {"curator_result": {"acquired_inventory": result_text}}
+
 
 def save_results_node(state: ReflectionState) -> ReflectionState:
     """
@@ -228,9 +270,9 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
     curator_data = state.get("curator_result") or {}
 
     recon_json_dict = {
-        "Pillar": recon_data.get('Pillar', 'Unknown'),
-        "Reason": recon_data.get('Reason', ''),
-        "Confidence_Score": recon_data.get('Confidence_Score', 0)
+        "Pillar": recon_data.get("Pillar", "Unknown"),
+        "Reason": recon_data.get("Reason", ""),
+        "Confidence_Score": recon_data.get("Confidence_Score", 0),
     }
     recon_json_str = json.dumps(recon_json_dict, indent=2)
     final_output = f"```json\n{recon_json_str}\n```"
@@ -239,7 +281,9 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
         final_output += f"\n\n### Acquired Inventory\n{curator_data.get('acquired_inventory')}"
 
     current_date = datetime.now().strftime("%Y-%m-%d")
-    out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reflections")
+    out_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "reflections"
+    )
     os.makedirs(out_dir, exist_ok=True)
     out_file = os.path.join(out_dir, f"daily_recon_{current_date}.md")
 
@@ -253,17 +297,18 @@ def save_results_node(state: ReflectionState) -> ReflectionState:
             "day": current_date,
             "user_id": state["username"],
             "reflection_text": final_output,
-            "metadata": {
-                "journal_entry": state["journal_entry"],
-                "log_data": state["log_data"]
-            }
+            "metadata": {"journal_entry": state["journal_entry"], "log_data": state["log_data"]},
         }
         storage.save_agent_reflection(reflection_data)
         logger.info(f"\n--- Recon Complete. Report saved to {out_file} and MongoDB ---")
     except Exception as e:
-        logger.error(f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---", exc_info=True)
+        logger.error(
+            f"\n--- Recon Complete. Report saved to {out_file}. MongoDB save failed: {e} ---",
+            exc_info=True,
+        )
 
     return {"final_output": final_output}
+
 
 # Build Graph
 builder = StateGraph(ReflectionState)
@@ -274,14 +319,19 @@ builder.add_node("save_results_node", save_results_node)
 
 builder.add_edge(START, "setup_node")
 builder.add_edge("setup_node", "categorizer_node")
-builder.add_conditional_edges("categorizer_node", should_curate, ["curator_node", "save_results_node"])
+builder.add_conditional_edges(
+    "categorizer_node", should_curate, ["curator_node", "save_results_node"]
+)
 builder.add_edge("curator_node", "save_results_node")
 builder.add_edge("save_results_node", END)
 
 graph = builder.compile()
 
+
 @with_finops_trace("run_porter_reflection")
-def run_porter_reflection(journal_entry: str, log_data: dict | None = None, username: str = "Hero") -> str:
+def run_porter_reflection(
+    journal_entry: str, log_data: dict | None = None, username: str = "Hero"
+) -> str:
     """
     Executes the Sovereign Socratic Reflection Pipeline using LangGraph.
     Combines Frontend 'Intention/Actual' payload with Graph Context.
@@ -298,7 +348,7 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
             "actuals_list": [],
             "recon_result": {},
             "curator_result": {},
-            "final_output": ""
+            "final_output": "",
         }
         result = graph.invoke(initial_state)
         final_text = result["final_output"]
@@ -313,7 +363,10 @@ def run_porter_reflection(journal_entry: str, log_data: dict | None = None, user
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
         return f"ERROR: Unexpected Backend Error during Categorization: {e}"
 
+
 if __name__ == "__main__":
     # Test execution
-    sample_journal = "Intention: Work deeply. Actual: Fell down a rabbit hole of tutorials and abstract thought."
+    sample_journal = (
+        "Intention: Work deeply. Actual: Fell down a rabbit hole of tutorials and abstract thought."
+    )
     logger.info(run_porter_reflection(sample_journal))

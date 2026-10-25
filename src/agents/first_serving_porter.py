@@ -63,9 +63,7 @@ def update_artifact(artifact_name: str, new_content_summary: str) -> str:
 
     architect = GTKYIdentityArchitect()
     result = architect.append_new_learnings(artifact_name, new_content_summary)
-    return (
-        f"[TRANSPARENCY HANDOFF] Delegated to GTKYIdentityArchitect. Result: {result}"
-    )
+    return f"[TRANSPARENCY HANDOFF] Delegated to GTKYIdentityArchitect. Result: {result}"
 
 
 @PorterToolFactory.register_tool
@@ -125,12 +123,7 @@ def chroma_vibe_check(query: str) -> str:
         query_embeddings=[vector], n_results=5
     )
     hits = []
-    if (
-        results
-        and "documents" in results
-        and results["documents"]
-        and results["documents"][0]
-    ):
+    if results and "documents" in results and results["documents"] and results["documents"][0]:
         docs = results["documents"][0]
         # Chroma returns lists of lists
         for d in docs:
@@ -158,7 +151,12 @@ def search_private_brain(query: str) -> str:
         return f"[DATABASE RETURN] Failed to access private brain: {e}"
 
     hits = []
-    if results and "data" in results and "Get" in results["data"] and "PrivateBrainObj" in results["data"]["Get"]:
+    if (
+        results
+        and "data" in results
+        and "Get" in results["data"]
+        and "PrivateBrainObj" in results["data"]["Get"]
+    ):
         docs = results["data"]["Get"]["PrivateBrainObj"]
         for d in docs:
             text = d.get("text", "")
@@ -199,9 +197,7 @@ def consult_time_keeper(date_iso: str) -> str:
     """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
     Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
     """
-    logger.info(
-        f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}"
-    )
+    logger.info(f"\n[SYSTEM] First-Serving Porter engaging Time_Keeper for date: {date_iso}")
     from src.agents.time_keeper_agent import TimeKeeperAgent
 
     keeper = TimeKeeperAgent()
@@ -240,6 +236,7 @@ Core Detriments: {detriments_context}
 """
     return create_react_agent(llm, tools=tools, prompt=system_prompt)
 
+
 def run_first_serving_porter(
     user_input: str, username: str = "Hero", user_email: str = "hero@example.com"
 ) -> dict:
@@ -266,8 +263,7 @@ def run_first_serving_porter(
     logger.info("\n--- Invoking First-Serving Porter ---\n")
     try:
         result = invoke_with_retry(
-            agent.invoke,
-            {"messages": [HumanMessage(content=user_input)]}, config=config
+            agent.invoke, {"messages": [HumanMessage(content=user_input)]}, config=config
         )
         health_manager.end_agent_run(run_id, status="success")
     except TokenLimitExceededError as e:

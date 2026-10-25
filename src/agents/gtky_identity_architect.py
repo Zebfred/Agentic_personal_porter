@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 import json
 from pathlib import Path
@@ -8,11 +9,13 @@ from src.utils.path_utils import get_project_root
 
 root = get_project_root()
 
+
 class GTKYIdentityArchitect:
     """
     The Identity Architect handles reading, scanning, and improving the
     fundamental user JSON artifacts: Origin Story, Ambitions, and Detriments.
     """
+
     def __init__(self, username: str = "system"):
         self.username = username
         self.artifacts_dir = root / "data" / "hero_artifacts"
@@ -36,7 +39,7 @@ class GTKYIdentityArchitect:
         if not filepath.exists():
             return {}
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath, "r") as f:
                 data = json.load(f)
                 # Seed mongo if missing
                 try:
@@ -57,35 +60,39 @@ class GTKYIdentityArchitect:
         # Right now we will append a "pending_porter_updates" field to the Mongo data
         data = None
         if "origin" in artifact_name:
-             data = self.get_origin_story()
-             active_name = "hero_origin.json"
+            data = self.get_origin_story()
+            active_name = "hero_origin.json"
         elif "ambition" in artifact_name:
-             data = self.get_ambition()
-             active_name = "hero_ambition.json"
+            data = self.get_ambition()
+            active_name = "hero_ambition.json"
         else:
-             return "I do not recognize that artifact."
+            return "I do not recognize that artifact."
 
         if not data:
-             return "Data model is empty, cannot append."
+            return "Data model is empty, cannot append."
 
         if "pending_porter_updates" not in data:
-             data["pending_porter_updates"] = []
+            data["pending_porter_updates"] = []
 
-        data["pending_porter_updates"].append({
-             "timestamp": "Latest Porter Sync",
-             "raw_update": raw_update_summary
-        })
+        data["pending_porter_updates"].append(
+            {"timestamp": "Latest Porter Sync", "raw_update": raw_update_summary}
+        )
 
         try:
-             mongo = SovereignMongoStorage()
-             mongo.save_hero_artifact(active_name, data, self.username)
-             return f"Successfully routed the update to {active_name} inside MongoDB."
+            mongo = SovereignMongoStorage()
+            mongo.save_hero_artifact(active_name, data, self.username)
+            return f"Successfully routed the update to {active_name} inside MongoDB."
         except Exception as e:
-             return f"Failed to persist to MongoDB: {e}"
+            return f"Failed to persist to MongoDB: {e}"
 
-    def get_origin_story(self): return self._read_json(self.origin_file)
-    def get_ambition(self): return self._read_json(self.ambition_file)
-    def get_detriments(self): return self._read_json(self.detriments_file)
+    def get_origin_story(self):
+        return self._read_json(self.origin_file)
+
+    def get_ambition(self):
+        return self._read_json(self.ambition_file)
+
+    def get_detriments(self):
+        return self._read_json(self.detriments_file)
 
     def scan_for_missing_origin(self) -> str:
         """
@@ -94,21 +101,27 @@ class GTKYIdentityArchitect:
         """
         data = self.get_origin_story()
         if not data or "origin_story" not in data:
-             return "No origin story base found to scan."
+            return "No origin story base found to scan."
 
         missing_prompts = []
         epochs = data.get("origin_story", {}).get("epochs", [])
         for ep in epochs:
-            name = ep.get('name', 'Unknown Epoch')
-            for exp in ep.get('experiences', []):
-                 if not exp.get('title') and not exp.get('description'):
-                      missing_prompts.append(f"- Empty slot in epoch: '{name}'. Candidate focus: {ep.get('experience candidate', [])}")
-                 elif exp.get('title') and (not exp.get('description') or exp.get('description') == ""):
-                      missing_prompts.append(f"- Details needed for event: '{exp.get('title')}' in '{name}'.")
+            name = ep.get("name", "Unknown Epoch")
+            for exp in ep.get("experiences", []):
+                if not exp.get("title") and not exp.get("description"):
+                    missing_prompts.append(
+                        f"- Empty slot in epoch: '{name}'. Candidate focus: {ep.get('experience candidate', [])}"
+                    )
+                elif exp.get("title") and (
+                    not exp.get("description") or exp.get("description") == ""
+                ):
+                    missing_prompts.append(
+                        f"- Details needed for event: '{exp.get('title')}' in '{name}'."
+                    )
 
         if not missing_prompts:
-             return "Origin story is currently fully mapped out."
+            return "Origin story is currently fully mapped out."
 
         out = "I noticed some gaps in your Origin Story timeline that need filling. Can you tell me more about:\n"
-        out += "\n".join(missing_prompts[:3]) # Only ask about 3 at a time to reduce cognitive load
+        out += "\n".join(missing_prompts[:3])  # Only ask about 3 at a time to reduce cognitive load
         return out

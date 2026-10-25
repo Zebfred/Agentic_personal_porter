@@ -2,7 +2,6 @@
 Unit tests for vector store.
 """
 
-
 # Add project root to Python path
 
 
@@ -12,66 +11,68 @@ from rag_system.rag_core.vector_store import VectorStore
 import tempfile
 import shutil
 
+
 @pytest.fixture
 def temp_vector_store():
     """Create a temporary vector store for testing."""
     temp_dir = tempfile.mkdtemp()
-    store = VectorStore(
-        collection_name="test_collection",
-        persist_directory=temp_dir
-    )
+    store = VectorStore(collection_name="test_collection", persist_directory=temp_dir)
     yield store
     # Cleanup
     # Clear client references and run GC to release file locks on Windows
     store.collection = None
     store.client = None
     import gc
+
     gc.collect()
     try:
         shutil.rmtree(temp_dir)
     except PermissionError:
         pass
 
+
 def test_vector_store_initialization(temp_vector_store):
     """Test VectorStore initialization."""
     assert temp_vector_store.collection is not None
     assert temp_vector_store.get_collection_size() == 0
 
+
 def test_add_chunks(temp_vector_store):
     """Test adding chunks to vector store."""
     chunks = [
         {
-            'text': 'First chunk about reinforcement learning.',
-            'embedding': np.random.rand(768).tolist(),
-            'paper_title': 'Test Paper 1',
-            'chunk_index': 0
+            "text": "First chunk about reinforcement learning.",
+            "embedding": np.random.rand(768).tolist(),
+            "paper_title": "Test Paper 1",
+            "chunk_index": 0,
         },
         {
-            'text': 'Second chunk about deep learning.',
-            'embedding': np.random.rand(768).tolist(),
-            'paper_title': 'Test Paper 2',
-            'chunk_index': 1
-        }
+            "text": "Second chunk about deep learning.",
+            "embedding": np.random.rand(768).tolist(),
+            "paper_title": "Test Paper 2",
+            "chunk_index": 1,
+        },
     ]
 
-    embeddings = np.array([chunk['embedding'] for chunk in chunks])
+    embeddings = np.array([chunk["embedding"] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
 
     assert temp_vector_store.get_collection_size() == 2
+
 
 def test_search(temp_vector_store):
     """Test searching in vector store."""
     # Add some chunks first
     chunks = [
         {
-            'text': 'Reinforcement learning is a type of machine learning.',
-            'embedding': np.random.rand(768).tolist(),
-            'paper_title': 'RL Paper',
-            'chunk_index': 0
+            "text": "Reinforcement learning is a type of machine learning.",
+            "embedding": np.random.rand(768).tolist(),
+            "paper_title": "RL Paper",
+            "chunk_index": 0,
         }
     ]
 
-    embeddings = np.array([chunk['embedding'] for chunk in chunks])
+    embeddings = np.array([chunk["embedding"] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
 
     # Search
@@ -80,17 +81,18 @@ def test_search(temp_vector_store):
 
     assert isinstance(results, list)
 
+
 def test_clear_collection(temp_vector_store):
     """Test clearing collection."""
     # Add chunks
     chunks = [
         {
-            'text': 'Test chunk.',
-            'embedding': np.random.rand(768).tolist(),
-            'paper_title': 'test_clear'
+            "text": "Test chunk.",
+            "embedding": np.random.rand(768).tolist(),
+            "paper_title": "test_clear",
         }
     ]
-    embeddings = np.array([chunk['embedding'] for chunk in chunks])
+    embeddings = np.array([chunk["embedding"] for chunk in chunks])
     temp_vector_store.add_chunks(chunks, embeddings)
 
     assert temp_vector_store.get_collection_size() > 0
@@ -99,4 +101,3 @@ def test_clear_collection(temp_vector_store):
     temp_vector_store.clear_collection()
 
     assert temp_vector_store.get_collection_size() == 0
-

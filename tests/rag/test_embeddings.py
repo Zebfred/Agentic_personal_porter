@@ -2,18 +2,19 @@
 Unit tests for embedding system.
 """
 
-
 # Add project root to Python path
 
 
 import numpy as np
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 
+
 def test_scibert_embedder_initialization():
     """Test SciBERTEmbedder initialization."""
     embedder = SciBERTEmbedder()
     assert embedder.model is not None
     assert embedder.tokenizer is not None
+
 
 def test_embed_single_text():
     """Test embedding a single text."""
@@ -25,6 +26,7 @@ def test_embed_single_text():
     assert isinstance(embedding, np.ndarray)
     assert embedding.shape[0] == embedder.get_embedding_dim()
 
+
 def test_embed_batch():
     """Test embedding a batch of texts."""
     embedder = SciBERTEmbedder()
@@ -32,7 +34,7 @@ def test_embed_batch():
     texts = [
         "First sentence about machine learning.",
         "Second sentence about deep learning.",
-        "Third sentence about neural networks."
+        "Third sentence about neural networks.",
     ]
 
     embeddings = embedder.embed_batch(texts)
@@ -40,20 +42,22 @@ def test_embed_batch():
     assert embeddings.shape[0] == len(texts)
     assert embeddings.shape[1] == embedder.get_embedding_dim()
 
+
 def test_embed_chunks():
     """Test embedding chunks."""
     embedder = SciBERTEmbedder()
 
     chunks = [
-        {'text': 'First chunk text.'},
-        {'text': 'Second chunk text.'},
-        {'text': 'Third chunk text.'}
+        {"text": "First chunk text."},
+        {"text": "Second chunk text."},
+        {"text": "Third chunk text."},
     ]
 
     chunks_with_embeddings = embedder.embed_chunks(chunks)
 
     assert len(chunks_with_embeddings) == len(chunks)
-    assert all('embedding' in chunk for chunk in chunks_with_embeddings)
+    assert all("embedding" in chunk for chunk in chunks_with_embeddings)
+
 
 def test_get_embedding_dim():
     """Test getting embedding dimension."""
@@ -64,4 +68,3 @@ def test_get_embedding_dim():
     assert dim > 0
     # SciBERT should have 768 dimensions
     assert dim == 768
-

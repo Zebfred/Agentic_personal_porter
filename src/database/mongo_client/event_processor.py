@@ -6,11 +6,13 @@ from src.database.mongo_client.uuid_manager import UUIDGenerator
 from src.integrations.calendar_parser import determine_category
 from dateutil import parser
 
+
 class EventProcessorClient:
     """
     Handles routing Google Calendar Events into the specific:
     Intent, Actual, and Unified (Delta) Collections.
     """
+
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         self.intent_col = self.db[MongoConfig.INTENT_COLLECTION]
@@ -25,7 +27,7 @@ class EventProcessorClient:
         # This will be expanded as the agent logic gets more sophisticated
         return {
             "alignment_score": 1.0 if actual_energy > 0 else 0.0,
-            "unaccounted_minutes": 0 # Default placeholder
+            "unaccounted_minutes": 0,  # Default placeholder
         }
 
     def process_and_route_event(self, raw_gcal_event: dict, user_email: str):
@@ -33,15 +35,19 @@ class EventProcessorClient:
         Takes raw json from the Timeseries collection, parses it, and
         routes it to the correct Intent/Actual/Unified representations.
         """
-        gcal_id = raw_gcal_event.get('id')
+        gcal_id = raw_gcal_event.get("id")
         if not gcal_id:
             return None
 
         event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
 
         # 1. Parse base details
-        start_str = raw_gcal_event.get('start', {}).get('dateTime') or raw_gcal_event.get('start', {}).get('date')
-        end_str = raw_gcal_event.get('end', {}).get('dateTime') or raw_gcal_event.get('end', {}).get('date')
+        start_str = raw_gcal_event.get("start", {}).get("dateTime") or raw_gcal_event.get(
+            "start", {}
+        ).get("date")
+        end_str = raw_gcal_event.get("end", {}).get("dateTime") or raw_gcal_event.get(
+            "end", {}
+        ).get("date")
 
         if not start_str or not end_str:
             return None
@@ -50,8 +56,8 @@ class EventProcessorClient:
         end_dt = parser.parse(end_str)
         duration_mins = int((end_dt - start_dt).total_seconds() / 60)
 
-        title = raw_gcal_event.get('summary', 'Untitled')
-        color_id = raw_gcal_event.get('colorId', '1')
+        title = raw_gcal_event.get("summary", "Untitled")
+        color_id = raw_gcal_event.get("colorId", "1")
 
         # Determine category (Pillar/Subcategory)
         category_data = determine_category(title, color_id)
@@ -62,14 +68,11 @@ class EventProcessorClient:
             "title": title,
             "pillar_id": category_data.get("pillar"),
             "subcategory": category_data.get("subcategory"),
-            "duration_minutes": duration_mins
+            "duration_minutes": duration_mins,
         }
 
         # Time slot
-        time_slot = {
-            "start": start_dt.isoformat(),
-            "end": end_dt.isoformat()
-        }
+        time_slot = {"start": start_dt.isoformat(), "end": end_dt.isoformat()}
 
         # Handle Routing based on Record Type
         # Mach 3 Rework: Google Calendar is strictly the source of Intent.
@@ -77,17 +80,19 @@ class EventProcessorClient:
         # 1. Update Intention Collection
         self.intent_col.update_one(
             {"_id": event_uuid},
-            {"$set": {
-                "user_id": user_email,
-                "gcal_id": gcal_id,
-                "time_slot": time_slot,
-                "intent": base_payload,
-                "metadata": {
-                    "source": "google_calendar",
-                    "last_sync": datetime.now(timezone.utc).isoformat()
+            {
+                "$set": {
+                    "user_id": user_email,
+                    "gcal_id": gcal_id,
+                    "time_slot": time_slot,
+                    "intent": base_payload,
+                    "metadata": {
+                        "source": "google_calendar",
+                        "last_sync": datetime.now(timezone.utc).isoformat(),
+                    },
                 }
-            }},
-            upsert=True
+            },
+            upsert=True,
         )
 
         # 2. Actuals are NO LONGER written from Google Calendar ingestion.
@@ -105,44 +110,45 @@ class EventProcessorClient:
                 "intent": base_payload,
                 "metadata": {
                     "source": "google_calendar",
-                    "last_sync": datetime.now(timezone.utc).isoformat()
-                }
+                    "last_sync": datetime.now(timezone.utc).isoformat(),
+                },
             }
         }
 
         # Note: GCal is strictly Intent. We always set the intent block.
         # Actuals and Deltas will be set by the Human-in-the-Loop workflows.
 
-        self.unified_col.update_one(
-            {"_id": event_uuid},
-            unified_update,
-            upsert=True
-        )
+        self.unified_col.update_one({"_id": event_uuid}, unified_update, upsert=True)
 
         # 4. Mark the source raw event as processed to close the staging loop
         self.timeseries_col.update_many(
             {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
-            {"$set": {"metadata.sync_status": "processed"}}
+            {"$set": {"metadata.sync_status": "processed"}},
         )
 
         return event_uuid
 
     def process_and_route_events_batch(self, raw_gcal_events: list[dict], user_email: str):
         from pymongo import UpdateOne
+
         intent_ops = []
         unified_ops = []
         event_uuids = []
 
         for raw_gcal_event in raw_gcal_events:
-            gcal_id = raw_gcal_event.get('id')
+            gcal_id = raw_gcal_event.get("id")
             if not gcal_id:
                 continue
 
             event_uuid = UUIDGenerator.generate_for_event(gcal_id, user_email)
 
             # 1. Parse base details
-            start_str = raw_gcal_event.get('start', {}).get('dateTime') or raw_gcal_event.get('start', {}).get('date')
-            end_str = raw_gcal_event.get('end', {}).get('dateTime') or raw_gcal_event.get('end', {}).get('date')
+            start_str = raw_gcal_event.get("start", {}).get("dateTime") or raw_gcal_event.get(
+                "start", {}
+            ).get("date")
+            end_str = raw_gcal_event.get("end", {}).get("dateTime") or raw_gcal_event.get(
+                "end", {}
+            ).get("date")
 
             if not start_str or not end_str:
                 continue
@@ -151,8 +157,8 @@ class EventProcessorClient:
             end_dt = parser.parse(end_str)
             duration_mins = int((end_dt - start_dt).total_seconds() / 60)
 
-            title = raw_gcal_event.get('summary', 'Untitled')
-            color_id = raw_gcal_event.get('colorId', '1')
+            title = raw_gcal_event.get("summary", "Untitled")
+            color_id = raw_gcal_event.get("colorId", "1")
 
             # Determine category (Pillar/Subcategory)
             category_data = determine_category(title, color_id)
@@ -162,30 +168,31 @@ class EventProcessorClient:
                 "title": title,
                 "pillar_id": category_data.get("pillar"),
                 "subcategory": category_data.get("subcategory"),
-                "duration_minutes": duration_mins
+                "duration_minutes": duration_mins,
             }
 
             # Time slot
-            time_slot = {
-                "start": start_dt.isoformat(),
-                "end": end_dt.isoformat()
-            }
+            time_slot = {"start": start_dt.isoformat(), "end": end_dt.isoformat()}
 
             # 1. Update Intention Collection
-            intent_ops.append(UpdateOne(
-                {"_id": event_uuid},
-                {"$set": {
-                    "user_id": user_email,
-                    "gcal_id": gcal_id,
-                    "time_slot": time_slot,
-                    "intent": base_payload,
-                    "metadata": {
-                        "source": "google_calendar",
-                        "last_sync": datetime.now(timezone.utc).isoformat()
-                    }
-                }},
-                upsert=True
-            ))
+            intent_ops.append(
+                UpdateOne(
+                    {"_id": event_uuid},
+                    {
+                        "$set": {
+                            "user_id": user_email,
+                            "gcal_id": gcal_id,
+                            "time_slot": time_slot,
+                            "intent": base_payload,
+                            "metadata": {
+                                "source": "google_calendar",
+                                "last_sync": datetime.now(timezone.utc).isoformat(),
+                            },
+                        }
+                    },
+                    upsert=True,
+                )
+            )
 
             # 3. Update Unified Collection
             unified_update = {
@@ -195,26 +202,24 @@ class EventProcessorClient:
                     "intent": base_payload,
                     "metadata": {
                         "source": "google_calendar",
-                        "last_sync": datetime.now(timezone.utc).isoformat()
-                    }
+                        "last_sync": datetime.now(timezone.utc).isoformat(),
+                    },
                 }
             }
 
-            unified_ops.append(UpdateOne(
-                {"_id": event_uuid},
-                unified_update,
-                upsert=True
-            ))
+            unified_ops.append(UpdateOne({"_id": event_uuid}, unified_update, upsert=True))
             event_uuids.append(event_uuid)
 
         timeseries_ops = []
         for raw_gcal_event in raw_gcal_events:
-            gcal_id = raw_gcal_event.get('id')
+            gcal_id = raw_gcal_event.get("id")
             if gcal_id:
-                timeseries_ops.append(UpdateOne(
-                    {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
-                    {"$set": {"metadata.sync_status": "processed"}}
-                ))
+                timeseries_ops.append(
+                    UpdateOne(
+                        {"metadata.gcal_id": gcal_id, "metadata.user_email": user_email},
+                        {"$set": {"metadata.sync_status": "processed"}},
+                    )
+                )
 
         if intent_ops:
             self.intent_col.bulk_write(intent_ops, ordered=False)

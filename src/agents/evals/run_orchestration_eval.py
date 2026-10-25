@@ -21,6 +21,7 @@ from rich.table import Table
 
 console = Console()
 
+
 def _build_model_list(
     include_gemini: bool = True,
     include_groq: bool = False,
@@ -28,16 +29,21 @@ def _build_model_list(
     """Builds the list of models to evaluate."""
     models = []
     if include_gemini:
-        models.extend([
-            AgentLLMConfig(provider="google_genai", model="gemini-2.5-pro"),
-            AgentLLMConfig(provider="google_genai", model="gemini-2.5-flash"),
-        ])
+        models.extend(
+            [
+                AgentLLMConfig(provider="google_genai", model="gemini-2.5-pro"),
+                AgentLLMConfig(provider="google_genai", model="gemini-2.5-flash"),
+            ]
+        )
     if include_groq:
-        models.extend([
-            AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant"),
-            AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile"),
-        ])
+        models.extend(
+            [
+                AgentLLMConfig(provider="groq", model="llama-3.1-8b-instant"),
+                AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile"),
+            ]
+        )
     return models
+
 
 def _write_results_markdown(results: list[dict], output_path: Path) -> None:
     """Writes evaluation results to a markdown report."""
@@ -99,10 +105,9 @@ def _write_results_markdown(results: list[dict], output_path: Path) -> None:
 
     console.print(f"\n[green]Results written to {output_path}[/green]")
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run orchestration (tool-routing) evaluation."
-    )
+    parser = argparse.ArgumentParser(description="Run orchestration (tool-routing) evaluation.")
     parser.add_argument(
         "--model",
         type=str,
@@ -169,16 +174,21 @@ def main():
 
     for r in results:
         table.add_row(
-            r["provider"], r["model"],
-            r["tool_accuracy"], r["arg_accuracy"],
+            r["provider"],
+            r["model"],
+            r["tool_accuracy"],
+            r["arg_accuracy"],
             r["avg_latency"],
         )
 
     console.print(table)
 
     # Write markdown report
-    output_path = Path(args.output) if args.output else (root / "data" / "evals" / "orchestration_results.md")
+    output_path = (
+        Path(args.output) if args.output else (root / "data" / "evals" / "orchestration_results.md")
+    )
     _write_results_markdown(results, output_path)
+
 
 if __name__ == "__main__":
     main()

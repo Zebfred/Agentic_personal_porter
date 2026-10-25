@@ -5,17 +5,22 @@ import glob
 from pathlib import Path
 
 # Inject dummy keys so the environment check doesn't skip logical blocks
-os.environ['LANGCHAIN_API_KEY'] = 'test_key'
-os.environ['OPENAI_API_KEY'] = 'test_key'
+os.environ["LANGCHAIN_API_KEY"] = "test_key"
+os.environ["OPENAI_API_KEY"] = "test_key"
 
 from scripts.analyze_scripts.local_pulse_check import run_pulse_check
 
-@pytest.mark.skipif(os.environ.get("GITHUB_ACTIONS") == "true", reason="Fails in CI/CD without full environment")
-@patch('src.utils.pulse_service.load_env_vars')
-@patch('src.utils.pulse_service.SovereignMongoStorage')
-@patch('src.utils.pulse_service.get_driver')
-@patch('langsmith.Client')
-def test_run_pulse_check_executes_cleanly(mock_ls_client, mock_get_driver, mock_mongo, mock_load_env):
+
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true", reason="Fails in CI/CD without full environment"
+)
+@patch("src.utils.pulse_service.load_env_vars")
+@patch("src.utils.pulse_service.SovereignMongoStorage")
+@patch("src.utils.pulse_service.get_driver")
+@patch("langsmith.Client")
+def test_run_pulse_check_executes_cleanly(
+    mock_ls_client, mock_get_driver, mock_mongo, mock_load_env
+):
     """
     Ensure the pulse check script runs cleanly without throwing exceptions
     when interacting with its external dependencies: Neo4j, Mongo, and LangSmith.

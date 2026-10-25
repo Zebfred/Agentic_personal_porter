@@ -5,6 +5,7 @@ Lazy-loaded from MongoDB on first access to avoid module-level
 MongoClient connections at import time (which blocks app startup
 and leaks connections in test/CLI contexts).
 """
+
 from src.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -46,9 +47,7 @@ def get_category_mapping() -> dict:
         )
         if not doc:
             # Fallback to any user's category mapping (e.g. single-tenant / personal setup)
-            doc = db["hero_artifacts"].find_one(
-                {"artifact_name": "category_mapping"}, {"_id": 0}
-            )
+            doc = db["hero_artifacts"].find_one({"artifact_name": "category_mapping"}, {"_id": 0})
 
         if doc and "data" in doc:
             _CATEGORY_MAPPING_CACHE = doc["data"]
@@ -67,9 +66,7 @@ def get_category_mapping() -> dict:
                 try:
                     with open(filepath, "r") as f:
                         _CATEGORY_MAPPING_CACHE = json.load(f)
-                    logger.info(
-                        f"Loaded category mapping from local fallback file: {filepath}"
-                    )
+                    logger.info(f"Loaded category mapping from local fallback file: {filepath}")
                     return _CATEGORY_MAPPING_CACHE
                 except Exception as file_err:
                     logger.warning(
@@ -94,27 +91,39 @@ def get_category_mapping() -> dict:
 # Accessing this property triggers lazy loading on first use.
 class _LazyMapping:
     """Proxy that defers MongoDB access until a value is actually read."""
+
     def __getitem__(self, key):
         return get_category_mapping()[key]
+
     def __contains__(self, key):
         return key in get_category_mapping()
+
     def __iter__(self):
         return iter(get_category_mapping())
+
     def __len__(self):
         return len(get_category_mapping())
+
     def __bool__(self):
         return bool(get_category_mapping())
+
     def __eq__(self, other):
         return get_category_mapping() == other
+
     def get(self, key, default=None):
         return get_category_mapping().get(key, default)
+
     def keys(self):
         return get_category_mapping().keys()
+
     def values(self):
         return get_category_mapping().values()
+
     def items(self):
         return get_category_mapping().items()
+
     def __repr__(self):
         return repr(get_category_mapping())
+
 
 ACTUAL_CATEGORY_MAPPING = _LazyMapping()

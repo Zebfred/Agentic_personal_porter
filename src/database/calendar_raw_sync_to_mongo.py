@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 from googleapiclient.discovery import build
 from pymongo import MongoClient, UpdateOne
@@ -12,13 +13,15 @@ from src.config import MongoConfig
 # Ensure .auth/credentials.json and .auth/token.json are in your .gitignore.
 # ------------------------
 
+
 class SovereignCalendarSync:
     """
     Handles the 'Landing Zone' ingestion from GCal to MongoDB.
     This creates a raw audit trail before processing into Neo4j.
     """
+
     def __init__(self):
-        self.scopes = ['https://www.googleapis.com/auth/calendar']
+        self.scopes = ["https://www.googleapis.com/auth/calendar"]
         # Prioritize ENV for security, fallback for local dev
         self.mongo_uri = MongoConfig.MONGO_URI
         self.client = MongoClient(self.mongo_uri)
@@ -27,16 +30,20 @@ class SovereignCalendarSync:
 
         # Use the timeseries client for writing to the new architecture
         from src.database.mongo_client.calendar_timeseries import CalendarTimeseriesClient
+
         self.ts_client = CalendarTimeseriesClient()
 
     def get_gcal_service(self, refresh_token=None):
         """Authenticates and returns the GCal service."""
-        from src.integrations.google_calendar_authentication_helper import get_calendar_credentials_for_user
+        from src.integrations.google_calendar_authentication_helper import (
+            get_calendar_credentials_for_user,
+        )
+
         if refresh_token:
             creds = get_calendar_credentials_for_user(refresh_token, scopes=self.scopes)
         else:
             creds = get_calendar_credentials(scopes=self.scopes)
-        return build('calendar', 'v3', credentials=creds, cache_discovery=False)
+        return build("calendar", "v3", credentials=creds, cache_discovery=False)
 
     def pull_sliding_window(self, user_email="Hero", refresh_token=None):
         """
@@ -59,7 +66,9 @@ class SovereignCalendarSync:
         start_time = oldest_cursor - timedelta(days=30)
         end_time = oldest_cursor
 
-        logger.info(f"!!! Initiating Historical Pull from {start_time} to {end_time} for {user_email} !!!")
+        logger.info(
+            f"!!! Initiating Historical Pull from {start_time} to {end_time} for {user_email} !!!"
+        )
         ops_count = self._execute_pull(start_time, end_time, user_email, refresh_token)
         return ops_count, start_time
 
@@ -70,10 +79,12 @@ class SovereignCalendarSync:
         service = self.get_gcal_service(refresh_token)
 
         # Ensure RFC3339 compliance for GCal API
-        start_rfc3339 = start_time.strftime('%Y-%m-%dT%H:%M:%SZ')
-        end_rfc3339 = end_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+        start_rfc3339 = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_rfc3339 = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        logger.info(f"--- Accessing GCal: Fetching events from {start_rfc3339} to {end_rfc3339} ---")
+        logger.info(
+            f"--- Accessing GCal: Fetching events from {start_rfc3339} to {end_rfc3339} ---"
+        )
 
         ops_count = 0
         api_calls = 0
@@ -82,19 +93,23 @@ class SovereignCalendarSync:
         while True:
             try:
                 api_calls += 1
-                events_result = service.events().list(
-                    calendarId='primary',
-                    timeMin=start_rfc3339,
-                    timeMax=end_rfc3339,
-                    singleEvents=True,
-                    orderBy='startTime',
-                    pageToken=page_token
-                ).execute()
+                events_result = (
+                    service.events()
+                    .list(
+                        calendarId="primary",
+                        timeMin=start_rfc3339,
+                        timeMax=end_rfc3339,
+                        singleEvents=True,
+                        orderBy="startTime",
+                        pageToken=page_token,
+                    )
+                    .execute()
+                )
             except Exception as e:
                 logger.info(f"Error accessing Google Calendar API: {e}")
                 break
 
-            events = events_result.get('items', [])
+            events = events_result.get("items", [])
 
             if not events:
                 logger.info("No new events found.")
@@ -103,36 +118,30 @@ class SovereignCalendarSync:
             raw_ops = []
             ts_events_batch = []
             for event in events:
-                event_id = event.get('id')
+                event_id = event.get("id")
 
                 # 1. Standard Landing Zone (For Downstream CrewAI sync pipeline)
                 payload = {
                     "gcal_id": event_id,
                     "user_email": user_email,
-                    "summary": event.get('summary', 'No Title'),
-                    "start": event.get('start', {}).get('dateTime') or event.get('start', {}).get('date'),
-                    "end": event.get('end', {}).get('dateTime') or event.get('end', {}).get('date'),
+                    "summary": event.get("summary", "No Title"),
+                    "start": event.get("start", {}).get("dateTime")
+                    or event.get("start", {}).get("date"),
+                    "end": event.get("end", {}).get("dateTime") or event.get("end", {}).get("date"),
                     "raw_data": event,
                     "porter_ingested_at": datetime.now(timezone.utc),
-                    "sync_status": "staged", # Staged in Mongo, not yet in Neo4j
-                    "classification_verified": False
+                    "sync_status": "staged",  # Staged in Mongo, not yet in Neo4j
+                    "classification_verified": False,
                 }
 
                 # Upsert into MongoDB based on GCal Unique ID and user_email
-                raw_ops.append(
-                    UpdateOne(
-                        {"gcal_id": event_id},
-                        {"$set": payload},
-                        upsert=True
-                    )
-                )
+                raw_ops.append(UpdateOne({"gcal_id": event_id}, {"$set": payload}, upsert=True))
 
                 # 2. Native Time-Series Dual-Write
                 ts_events_batch.append(event)
 
                 # Increment operation count
                 ops_count += 1
-
 
             # ⚡ Bolt Optimization: Replace O(N) DB calls with bulk write in event routing.
             if raw_ops:
@@ -141,8 +150,7 @@ class SovereignCalendarSync:
             if ts_events_batch:
                 self.ts_client.stage_raw_events_batch(ts_events_batch, user_email=user_email)
 
-
-            page_token = events_result.get('nextPageToken')
+            page_token = events_result.get("nextPageToken")
             if not page_token:
                 break
 
@@ -165,8 +173,11 @@ class SovereignCalendarSync:
         logger.info(f"Total Native TS Events Stored: {ts_total}")
 
         if total > 0:
-            latest = self.raw_collection.find_one({}, {"_id": 0, "summary": 1, "start": 1}, sort=[("start", -1)])
+            latest = self.raw_collection.find_one(
+                {}, {"_id": 0, "summary": 1, "start": 1}, sort=[("start", -1)]
+            )
             logger.info(f"Most Recent Event: {latest.get('summary')} ({latest.get('start')})")
+
 
 if __name__ == "__main__":
     sync = SovereignCalendarSync()

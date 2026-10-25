@@ -9,6 +9,7 @@ Adheres strictly to:
   - Config-driven collection names (`MongoConfig.JIRA_STAGING_COLLECTION`)
   - `DESCENDING` (-1) temporal indexes
 """
+
 import logging
 from typing import Any, Optional
 from pymongo import ASCENDING, DESCENDING, UpdateOne
@@ -168,9 +169,7 @@ class JiraStorage:
             query["project_key"] = project_key
 
         docs = list(
-            self.jira_col.find(query, self.FULL_RECORD_PROJECTION).sort(
-                "updated_at", DESCENDING
-            )
+            self.jira_col.find(query, self.FULL_RECORD_PROJECTION).sort("updated_at", DESCENDING)
         )
         return [JiraIssueRecord.model_validate(doc) for doc in docs]
 

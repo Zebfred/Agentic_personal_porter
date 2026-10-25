@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import os
 
@@ -8,6 +9,7 @@ from src.database.neo4j_client.connection import get_driver
 # --- Configuration ---
 driver = get_driver()
 mongo_storage = SovereignMongoStorage()
+
 
 def get_or_create_time_chunk(driver, target_datetime, username="system"):
     """
@@ -48,18 +50,27 @@ def get_or_create_time_chunk(driver, target_datetime, username="system"):
 
     try:
         with driver.session() as session:
-            result = session.run(query, username=username, week_id=week_id, year=year, week=week,
-                                 day_id=day_id, day_of_week=day_of_week,
-                                 chunk_id=chunk_id, chunk_index=chunk_index)
+            result = session.run(
+                query,
+                username=username,
+                week_id=week_id,
+                year=year,
+                week=week,
+                day_id=day_id,
+                day_of_week=day_of_week,
+                chunk_id=chunk_id,
+                chunk_index=chunk_index,
+            )
             record = result.single()
             return record["time_chunk_id"] if record else None
     except Exception as e:
         logger.info(f"Time Structure Generation Error: {e}")
         return None
 
+
 def flatten_intents(raw_intents):
     """
-    Flattens the nested Intent structures from hero_ambition 
+    Flattens the nested Intent structures from hero_ambition
     into a clean list of dictionaries for Cypher.
     """
     flattened = []
@@ -68,38 +79,47 @@ def flatten_intents(raw_intents):
 
             # Case 1: Simple String (e.g., Career Goal, Health Goal)
             if isinstance(value, str):
-                flattened.append({
-                    "category": main_category,
-                    "description": value,
-                    "parent_category": "None"
-                })
+                flattened.append(
+                    {"category": main_category, "description": value, "parent_category": "None"}
+                )
 
             # Case 2: List of items
             elif isinstance(value, list):
                 # Subcase A: List of strings (e.g., Social Goal)
                 if all(isinstance(i, str) for i in value):
-                    flattened.append({
-                        "category": main_category,
-                        "description": " ".join(value),
-                        "parent_category": "None"
-                    })
+                    flattened.append(
+                        {
+                            "category": main_category,
+                            "description": " ".join(value),
+                            "parent_category": "None",
+                        }
+                    )
                 # Subcase B: List of dictionaries (e.g., Loved ones)
                 elif all(isinstance(i, dict) for i in value):
 
-                    flattened.append({"category": main_category, "description": "Sub-goals contained within.", "parent_category": "None"})
+                    flattened.append(
+                        {
+                            "category": main_category,
+                            "description": "Sub-goals contained within.",
+                            "parent_category": "None",
+                        }
+                    )
 
                     for sub_dict in value:
                         for sub_cat, sub_desc in sub_dict.items():
-                            flattened.append({
-                                "category": sub_cat,
-                                "description": sub_desc,
-                                "parent_category": main_category
-                            })
+                            flattened.append(
+                                {
+                                    "category": sub_cat,
+                                    "description": sub_desc,
+                                    "parent_category": main_category,
+                                }
+                            )
     return flattened
+
 
 def process_epochs(raw_epochs):
     """
-    Parses the epochs and cleanly separates actual experiences 
+    Parses the epochs and cleanly separates actual experiences
     from 'experience candidates' (the blank slates for Mach 3).
     """
     processed_epochs = []
@@ -109,10 +129,7 @@ def process_epochs(raw_epochs):
         epoch_name = epoch.get("name", "Unknown Epoch")
         timeframe = epoch.get("timeframe", "Unknown Timeframe")
 
-        processed_epochs.append({
-            "name": epoch_name,
-            "timeframe": timeframe
-        })
+        processed_epochs.append({"name": epoch_name, "timeframe": timeframe})
 
         # 1. Process actual logged experiences
         for exp in epoch.get("experiences", []):
@@ -124,22 +141,26 @@ def process_epochs(raw_epochs):
 
             # Only append if there's actually a title or a description
             if title or desc:
-                processed_experiences.append({
-                    "epoch_name": epoch_name,
-                    "title": title if title else "Untitled Memory",
-                    "description": desc,
-                    "status": status
-                })
+                processed_experiences.append(
+                    {
+                        "epoch_name": epoch_name,
+                        "title": title if title else "Untitled Memory",
+                        "description": desc,
+                        "status": status,
+                    }
+                )
 
         # 2. Process experience candidates (ideas waiting to be fleshed out)
         for candidate in epoch.get("experience candidate", []):
             if isinstance(candidate, str) and candidate.strip():
-                processed_experiences.append({
-                    "epoch_name": epoch_name,
-                    "title": candidate.strip(),
-                    "description": "", # Empty, waiting for you!
-                    "status": "Candidate"
-                })
+                processed_experiences.append(
+                    {
+                        "epoch_name": epoch_name,
+                        "title": candidate.strip(),
+                        "description": "",  # Empty, waiting for you!
+                        "status": "Candidate",
+                    }
+                )
 
     return processed_epochs, processed_experiences
 
@@ -149,24 +170,22 @@ def inject_hero_data(username=None):
         username = os.environ.get("HERO_NAME", "Hero")
     """Reads the JSON and runs the Cypher queries to build the Hero foundation."""
 
-    ambition_data = mongo_storage.get_hero_artifact('hero_ambition', username)
+    ambition_data = mongo_storage.get_hero_artifact("hero_ambition", username)
     if not ambition_data:
         logger.info("Error: hero_ambition not found in MongoDB.")
         return
     principles = ambition_data.get("Principles", [])
     raw_intents = ambition_data.get("Intent", [])
     flat_intents = flatten_intents(raw_intents)
-    #Might be better way to parse
-    #flat_intents = flatten_intents(ambition_data.get("Intent", []))
+    # Might be better way to parse
+    # flat_intents = flatten_intents(ambition_data.get("Intent", []))
 
-
-    origin_data = mongo_storage.get_hero_artifact('hero_origin', username)
+    origin_data = mongo_storage.get_hero_artifact("hero_origin", username)
     if not origin_data:
         logger.info("Error: hero_origin not found in MongoDB.")
         return
     raw_epochs = origin_data.get("origin_story", {}).get("epochs", [])
     epochs_data, experiences_data = process_epochs(raw_epochs)
-
 
     # 3. Cypher Queries
     merge_hero_and_principles_query = """
@@ -184,7 +203,7 @@ def inject_hero_data(username=None):
     """
 
     # Pillars generation
-    category_map_data = mongo_storage.get_hero_artifact('category_mapping', username)
+    category_map_data = mongo_storage.get_hero_artifact("category_mapping", username)
     pillars_list = []
     if category_map_data and "intent_to_actual_mapping" in category_map_data:
         unique_pillars = set(category_map_data["intent_to_actual_mapping"].keys()).union(
@@ -194,6 +213,7 @@ def inject_hero_data(username=None):
     else:
         # Fallback to constants
         from src.constants import ACTUAL_CATEGORY_MAPPING
+
         if "intent_to_actual_mapping" in ACTUAL_CATEGORY_MAPPING:
             unique_pillars = set(ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].keys()).union(
                 set(ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].values())
@@ -267,6 +287,7 @@ def inject_hero_data(username=None):
 
         session.run(merge_experiences_query, experiences=experiences_data)
         logger.info(f"✨ Planted {len(experiences_data)} Experiences and Candidates!")
+
 
 if __name__ == "__main__":
     try:

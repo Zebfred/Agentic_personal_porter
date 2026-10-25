@@ -1,6 +1,7 @@
 import time
 from src.database.mongo_storage import SovereignMongoStorage
 
+
 def test_mock_mongo_fixture_in_memory(mock_mongo):
     """
     Verify that SovereignMongoStorage uses in-memory mongomock
@@ -14,7 +15,7 @@ def test_mock_mongo_fixture_in_memory(mock_mongo):
         "day": "2026-10-11",
         "timeChunk": "10:00",
         "actual": "TDD validation with in-memory mongomock",
-        "tag": "Governance"
+        "tag": "Governance",
     }
     result = storage.save_journal_entry(sample_entry, user_id="test_hero")
     duration = time.perf_counter() - start_time

@@ -4,10 +4,12 @@ from pymongo import MongoClient
 
 from src.config import MongoConfig
 
+
 class MongoConnectionManager:
     """
     Singleton connection manager for MongoDB interactions.
     """
+
     _client = None
 
     @classmethod

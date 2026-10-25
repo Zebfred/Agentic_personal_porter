@@ -1,10 +1,12 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import json
 
 # Add project root to path
 
 from src.database.neo4j_client import get_driver
+
 
 def visualize_schema():
     """
@@ -41,26 +43,31 @@ def visualize_schema():
             shape_result = session.run(shape_query)
             patterns = []
             for record in shape_result:
-                patterns.append({
-                    "source_labels": record["source"],
-                    "relationship": record["rel_type"],
-                    "target_labels": record["target"],
-                    "occurrences": record["count"]
-                })
+                patterns.append(
+                    {
+                        "source_labels": record["source"],
+                        "relationship": record["rel_type"],
+                        "target_labels": record["target"],
+                        "occurrences": record["count"],
+                    }
+                )
 
             schema = {
                 "node_labels": labels,
                 "relationship_types": rels,
-                "observed_patterns": patterns
+                "observed_patterns": patterns,
             }
 
             logger.info(json.dumps(schema, indent=2))
 
     except Exception as e:
         logger.info(f"Error extracting schema: {e}")
-        logger.info("Note: The db.labels() or db.relationshipTypes() procedures might not be available depending on your Neo4j version/plugins.")
+        logger.info(
+            "Note: The db.labels() or db.relationshipTypes() procedures might not be available depending on your Neo4j version/plugins."
+        )
     finally:
         driver.close()
+
 
 if __name__ == "__main__":
     visualize_schema()

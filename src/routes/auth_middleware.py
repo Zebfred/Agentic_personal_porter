@@ -9,6 +9,7 @@ WHY lazy reads: Environment variables are read inside the decorator function
 dotenv has already been called by the app factory regardless of import
 ordering, and makes testing with monkeypatched env vars work correctly.
 """
+
 import re
 import os
 import hmac
@@ -21,29 +22,35 @@ from flask import request, jsonify, make_response
 
 logger = logging.getLogger("APP_ROUTER")
 
+
 def require_role(*roles):
     """
     Decorator that enforces strict role-based access.
     Must be used AFTER @require_api_key.
     Example: @require_role('admin', 'guild_member')
     """
+
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            user_role = getattr(request, 'user_role', 'user')
+            user_role = getattr(request, "user_role", "user")
             if user_role not in roles:
                 return jsonify({"error": f"Forbidden: Requires one of {roles}"}), 403
             return f(*args, **kwargs)
+
         return decorated_function
+
     return decorator
+
 
 def require_api_key(f):
     """Decorator that enforces API key or JWT authentication on a route."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # Let CORS preflight through cleanly (flask_cors will append the correct headers)
-        if request.method == 'OPTIONS':
-            return make_response('', 204)
+        if request.method == "OPTIONS":
+            return make_response("", 204)
 
         # Read secrets at request time, not import time
         api_key = os.environ.get("PORTER_ADMIN_KEY", "")
@@ -70,8 +77,12 @@ def require_api_key(f):
         try:
             decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
             email_claim = decoded.get("email")
-            if not isinstance(email_claim, str) or not re.match(r'^[\w.+-]+@[\w.-]+\.\w{2,}$', email_claim):
-                logger.warning(f"SECURITY AUDIT: Invalid email format or missing claim in JWT token from {request.remote_addr}: {email_claim}")
+            if not isinstance(email_claim, str) or not re.match(
+                r"^[\w.+-]+@[\w.-]+\.\w{2,}$", email_claim
+            ):
+                logger.warning(
+                    f"SECURITY AUDIT: Invalid email format or missing claim in JWT token from {request.remote_addr}: {email_claim}"
+                )
                 return jsonify({"error": "Invalid email format in token"}), 401
 
             # Inject identity into request context for downstream routes
@@ -87,7 +98,10 @@ def require_api_key(f):
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Unauthorized: Token expired"}), 401
         except jwt.InvalidTokenError as e:
-            logger.warning(f"SECURITY AUDIT: Invalid JWT token attempt from {request.remote_addr}: {e}")
+            logger.warning(
+                f"SECURITY AUDIT: Invalid JWT token attempt from {request.remote_addr}: {e}"
+            )
 
         return jsonify({"error": "Unauthorized: Invalid credentials"}), 401
+
     return decorated_function

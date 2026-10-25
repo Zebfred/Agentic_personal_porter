@@ -1,10 +1,12 @@
 # /tmp/test_neo4j_conn.py
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 
 # Add project root to sys.path
 
 from src.database.neo4j_client.connection import get_driver
+
 
 def verify_connection():
     driver = get_driver()
@@ -15,6 +17,7 @@ def verify_connection():
         logger.info(f"❌ Connection Failed: {e}")
     finally:
         driver.close()
+
 
 if __name__ == "__main__":
     verify_connection()

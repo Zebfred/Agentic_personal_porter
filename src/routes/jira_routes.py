@@ -5,6 +5,7 @@ All endpoints enforce `@require_api_key` authentication (`request.user_email`),
 validate payloads via Pydantic v2 schemas (`src/schemas/jira_models.py`),
 and return sanitized error responses (`Sentinel` & `Archie` compliance).
 """
+
 import logging
 from typing import Optional
 from flask import Blueprint, jsonify, request
@@ -78,9 +79,7 @@ def sync_jira_issues():
                     pending.model_copy(
                         update={
                             "jira_key": remote_key,
-                            "uuid": UUIDGenerator.generate_for_jira_issue(
-                                remote_key, user_email
-                            ),
+                            "uuid": UUIDGenerator.generate_for_jira_issue(remote_key, user_email),
                             "sync_status": "synced",
                         }
                     )
@@ -105,11 +104,7 @@ def sync_jira_issues():
 
     counts = storage.bulk_upsert_issues(pulled_records)
     storage.merge_issues_to_neo4j(pulled_records)
-    corr_id = (
-        pulled_records[0].correlation_id
-        if pulled_records
-        else f"sync-{user_email}"
-    )
+    corr_id = pulled_records[0].correlation_id if pulled_records else f"sync-{user_email}"
 
     return (
         jsonify(
@@ -195,9 +190,7 @@ def dispatch_jira_to_jules():
         matched_task = None
         if tasks_path.exists() and validated.task_id:
             tasks = parse_speckit_tasks_markdown(tasks_path, feature_id=f_dir.name)
-            matched_task = next(
-                (t for t in tasks if t.task_id == validated.task_id), None
-            )
+            matched_task = next((t for t in tasks if t.task_id == validated.task_id), None)
 
         if matched_task is None:
             return (
@@ -214,9 +207,11 @@ def dispatch_jira_to_jules():
             uuid=UUIDGenerator.generate_for_jira_issue(validated.jira_key, user_email),
             user_email=user_email,
             jira_key=validated.jira_key,
-            project_key=validated.jira_key.split("-")[0]
-            if not validated.jira_key.startswith("LOCAL-")
-            else "PORTER",
+            project_key=(
+                validated.jira_key.split("-")[0]
+                if not validated.jira_key.startswith("LOCAL-")
+                else "PORTER"
+            ),
             task_id=matched_task.task_id,
             feature_id=f_dir.name,
             summary=matched_task.title,

@@ -3,46 +3,57 @@ from unittest.mock import patch
 from src.app import app
 import os
 
+
 @pytest.fixture
 def client():
-    app.config['TESTING'] = True
+    app.config["TESTING"] = True
     with app.test_client() as client:
         yield client
 
-@patch('src.routes.chat_routes.SovereignMongoStorage')
-@patch('src.routes.chat_routes.run_first_serving_porter')
+
+@patch("src.routes.chat_routes.SovereignMongoStorage")
+@patch("src.routes.chat_routes.run_first_serving_porter")
 def test_porter_chat_route(mock_run_porter, mock_mongo, client):
     # Mock the Mongo storage call to get user info
     mock_mongo.return_value.get_user_by_email.return_value = {
         "username": "Hero",
-        "email": "system_script@localhost"
+        "email": "system_script@localhost",
     }
 
     # Mock the return value of the agent
     mock_run_porter.return_value = {
         "response": "Hello, I am the Porter. I have marked that for update.",
-        "transparency_logs": ["[TRANSPARENCY HANDOFF] Marked hero_origin.json for update regarding: Motivation"]
+        "transparency_logs": [
+            "[TRANSPARENCY HANDOFF] Marked hero_origin.json for update regarding: Motivation"
+        ],
     }
 
     # Make request with default dev key to pass auth
     response = client.post(
-        '/api/chat/porter',
-        json={'message': 'Update my motivation.'},
-        headers={'Authorization': f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'}
+        "/api/chat/porter",
+        json={"message": "Update my motivation."},
+        headers={
+            "Authorization": f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'
+        },
     )
 
     assert response.status_code == 200
     data = response.get_json()
     assert data["response"] == "Hello, I am the Porter. I have marked that for update."
     assert len(data["transparency_logs"]) == 1
-    mock_run_porter.assert_called_once_with('Update my motivation.', username='Hero', user_email='system_script@localhost')
+    mock_run_porter.assert_called_once_with(
+        "Update my motivation.", username="Hero", user_email="system_script@localhost"
+    )
 
-@patch('src.routes.chat_routes.run_first_serving_porter')
+
+@patch("src.routes.chat_routes.run_first_serving_porter")
 def test_porter_chat_route_missing_message(mock_run_porter, client):
     response = client.post(
-        '/api/chat/porter',
+        "/api/chat/porter",
         json={},
-        headers={'Authorization': f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'}
+        headers={
+            "Authorization": f'Bearer {os.environ.get("PORTER_ADMIN_KEY", "default_dev_key")}'
+        },
     )
     assert response.status_code == 400
     mock_run_porter.assert_not_called()

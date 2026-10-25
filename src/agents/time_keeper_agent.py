@@ -1,9 +1,11 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 from typing import List, Dict
 
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
+
 
 class TimeKeeperAgent:
     """
@@ -11,6 +13,7 @@ class TimeKeeperAgent:
     Queries native MongoDB time-series arrays to answer time-based constraints,
     historical rolling facts, and calendar boundaries.
     """
+
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         self.ts_col = self.db[MongoConfig.RAW_TIMESERIES_COLLECTION]
@@ -20,6 +23,7 @@ class TimeKeeperAgent:
         Query the rolling historical timeseries block within a specific window.
         """
         from dateutil import parser
+
         try:
             start_dt = parser.parse(start_date_iso)
             end_dt = parser.parse(end_date_iso)
@@ -28,18 +32,16 @@ class TimeKeeperAgent:
             return []
 
         pipeline = [
-            {"$match": {
-                "start_time": {"$gte": start_dt, "$lte": end_dt}
-            }},
+            {"$match": {"start_time": {"$gte": start_dt, "$lte": end_dt}}},
             {"$sort": {"start_time": 1}},
-            {"$limit": 50}
+            {"$limit": 50},
         ]
 
         records = list(self.ts_col.aggregate(pipeline))
 
         for r in records:
-             if "_id" in r:
-                 r["_id"] = str(r["_id"])
+            if "_id" in r:
+                r["_id"] = str(r["_id"])
         return records
 
     def summarize_day(self, date_iso: str) -> str:
@@ -49,8 +51,11 @@ class TimeKeeperAgent:
         from datetime import timedelta
         from dateutil import parser
         from src.database.mongo_client.agent_health import AgentHeartbeatManager
+
         health_manager = AgentHeartbeatManager()
-        run_id = health_manager.start_agent_run("time_keeper_agent", {"action": "summarize_day", "date_iso": date_iso})
+        run_id = health_manager.start_agent_run(
+            "time_keeper_agent", {"action": "summarize_day", "date_iso": date_iso}
+        )
 
         try:
             start_dt = parser.parse(date_iso).replace(hour=0, minute=0, second=0)
@@ -58,11 +63,18 @@ class TimeKeeperAgent:
 
             events = self.get_events_in_range(start_dt.isoformat(), end_dt.isoformat())
             if not events:
-                health_manager.end_agent_run(run_id, status="success", result_summary="No events found.")
+                health_manager.end_agent_run(
+                    run_id, status="success", result_summary="No events found."
+                )
                 return f"No temporal events resolved for {date_iso}."
 
-            summaries = [f"- {e.get('raw_data', {}).get('summary', 'Unknown Event')} at {e.get('start_time')}" for e in events]
-            health_manager.end_agent_run(run_id, status="success", result_summary=f"Found {len(events)} events.")
+            summaries = [
+                f"- {e.get('raw_data', {}).get('summary', 'Unknown Event')} at {e.get('start_time')}"
+                for e in events
+            ]
+            health_manager.end_agent_run(
+                run_id, status="success", result_summary=f"Found {len(events)} events."
+            )
             return f"TimeKeeper Summary for {date_iso}:\n" + "\n".join(summaries)
         except Exception as e:
             health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))

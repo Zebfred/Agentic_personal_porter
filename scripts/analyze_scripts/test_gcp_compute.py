@@ -1,17 +1,20 @@
 import logging
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import sys
 import os
 import time
 
 # Ensure concise logging for the test
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 from src.utils.path_utils import load_env_vars
+
 load_env_vars()
 
 from src.integrations.gcp_compute_client import GCPComputeClient
+
 
 def run_tests():
     logger.info("==================================================")
@@ -23,7 +26,9 @@ def run_tests():
 
     if not client.service:
         logger.info("❌ FAILED: Could not initialize Google Cloud Credentials.")
-        logger.info("    Ensure you have run `gcloud auth application-default login` natively on your machine.")
+        logger.info(
+            "    Ensure you have run `gcloud auth application-default login` natively on your machine."
+        )
         return
 
     instance_name = os.environ.get("GCP_COMPUTE_INSTANCE", "ollama-vector-host")
@@ -53,9 +58,14 @@ def run_tests():
         logger.info("\n==================================================")
         logger.info("ℹ️ ACTIVE TESTING INSTRUCTIONS:")
         logger.info("To safely test the state-change triggers, run this script with an argument:")
-        logger.info("    Wake Test:  conda run -n agentic_porter python helper_scripts/test_gcp_compute.py wake")
-        logger.info("    Sleep Test: conda run -n agentic_porter python helper_scripts/test_gcp_compute.py sleep")
+        logger.info(
+            "    Wake Test:  conda run -n agentic_porter python helper_scripts/test_gcp_compute.py wake"
+        )
+        logger.info(
+            "    Sleep Test: conda run -n agentic_porter python helper_scripts/test_gcp_compute.py sleep"
+        )
         logger.info("==================================================")
+
 
 if __name__ == "__main__":
     run_tests()
