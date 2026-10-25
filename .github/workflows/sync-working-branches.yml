@@ -1,0 +1,124 @@
+name: Sync Working Branches with Main
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      branch_pattern:
+        description: "Glob pattern of working branches to sync (default: * for all non-main branches)"
+        required: false
+        default: "*"
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-working-branches-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sync-branches:
+    name: Auto-Merge Main into Active Working Branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository with full history
+        # Pinned to full 40-char commit SHA per Nexus Principle VI (Dave ⚙️)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update open Pull Requests targeting main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "### 🔄 Syncing Open Pull Requests Targeting \`main\`" >> "$GITHUB_STEP_SUMMARY"
+
+          pr_numbers=$(gh pr list --base main --state open --json number --jq '.[].number' || true)
+          if [[ -z "$pr_numbers" ]]; then
+            echo "- ℹ️ No open pull requests targeting \`main\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          for pr_num in $pr_numbers; do
+            echo "Updating PR #${pr_num}..."
+            if gh api --method PUT "repos/${GITHUB_REPOSITORY}/pulls/${pr_num}/update-branch" >/dev/null 2>&1; then
+              echo "- ✅ Updated PR #${pr_num} with latest \`main\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- ⚠️ Skipped PR #${pr_num} (already up-to-date or has merge conflicts requiring manual resolution)" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+      - name: Auto-merge main into active working branches (Non-Destructive)
+        env:
+          BRANCH_PATTERN: ${{ inputs.branch_pattern || '*' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin --prune
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### 🌿 Working Branch Synchronization Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Branch | Status | Details |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| :--- | :--- | :--- |" >> "$GITHUB_STEP_SUMMARY"
+
+          # Enumerate all remote branches on origin
+          mapfile -t remote_branches < <(git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin/)
+
+          for branch in "${remote_branches[@]}"; do
+            # Skip default, symbolic, or archived branches
+            if [[ "$branch" == "main" || "$branch" == "master" || "$branch" == "HEAD" ]]; then
+              continue
+            fi
+            if [[ "$branch" == legacy/* || "$branch" == archive/* || "$branch" == dependabot/* ]]; then
+              continue
+            fi
+
+            # Match user-provided glob pattern (defaults to *)
+            # shellcheck disable=SC2053
+            if [[ "$branch" != $BRANCH_PATTERN ]]; then
+              continue
+            fi
+
+            # 1. Check if origin/main is already an ancestor of origin/$branch
+            if git merge-base --is-ancestor origin/main "origin/${branch}"; then
+              echo "Branch '${branch}' is already up to date with main."
+              echo "| \`${branch}\` | ✅ Up-to-date | Already contains latest \`main\` |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            echo "Syncing 'origin/main' into working branch '${branch}'..."
+            git checkout -B "${branch}" "origin/${branch}"
+
+            # 2. Attempt fast-forward first; fallback to clean non-interactive merge
+            if git merge --ff-only origin/main 2>/dev/null; then
+              if git push origin "${branch}"; then
+                echo "| \`${branch}\` | 🚀 Fast-Forwarded | Cleanly fast-forwarded to \`main\` |" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "| \`${branch}\` | ⚠️ Push Protected | Fast-forwarded locally, but branch protection blocked push |" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            elif git merge --no-edit origin/main -m "chore(sync): auto-merge main into ${branch} [skip ci]"; then
+              if git push origin "${branch}"; then
+                echo "| \`${branch}\` | 🔄 Merged | Cleanly merged \`main\` into \`${branch}\` |" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "| \`${branch}\` | ⚠️ Push Protected | Merged locally, but branch protection blocked push |" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            else
+              # 3. Conflict detected: abort cleanly without touching remote branch
+              git merge --abort || true
+              echo "::warning::Merge conflict detected when syncing 'main' into '${branch}'. Aborted safely."
+              echo "| \`${branch}\` | ⚠️ Conflict (Skipped) | Merge aborted safely; manual \`git rebase origin/main\` required |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          git checkout main

@@ -1,6 +1,6 @@
 # Setting up a Custom GitHub App for Gemini Code Reviews
 
-By creating a custom GitHub App, you grant the Gemini AI its own dedicated identity (e.g., "Zebfred's Review Bot") and strictly limit its access to only what it needs, bypassing the broad `GITHUB_TOKEN`.
+By creating a custom GitHub App, you grant the Gemini AI its own dedicated identity (e.g., "Porter Review Bot") and strictly limit its access to only what it needs, bypassing the broad `GITHUB_TOKEN`.
 
 Follow these steps to create and configure the app.
 
@@ -10,7 +10,7 @@ Follow these steps to create and configure the app.
 2. On the left sidebar, scroll down and click **Developer settings**.
 3. In the left sidebar, click **GitHub Apps**, then click the **New GitHub App** button.
 4. Fill out the basic details:
-   - **GitHub App name**: Give it a fun name! (e.g., `Zebfreds Agentic Reviewer`). *Note: This name must be globally unique across GitHub, so you might need to add a unique suffix.*
+   - **GitHub App name**: Give it a fun name! (e.g., `Porter Agentic Reviewer`). *Note: This name must be globally unique across GitHub, so you might need to add a unique suffix.*
    - **Description**: "AI Code Review Bot powered by Gemini."
    - **Homepage URL**: You can just put the URL to your GitHub profile or repository.
    - **Webhook**: Uncheck the **Active** box under Webhook (we don't need webhooks for this, Actions will trigger the bot).

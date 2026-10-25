@@ -21,7 +21,7 @@ else
 endif
 
 # Phony targets to prevent conflicts with file names
-.PHONY: help install install-uv install-hooks update run dev build-css docker-build docker-run docker-stop clean test lint verify-done pulse sync-brain ingest-private-brain trace-lineage test-sentinel test-bolt test-palette test-silas test-archie test-docdoc test-dave test-devops test-crii test-critic test-jovol test-roster
+.PHONY: help install update run dev build-css docker-build docker-run docker-stop clean test pulse sync-brain ingest-private-brain trace-lineage
 
 help: ## Show this help message with available commands
 ifeq ($(OS),Windows_NT)
@@ -35,11 +35,11 @@ else
 endif
 
 # --- Environment Management ---
-# NOTE: conda is ONLY used in the `install` target to bootstrap Python 3.14 +
+# NOTE: conda is ONLY used in the `install` target to bootstrap Python 3.12 +
 # Node.js. All runtime commands use `uv run` directly (~0.15s) instead of
 # `conda run -n ... uv run` (~1.85s) to avoid a ~1.7s per-invocation penalty.
 install: ## Create the conda environment and install all dependencies
-	conda create -n $(CONDA_ENV) python=3.14 nodejs -y
+	conda create -n $(CONDA_ENV) python=3.12 nodejs -y
 	conda run -n $(CONDA_ENV) uv sync --dev
 
 install-uv: ## Install dependencies using uv package manager
@@ -49,14 +49,6 @@ ifeq ($(OS),Windows_NT)
 else
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
 	uv sync --dev
-endif
-
-install-hooks: ## Install local git pre-push security hook
-ifeq ($(OS),Windows_NT)
-	@powershell -Command "Copy-Item scripts/git_hooks/pre-push .git/hooks/pre-push -Force; Write-Host 'Pre-push security hook installed successfully.'"
-else
-	@mkdir -p .git/hooks && cp scripts/git_hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
-	@echo "Pre-push security hook installed successfully."
 endif
 
 update: ## Update the conda environment dependencies using uv sync
@@ -107,65 +99,23 @@ lint: ## Run code quality checks (codespell, ruff, mypy)
 	uv run ruff check . --diff
 	uv run mypy .
 
-verify-done: ## Enforce automated quality gates before marking a task done
-	@echo "1. Checking lint & style..."
+verify-done: ## Run the 3-Step Silas Constitutional Gate (Ruff + Mypy + Unit Pytest + DocDoc Hygiene)
+	@echo "1. Checking DocDoc documentation hygiene..."
+	uv run python scripts/analyze_scripts/verify_doc_hygiene.py
+	@echo "2. Checking Ruff lint & formatting..."
 	uv run ruff check src tests
-	@echo "2. Checking static types..."
+	@echo "3. Checking static types (Mypy)..."
 	uv run mypy src
-	@echo "3. Running unit test suite..."
-	uv run pytest tests/unit -v --tb=short
+	@echo "4. Running fast unit test suite..."
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "$$env:PROJECT_ID='test-project'; $$env:DISABLE_CLOUD_LOGGING='true'; uv run pytest tests/unit -v --tb=short"
+else
+	@PROJECT_ID=test-project DISABLE_CLOUD_LOGGING=true uv run pytest tests/unit -v --tb=short
+endif
 	@echo "=== ALL QUALITY GATES PASSED: TASK DONE ==="
 
-test-sentinel: ## Sentinel profile check: security pre-push verification and security tests
-	@echo "🛡️ Running Sentinel Security Profile Checks..."
-	@bash scripts/git_hooks/pre-push
-	@uv run pytest tests/unit -k "auth or security or mock_mongo" -v --tb=short
-	@echo "✅ Sentinel security checks passed."
-
-test-bolt: ## Bolt profile check: database mock and performance tests
-	@echo "⚡ Running Bolt Performance & DB Profile Checks..."
-	@uv run pytest tests/unit/test_mock_mongo.py -v --tb=short
-	@echo "✅ Bolt performance checks passed."
-
-test-palette: ## Palette profile check: frontend CSS build and asset validation
-	@echo "🎨 Running Palette Frontend & A11y Profile Checks..."
-	@make build-css
-	@echo "✅ Palette frontend checks passed."
-
-test-silas: verify-done ## Silas profile check: complete quality verification gate
-
-test-archie: ## Archie profile check: modular architecture linting and schema typing
-	@echo "🏛️ Running Archie Architectural Profile Checks..."
-	@uv run ruff check src
-	@uv run mypy src/schemas
-	@echo "✅ Archie architecture checks passed."
-
-test-docdoc: ## DocDoc profile check: markdown hierarchy, kebab-case naming, and zero-deletion hygiene
-	@echo "📚 Running DocDoc Documentation Governance Checks..."
-	@python3 scripts/analyze_scripts/verify_doc_hygiene.py
-	@echo "✅ DocDoc documentation checks passed."
-
-test-dave: ## Dave profile check: docker compose integrity and GitHub Actions SHA pinning
-	@echo "⚙️ Running Dave (DevOps) CI/CD & Infrastructure Checks..."
-	@python3 scripts/analyze_scripts/verify_devops.py
-	@echo "✅ Dave (DevOps) infrastructure checks passed."
-
-test-devops: test-dave ## Alias for test-dave
-
-test-crii: ## Crii profile check: adversarial stress tests, edge cases, and fallback verification
-	@echo "🔍 Running Crii (Adversarial Critic) Profile Checks..."
-	@uv run pytest tests/unit/test_api_schemas.py tests/test_llm_resilience.py tests/unit/test_mock_mongo.py -v --tb=short
-	@echo "✅ Crii adversarial checks passed."
-
-test-critic: test-crii ## Alias for test-crii
-
-test-jovol: ## Jovol profile check: JS functional component syntax and Spec Kit design tokens
-	@echo "⚛️ Running Jovol (JS Functional Component) Profile Checks..."
-	@python3 scripts/analyze_scripts/verify_components.py
-	@echo "✅ Jovol functional component checks passed."
-
-test-roster: test-sentinel test-bolt test-palette test-archie test-docdoc test-dave test-crii test-jovol ## Run full automated profile checks across all agent personas
-	@echo "🌟 ALL 8 AGENT PROFILE CHECKS PASSED SUCCESSFULLY!"
+install-hooks: ## Activate standardized Git hooks (.githooks/pre-commit & pre-push)
+	uv run --no-project python scripts/git_hooks_runner.py install
 
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)
@@ -192,18 +142,18 @@ else
 	fi
 endif
 
-sync-brain: ## Automate committing and pushing updates to the agentic-private-brain submodule
+sync-brain: ## Automate committing and pushing updates to the Agentic_Private_Brain submodule
 ifeq ($(OS),Windows_NT)
-	@powershell -ExecutionPolicy Bypass -File agentic-private-brain/deployment_scripts/sync_brain.ps1
+	@powershell -ExecutionPolicy Bypass -File Agentic_Private_Brain/deployment_scripts/sync_brain.ps1
 else
-	@./agentic-private-brain/deployment_scripts/sync_brain.sh
+	@./Agentic_Private_Brain/deployment_scripts/sync_brain.sh
 endif
 
-ingest-private-brain: ## Parse the agentic-private-brain and push vectors to Weaviate Cloud
+ingest-private-brain: ## Parse the Agentic_Private_Brain and push vectors to Weaviate Cloud
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "$$env:PYTHONPATH='.'; uv run python agentic-private-brain/deployment_scripts/ingest_private_brain.py"
+	@powershell -Command "$$env:PYTHONPATH='.'; uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py"
 else
-	PYTHONPATH=. uv run python agentic-private-brain/deployment_scripts/ingest_private_brain.py
+	PYTHONPATH=. uv run python Agentic_Private_Brain/deployment_scripts/ingest_private_brain.py
 endif
 
 # --- Frontend Assets ---

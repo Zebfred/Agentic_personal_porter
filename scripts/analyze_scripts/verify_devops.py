@@ -8,12 +8,16 @@ Validates repository infrastructure and CI/CD security standards:
      to an immutable 40-character commit SHA to protect against supply chain attacks.
 """
 
-import os
 import re
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from typing import List, Tuple
+from typing import List
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SHA_PATTERN = re.compile(r'^[0-9a-f]{40}$')
@@ -38,7 +42,6 @@ def check_github_actions_sha_pinning() -> List[str]:
                 # Skip local actions (e.g., ./...) or docker:// actions
                 if action_ref.startswith("./") or action_ref.startswith("docker://"):
                     continue
-                
                 if "@" not in action_ref:
                     violations.append(
                         f"{wf_file.name}:{line_no} Action '{action_ref}' missing revision specifier."
@@ -59,13 +62,11 @@ def check_docker_compose_config() -> List[str]:
     violations = []
     compose_file = PROJECT_ROOT / "docker-compose.yml"
     if not compose_file.exists():
-        # Check if alternative compose file exists
         alt_files = list(PROJECT_ROOT.glob("docker-compose*.y*ml"))
         if not alt_files:
             return []
         compose_file = alt_files[0]
 
-    # Check if docker or podman is available to validate configuration
     try:
         res = subprocess.run(
             ["docker", "compose", "-f", str(compose_file), "config", "--quiet"],
