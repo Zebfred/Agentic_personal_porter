@@ -1,0 +1,18 @@
+# Spec-Kit Extension Hooks for Agentic Personal Porter
+# Registers the Unified Spec-Kit / Jira <-> Jules Bridge hooks.
+version: 1
+hooks:
+  after_tasks:
+    - extension: speckit-jira-jules-bridge
+      command: speckit.jira.sync
+      description: "Preview or synchronize Spec-Kit tasks.md into standardized Jira Epics and Stories with .jules persona mappings."
+      prompt: "Run `make sync-jira` or `uv run python -m src.orchestrators.speckit_jira_bridge --dry-run` to preview/push Jira issues."
+      optional: true
+      enabled: true
+  before_taskstoissues:
+    - extension: speckit-jira-jules-bridge
+      command: speckit.jira.sync
+      description: "Synchronize Spec-Kit tasks.md with Atlassian Jira and format eligible tickets for Google Jules dispatch."
+      prompt: "Run `make sync-jira` to push tasks to Jira or `make jules-dispatch` to format a Jules work order."
+      optional: true
+      enabled: true
