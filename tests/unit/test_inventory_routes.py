@@ -9,11 +9,13 @@ os.environ.setdefault("GOOGLE_CLIENT_USER_LOGIN_ID", "dummy")
 
 from src.routes.inventory_routes import inventory_bp
 
+
 @pytest.fixture
 def app():
     app = Flask(__name__)
     app.register_blueprint(inventory_bp)
     return app
+
 
 @pytest.fixture
 def client(app):
@@ -25,38 +27,36 @@ def test_get_graph_data_success_default_limit(client):
     Test that GET /graph_data successfully fetches graph data with the default limit (500).
     """
     return_val = {"nodes": [{"id": 1, "label": "Node"}], "edges": []}
-    
+
     with patch("src.database.neo4j_client.read_operations.get_full_graph_topology") as mock_get:
         mock_get.return_value = return_val
         os.environ["PORTER_ADMIN_KEY"] = "dummy_api_key"
 
-        response = client.get(
-            '/graph_data',
-            headers={"Authorization": "Bearer dummy_api_key"}
-        )
+        response = client.get("/graph_data", headers={"Authorization": "Bearer dummy_api_key"})
 
         assert response.status_code == 200
         assert response.get_json() == return_val
         mock_get.assert_called_once_with(limit=500)
+
 
 def test_get_graph_data_success_custom_limit(client):
     """
     Test that GET /graph_data successfully fetches graph data with a custom limit.
     """
     return_val = {"nodes": [{"id": 1, "label": "Node"}], "edges": []}
-    
+
     with patch("src.database.neo4j_client.read_operations.get_full_graph_topology") as mock_get:
         mock_get.return_value = return_val
         os.environ["PORTER_ADMIN_KEY"] = "dummy_api_key"
 
         response = client.get(
-            '/graph_data?limit=100',
-            headers={"Authorization": "Bearer dummy_api_key"}
+            "/graph_data?limit=100", headers={"Authorization": "Bearer dummy_api_key"}
         )
 
         assert response.status_code == 200
         assert response.get_json() == return_val
         mock_get.assert_called_once_with(limit=100)
+
 
 def test_get_graph_data_error_handling(client):
     """
@@ -66,10 +66,7 @@ def test_get_graph_data_error_handling(client):
         mock_get.side_effect = Exception("Database connection failed")
         os.environ["PORTER_ADMIN_KEY"] = "dummy_api_key"
 
-        response = client.get(
-            '/graph_data',
-            headers={"Authorization": "Bearer dummy_api_key"}
-        )
+        response = client.get("/graph_data", headers={"Authorization": "Bearer dummy_api_key"})
 
         assert response.status_code == 500
         data = response.get_json()

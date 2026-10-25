@@ -3,13 +3,13 @@ Billing Killswitch Module
 Adapted from: https://github.com/derailed-dash/kill-project-billing
 Original Author: Darren Lester (@derailed-dash)
 
-This script contains a Google Cloud Function designed to automatically disable billing for 
+This script contains a Google Cloud Function designed to automatically disable billing for
 any Google Cloud projects associated with an exceeded budget.
 
-The function is triggered by a Pub/Sub message, which is published by a Cloud Billing budget alert. 
+The function is triggered by a Pub/Sub message, which is published by a Cloud Billing budget alert.
 When a project's spending exceeds a defined threshold, the alert is sent, and this function is invoked.
 The function parses the incoming Pub/Sub message to identify the associated project(s)
-and then uses the Cloud Billing API to detach the project from its billing account, 
+and then uses the Cloud Billing API to detach the project from its billing account,
 effectively disabling billing.
 
 The Pub/Sub message is expected to have the following format:
@@ -23,9 +23,10 @@ The Pub/Sub message is expected to have the following format:
   - `billingAccountId` (str): The ID of the billing account.
   - `budgetId` (str): The ID of the budget.
 
-**⚠️ Warning: This is a destructive action.** Disconnecting a project from its billing account will 
+**⚠️ Warning: This is a destructive action.** Disconnecting a project from its billing account will
 stop all paid services.
 """
+
 import base64
 import json
 import logging
@@ -61,6 +62,7 @@ if os.environ.get("DISABLE_CLOUD_LOGGING", "false").lower() == "true":
 billing_client = billing_v1.CloudBillingClient()
 budget_client = BudgetServiceClient()
 
+
 def _parse_and_validate_message(cloud_event: CloudEvent) -> dict | None:
     """Parses and validates the incoming Pub/Sub message."""
     # The Pub/Sub message is base64-encoded
@@ -74,7 +76,9 @@ def _parse_and_validate_message(cloud_event: CloudEvent) -> dict | None:
     budget_name = message_json.get("budgetDisplayName", "Unknown Budget")
 
     if "costAmount" not in message_json or "budgetAmount" not in message_json:
-        logger.error(f"Budget '{budget_name}': Missing 'costAmount' or 'budgetAmount' in message payload. Aborting for safety.")
+        logger.error(
+            f"Budget '{budget_name}': Missing 'costAmount' or 'budgetAmount' in message payload. Aborting for safety."
+        )
         return None
 
     cost_amount = message_json["costAmount"]
@@ -82,8 +86,10 @@ def _parse_and_validate_message(cloud_event: CloudEvent) -> dict | None:
 
     # Only disable billing if the cost has exceeded the budget
     if cost_amount <= budget_amount:
-        logger.info(f"Budget '{budget_name}': "
-                    f"{cost_amount} has not exceeded budget {budget_amount}. No action taken.")
+        logger.info(
+            f"Budget '{budget_name}': "
+            f"{cost_amount} has not exceeded budget {budget_amount}. No action taken."
+        )
         return None
 
     # Get the budget ID and billing_account_id from the message attributes
@@ -102,8 +108,9 @@ def _parse_and_validate_message(cloud_event: CloudEvent) -> dict | None:
         "cost_amount": cost_amount,
         "budget_amount": budget_amount,
         "budget_id": budget_id,
-        "billing_account_id": billing_account_id
+        "billing_account_id": billing_account_id,
     }
+
 
 @functions_framework.cloud_event
 def disable_billing_for_projects(cloud_event: CloudEvent):
@@ -154,13 +161,18 @@ def disable_billing_for_projects(cloud_event: CloudEvent):
             logger.info(f"Budget '{budget_name}': Disabling billing for {project_id}...")
 
             if simulate_deactivation:
-                logger.info(f"SIMULATION MODE: Billing would have been disabled for project {project_id} "
-                            f"for budget {budget_name}.")
+                logger.info(
+                    f"SIMULATION MODE: Billing would have been disabled for project {project_id} "
+                    f"for budget {budget_name}."
+                )
             else:
                 _disable_billing_for_project(project_name)
         elif billing_enabled is False:
-            logger.info(f"Budget '{budget_name}': Billing is already disabled for project {project_id}.")
+            logger.info(
+                f"Budget '{budget_name}': Billing is already disabled for project {project_id}."
+            )
         # If billing_enabled is None, an error occurred and was already logged in _is_billing_enabled_for_project
+
 
 def _is_billing_enabled_for_project(project_name: str) -> bool | None:
     """Determine whether billing is enabled for a project.
@@ -177,12 +189,15 @@ def _is_billing_enabled_for_project(project_name: str) -> bool | None:
 
         return response.billing_enabled
     except exceptions.PermissionDenied as e:
-        logger.error(f"Permission denied for {project_name}. "
-                     f"Ensure service account has 'roles/billing.projectManager' on the project: {e}")
+        logger.error(
+            f"Permission denied for {project_name}. "
+            f"Ensure service account has 'roles/billing.projectManager' on the project: {e}"
+        )
         return None
     except Exception as e:
-        logger.warning(f"Unable to get billing info for project {project_name}. "
-                       f"Error message: {e}")
+        logger.warning(
+            f"Unable to get billing info for project {project_name}. " f"Error message: {e}"
+        )
         return None
 
 
@@ -198,7 +213,9 @@ def _disable_billing_for_project(project_name: str) -> None:
     try:
         # To disable billing set the `billing_account_name` field to empty
         project_billing_info = billing_v1.ProjectBillingInfo(billing_account_name="")
-        billing_client.update_project_billing_info(name=project_name, project_billing_info=project_billing_info)
+        billing_client.update_project_billing_info(
+            name=project_name, project_billing_info=project_billing_info
+        )
 
         logger.info(f"Successfully disabled billing for project {project_name}")
     except exceptions.PermissionDenied as e:

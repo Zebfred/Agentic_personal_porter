@@ -16,12 +16,13 @@ _CID_PATTERN = re.compile(r"\[CID:([^\]]+)\]|correlation_id[\"']?\s*[:=]\s*[\"']
 
 class FirstServingMonitoringHandler(BaseCallbackHandler):
     """
-    A unified Custom Callback Handler to actively log inputs, state metrics, token usage 
+    A unified Custom Callback Handler to actively log inputs, state metrics, token usage
     and behavioral heuristics (tool calls) to MongoDB collections.
-    
+
     Supports provenance tracking: when a correlation_id is provided (or extracted from
     tool outputs), it logs the full lineage chain from Frontend -> Mongo -> VectorDB -> Agent.
     """
+
     def __init__(self, session_id: Optional[str] = None, correlation_id: Optional[str] = None):
         self.session_id = session_id or str(uuid.uuid4())
         self.correlation_id = correlation_id
@@ -52,9 +53,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
         except Exception as e:
             logger.error(f"Failed to log chat model start to trace collection: {e}")
 
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> None:
+    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> None:
         """Runs when the LLM begins execution."""
         try:
             doc = {
@@ -91,7 +90,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
                 "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "llm_end",
                 "token_usage": tokens,
-                "generated_texts": generated_texts
+                "generated_texts": generated_texts,
             }
             if self.correlation_id:
                 doc["correlation_id"] = self.correlation_id
@@ -100,9 +99,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
         except Exception as e:
             logger.error(f"Failed to log LLM end to trace collection: {e}")
 
-    def on_tool_start(
-        self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
-    ) -> None:
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, **kwargs: Any) -> None:
         """Runs when an agent invokes a tool."""
         try:
             tool_name = serialized.get("name", "UnknownTool")
@@ -111,7 +108,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
                 "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "tool_start",
                 "tool_name": tool_name,
-                "tool_input": input_str
+                "tool_input": input_str,
             }
             if self.correlation_id:
                 doc["correlation_id"] = self.correlation_id
@@ -142,7 +139,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
                 "timestamp": datetime.datetime.now(datetime.timezone.utc),
                 "event": "tool_end",
                 "tool_name": tool_name,
-                "tool_output": output
+                "tool_output": output,
             }
             if self.correlation_id:
                 doc["correlation_id"] = self.correlation_id
@@ -154,7 +151,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
                     "description": (
                         f"Agent used {tool_name} and retrieved data originating from "
                         f"correlation_id(s): {', '.join(extracted_cids)}"
-                    )
+                    ),
                 }
                 logger.info(
                     f"[PROVENANCE] {tool_name} returned data from CID(s): {', '.join(extracted_cids)}"
@@ -163,4 +160,3 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
             self.happenings_collection.insert_one(doc)
         except Exception as e:
             logger.error(f"Failed to log tool end to happenings collection: {e}")
-

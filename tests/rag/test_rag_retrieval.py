@@ -5,6 +5,7 @@ This script tests the embedding and retrieval components.
 """
 
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 
 # Add project root to Python path
@@ -13,11 +14,12 @@ logger = setup_logger(__name__)
 from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 
+
 def test_retrieval(collection_name="rl_papers"):
     """Test retrieval with various queries."""
-    logger.info("="*70)
+    logger.info("=" * 70)
     logger.info("RAG Retrieval Test (Embedding + Vector Search)")
-    logger.info("="*70)
+    logger.info("=" * 70)
 
     # Initialize components
     logger.info("\n1. Initializing components...")
@@ -36,24 +38,21 @@ def test_retrieval(collection_name="rl_papers"):
     basic_theory_queries = [
         {
             "query": "What is Q-learning?",
-            "expected_topics": ["Q-learning", "value function", "Bellman"]
+            "expected_topics": ["Q-learning", "value function", "Bellman"],
         },
         {
             "query": "How does policy gradient work?",
-            "expected_topics": ["policy gradient", "gradient", "policy"]
+            "expected_topics": ["policy gradient", "gradient", "policy"],
         },
         {
             "query": "What is the Bellman equation?",
-            "expected_topics": ["Bellman", "value", "equation"]
+            "expected_topics": ["Bellman", "value", "equation"],
         },
-        {
-            "query": "Explain actor-critic methods",
-            "expected_topics": ["actor", "critic", "policy"]
-        },
+        {"query": "Explain actor-critic methods", "expected_topics": ["actor", "critic", "policy"]},
         {
             "query": "What is experience replay?",
-            "expected_topics": ["replay", "buffer", "experience"]
-        }
+            "expected_topics": ["replay", "buffer", "experience"],
+        },
     ]
 
     # Test queries - Relating Theory to Code Development
@@ -61,28 +60,28 @@ def test_retrieval(collection_name="rl_papers"):
         {
             "query": "How do I implement Q-learning in Python? Show me the code structure.",
             "expected_topics": ["Q-learning", "implementation", "code"],
-            "category": "Theory to Code"
+            "category": "Theory to Code",
         },
         {
             "query": "Write a Python function that implements the Bellman equation update.",
             "expected_topics": ["Bellman", "update", "code"],
-            "category": "Theory to Code"
+            "category": "Theory to Code",
         },
         {
             "query": "How would I code a policy gradient algorithm? What are the key components?",
             "expected_topics": ["policy gradient", "implementation", "components"],
-            "category": "Theory to Code"
+            "category": "Theory to Code",
         },
         {
             "query": "Show me how to implement experience replay buffer in code.",
             "expected_topics": ["experience replay", "buffer", "implementation"],
-            "category": "Theory to Code"
+            "category": "Theory to Code",
         },
         {
             "query": "How do I structure a DQN implementation? What classes and methods do I need?",
             "expected_topics": ["DQN", "implementation", "structure"],
-            "category": "Theory to Code"
-        }
+            "category": "Theory to Code",
+        },
     ]
 
     # Test queries - Teaching Theory to People of Any Level
@@ -91,42 +90,42 @@ def test_retrieval(collection_name="rl_papers"):
             "query": "Explain Q-learning to a complete beginner who has never heard of reinforcement learning.",
             "expected_topics": ["Q-learning", "beginner", "explanation"],
             "category": "Adaptive Teaching",
-            "level": "beginner"
+            "level": "beginner",
         },
         {
             "query": "Explain Q-learning to someone with a computer science degree but no ML background.",
             "expected_topics": ["Q-learning", "intermediate", "explanation"],
             "category": "Adaptive Teaching",
-            "level": "intermediate"
+            "level": "intermediate",
         },
         {
             "query": "Explain Q-learning to a machine learning researcher who wants to understand the mathematical foundations.",
             "expected_topics": ["Q-learning", "mathematical", "foundations"],
             "category": "Adaptive Teaching",
-            "level": "advanced"
+            "level": "advanced",
         },
         {
             "query": "Explain the Bellman equation like I'm 10 years old.",
             "expected_topics": ["Bellman", "simple", "explanation"],
             "category": "Adaptive Teaching",
-            "level": "beginner"
+            "level": "beginner",
         },
         {
             "query": "Explain policy gradients to a software engineer who understands neural networks but not RL.",
             "expected_topics": ["policy gradient", "neural networks", "explanation"],
             "category": "Adaptive Teaching",
-            "level": "intermediate"
-        }
+            "level": "intermediate",
+        },
     ]
 
     all_test_queries = [
         ("Basic Theory Queries", basic_theory_queries),
         ("Relating Theory to Code Development", theory_to_code_queries),
-        ("Teaching Theory to People of Any Level", adaptive_teaching_queries)
+        ("Teaching Theory to People of Any Level", adaptive_teaching_queries),
     ]
 
     logger.info("\n2. Testing retrieval...")
-    logger.info("="*70)
+    logger.info("=" * 70)
 
     total_tests = sum(len(queries) for _, queries in all_test_queries)
     test_counter = 0
@@ -134,7 +133,7 @@ def test_retrieval(collection_name="rl_papers"):
     for section_name, test_queries in all_test_queries:
         logger.info(f"\n{'='*70}")
         logger.info(f"SECTION: {section_name.upper()}")
-        logger.info('='*70)
+        logger.info("=" * 70)
 
         for test in test_queries:
             test_counter += 1
@@ -157,10 +156,10 @@ def test_retrieval(collection_name="rl_papers"):
             logger.info(f"\nRetrieved {len(results)} chunks:\n")
 
             for j, result in enumerate(results, 1):
-                similarity = 1 - result['distance'] if result['distance'] is not None else 0
-                paper_title = result['metadata'].get('paper_title', 'Unknown Paper')
-                section = result['metadata'].get('section_header', 'Unknown Section')
-                text = result['text']
+                similarity = 1 - result["distance"] if result["distance"] is not None else 0
+                paper_title = result["metadata"].get("paper_title", "Unknown Paper")
+                section = result["metadata"].get("section_header", "Unknown Section")
+                text = result["text"]
 
                 logger.info(f"  [{j}] Similarity: {similarity:.4f}")
                 logger.info(f"      Paper: {paper_title}")
@@ -174,14 +173,16 @@ def test_retrieval(collection_name="rl_papers"):
                 logger.info("      doesn't generate code or provide implementation guidance.")
             elif category == "Adaptive Teaching":
                 logger.info("  ⚠️  EXPECTED LIMITATION: Current system doesn't adapt explanation")
-                logger.info(f"      complexity to {level} level - uses same retrieval for all levels.")
+                logger.info(
+                    f"      complexity to {level} level - uses same retrieval for all levels."
+                )
 
-            logger.info("="*70)
+            logger.info("=" * 70)
 
     logger.info("\n✓ Retrieval tests completed!")
     logger.info("\nNote: To test full RAG (with LLM answers), set GROQ_API_KEY and run:")
     logger.info("     python test_rag_manual.py")
 
+
 if __name__ == "__main__":
     test_retrieval()
-

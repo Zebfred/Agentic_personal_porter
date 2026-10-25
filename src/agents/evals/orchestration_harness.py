@@ -39,6 +39,7 @@ COST_PER_1M_TOKENS: Dict[str, Dict[str, float]] = {
 # These mirror the real tools in first_serving_porter.py exactly —
 # same names, same docstrings — but return canned static responses.
 
+
 @tool
 def route_to_subagent(agent_name: str, task_description: str) -> str:
     """declare intent to route tasks to sub-agents, enabling transparency logging on the UI.
@@ -47,12 +48,14 @@ def route_to_subagent(agent_name: str, task_description: str) -> str:
     """
     return f"[MOCK] Routed to {agent_name}: '{task_description}'"
 
+
 @tool
 def update_artifact(artifact_name: str, new_content_summary: str) -> str:
     """declares intent to update a json artifact (like hero_origin.json or hero_ambition.json) with new content.
     The GTKY Identity Architect will receive this ping to queue a permanent file modification.
     """
     return f"[MOCK] Queued update for {artifact_name}: '{new_content_summary}'"
+
 
 @tool
 def scan_origin_story() -> str:
@@ -61,12 +64,14 @@ def scan_origin_story() -> str:
     """
     return "[MOCK] Found 3 gaps: teenage years, college transition, first career move."
 
+
 @tool
 def weaviate_hybrid_search(query: str, pillar: str = "Daily Reflection") -> str:
     """Use this to fetch exact journal entries and calendar events mapped to the 9 life pillars.
     Pass in a robust query string and the specific pillar (e.g. 'Social Goal', 'Career Goal', 'Health Goal') to hybrid match.
     """
     return f"[MOCK] 5 results for '{query}' under pillar '{pillar}'."
+
 
 @tool
 def chroma_vibe_check(query: str) -> str:
@@ -75,6 +80,7 @@ def chroma_vibe_check(query: str) -> str:
     """
     return f"[MOCK] Vibe check for '{query}': overall positive trend, 3 conceptual matches."
 
+
 @tool
 def fetch_unverified_audits() -> str:
     """Use this to pull any categorized events that the human has not verified yet.
@@ -82,12 +88,14 @@ def fetch_unverified_audits() -> str:
     """
     return "[MOCK] Found 7 unverified events awaiting human review."
 
+
 @tool
 def consult_time_keeper(date_iso: str) -> str:
     """Use this to consult the Temporal Specialist Agent (Time Keeper) regarding exact schedule realities.
     Pass in a strict ISO string (e.g., '2026-04-17') to get a summary of what actually happened on that day.
     """
     return f"[MOCK] Day summary for {date_iso}: 3 meetings, 2 focus blocks, 1 break."
+
 
 MOCK_TOOLS = [
     route_to_subagent,
@@ -122,6 +130,7 @@ Ambition Snapshot: Write a book by end of year, build Agentic Porter to producti
 Core Detriments: Analysis paralysis, over-engineering before baseline usability
 """
 
+
 def _get_rate_limit_sleep(provider: str) -> float:
     """Returns sleep duration between cases to respect rate limits.
 
@@ -133,13 +142,16 @@ def _get_rate_limit_sleep(provider: str) -> float:
     # Vertex AI / Google GenAI — ReAct agents are multi-call per case
     return 5.0
 
+
 def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
     """Estimates cost of a single invocation in USD."""
     rates = COST_PER_1M_TOKENS.get(model_name)
     if not rates:
         return 0.0
-    return (input_tokens / 1_000_000) * rates["input"] + \
-           (output_tokens / 1_000_000) * rates["output"]
+    return (input_tokens / 1_000_000) * rates["input"] + (output_tokens / 1_000_000) * rates[
+        "output"
+    ]
+
 
 def _extract_tool_calls(messages: List[Any]) -> List[Dict[str, Any]]:
     """Extracts tool call information from the message sequence.
@@ -149,13 +161,16 @@ def _extract_tool_calls(messages: List[Any]) -> List[Dict[str, Any]]:
     """
     calls = []
     for msg in messages:
-        if isinstance(msg, AIMessage) and hasattr(msg, 'tool_calls') and msg.tool_calls:
+        if isinstance(msg, AIMessage) and hasattr(msg, "tool_calls") and msg.tool_calls:
             for tc in msg.tool_calls:
-                calls.append({
-                    "tool_name": tc.get("name", ""),
-                    "tool_args": tc.get("args", {}),
-                })
+                calls.append(
+                    {
+                        "tool_name": tc.get("name", ""),
+                        "tool_args": tc.get("args", {}),
+                    }
+                )
     return calls
+
 
 def _check_tool_selection(
     tool_calls: List[Dict[str, Any]],
@@ -169,6 +184,7 @@ def _check_tool_selection(
         return len(tool_calls) >= 2
 
     return any(tc["tool_name"] == expected_tool for tc in tool_calls)
+
 
 def _check_argument_accuracy(
     tool_calls: List[Dict[str, Any]],
@@ -194,6 +210,7 @@ def _check_argument_accuracy(
             return False
 
     return True
+
 
 def run_orchestration_eval(
     models: Optional[List[AgentLLMConfig]] = None,
@@ -239,15 +256,17 @@ def run_orchestration_eval(
             )
         except Exception as e:
             console.print(f"[red]Failed to initialize: {e}[/red]")
-            results_summary.append({
-                "model": config.model,
-                "provider": config.provider,
-                "tool_accuracy": "INIT_FAIL",
-                "arg_accuracy": "INIT_FAIL",
-                "avg_latency": "N/A",
-                "total_cost_usd": "N/A",
-                "error": str(e),
-            })
+            results_summary.append(
+                {
+                    "model": config.model,
+                    "provider": config.provider,
+                    "tool_accuracy": "INIT_FAIL",
+                    "arg_accuracy": "INIT_FAIL",
+                    "avg_latency": "N/A",
+                    "total_cost_usd": "N/A",
+                    "error": str(e),
+                }
+            )
             continue
 
         tool_correct = 0
@@ -279,7 +298,7 @@ def run_orchestration_eval(
 
                     # Check if it's a rate limit error
                     if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
-                        backoff = 10 * (2 ** attempt)  # 10s, 20s, 40s
+                        backoff = 10 * (2**attempt)  # 10s, 20s, 40s
                         console.print(
                             f"  [yellow]⏳ {case['id']} 429 rate limit "
                             f"(attempt {attempt + 1}/{max_retries}), "
@@ -309,9 +328,7 @@ def run_orchestration_eval(
 
                 # Format what the model actually called
                 actual_tools = [tc["tool_name"] for tc in tool_calls]
-                actual_args_summary = {
-                    tc["tool_name"]: tc["tool_args"] for tc in tool_calls
-                }
+                actual_args_summary = {tc["tool_name"]: tc["tool_args"] for tc in tool_calls}
 
                 status_icon = "[green]✓[/green]" if (tool_ok and arg_ok) else "[red]✗[/red]"
                 console.print(
@@ -321,48 +338,52 @@ def run_orchestration_eval(
                     f"→ called: {actual_tools}"
                 )
 
-                case_details.append({
-                    "id": case["id"],
-                    "profile": case["profile"],
-                    "expected_tool": case["expected_tool"],
-                    "actual_tools": actual_tools,
-                    "actual_args": actual_args_summary,
-                    "tool_ok": tool_ok,
-                    "arg_ok": arg_ok,
-                    "latency": round(elapsed, 2),
-                })
+                case_details.append(
+                    {
+                        "id": case["id"],
+                        "profile": case["profile"],
+                        "expected_tool": case["expected_tool"],
+                        "actual_tools": actual_tools,
+                        "actual_args": actual_args_summary,
+                        "tool_ok": tool_ok,
+                        "arg_ok": arg_ok,
+                        "latency": round(elapsed, 2),
+                    }
+                )
             else:
                 # All retries failed or non-429 error
                 total_latency += elapsed
                 error_msg = (last_error or "Unknown error")[:120]
-                console.print(
-                    f"  [red]✗ {case['id']} error ({elapsed:.2f}s): {error_msg}[/red]"
+                console.print(f"  [red]✗ {case['id']} error ({elapsed:.2f}s): {error_msg}[/red]")
+                case_details.append(
+                    {
+                        "id": case["id"],
+                        "profile": case["profile"],
+                        "expected_tool": case["expected_tool"],
+                        "actual_tools": [],
+                        "tool_ok": False,
+                        "arg_ok": False,
+                        "latency": round(elapsed, 2),
+                        "error": error_msg,
+                    }
                 )
-                case_details.append({
-                    "id": case["id"],
-                    "profile": case["profile"],
-                    "expected_tool": case["expected_tool"],
-                    "actual_tools": [],
-                    "tool_ok": False,
-                    "arg_ok": False,
-                    "latency": round(elapsed, 2),
-                    "error": error_msg,
-                })
 
             time.sleep(sleep_interval)
 
         num_cases = len(test_cases)
         avg_latency = total_latency / num_cases if num_cases else 0
 
-        results_summary.append({
-            "model": config.model,
-            "provider": config.provider,
-            "tool_accuracy": f"{tool_correct}/{num_cases}",
-            "arg_accuracy": f"{arg_correct}/{num_cases}",
-            "avg_latency": f"{avg_latency:.2f}s",
-            "total_cost_usd": "N/A",  # ReAct agent doesn't expose token counts easily
-            "case_details": case_details,
-        })
+        results_summary.append(
+            {
+                "model": config.model,
+                "provider": config.provider,
+                "tool_accuracy": f"{tool_correct}/{num_cases}",
+                "arg_accuracy": f"{arg_correct}/{num_cases}",
+                "avg_latency": f"{avg_latency:.2f}s",
+                "total_cost_usd": "N/A",  # ReAct agent doesn't expose token counts easily
+                "case_details": case_details,
+            }
+        )
 
         console.print(
             f"\n  [bold]Summary: tool={tool_correct}/{num_cases} "

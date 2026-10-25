@@ -2,6 +2,7 @@
 Tests for the Correlation ID Generator.
 Validates deterministic behavior, format correctness, and edge cases.
 """
+
 from unittest.mock import patch
 from datetime import datetime, timezone
 
@@ -69,7 +70,14 @@ class TestGenerateCorrelationId:
 
     def test_all_time_chunks(self):
         """All valid time chunk IDs should produce distinct correlation IDs."""
-        chunks = ["late-night", "early-morning", "late-morning", "afternoon", "evening", "early-night"]
+        chunks = [
+            "late-night",
+            "early-morning",
+            "late-morning",
+            "afternoon",
+            "evening",
+            "early-night",
+        ]
         ids = set()
         for chunk in chunks:
             cid = generate_correlation_id("Hero", "2026-07-01", chunk, "log")

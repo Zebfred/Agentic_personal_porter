@@ -6,6 +6,7 @@ with metrics, statistics, and quality assessments.
 """
 
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 
 # Add project root to Python path
@@ -15,9 +16,10 @@ import numpy as np
 from rag_system.pipeline.data_pipeline.chunking import (
     FixedSizeChunking,
     FastSemanticChunking,
-    ScienceDetailSemanticChunking
+    ScienceDetailSemanticChunking,
 )
 from sentence_transformers import SentenceTransformer
+
 
 def load_sample_paper_text():
     """Load sample scientific paper text for testing."""
@@ -80,44 +82,46 @@ def load_sample_paper_text():
     benchmark tasks while being significantly simpler to implement than TRPO.
     """
 
+
 def analyze_chunks(chunks, strategy_name):
     """Analyze and return statistics about chunks."""
     if not chunks:
         return {
-            'strategy': strategy_name,
-            'chunk_count': 0,
-            'avg_chunk_size': 0,
-            'min_chunk_size': 0,
-            'max_chunk_size': 0,
-            'std_chunk_size': 0,
-            'total_chars': 0
+            "strategy": strategy_name,
+            "chunk_count": 0,
+            "avg_chunk_size": 0,
+            "min_chunk_size": 0,
+            "max_chunk_size": 0,
+            "std_chunk_size": 0,
+            "total_chars": 0,
         }
 
-    chunk_sizes = [len(chunk.get('text', '')) for chunk in chunks]
+    chunk_sizes = [len(chunk.get("text", "")) for chunk in chunks]
 
     return {
-        'strategy': strategy_name,
-        'chunk_count': len(chunks),
-        'avg_chunk_size': np.mean(chunk_sizes),
-        'min_chunk_size': np.min(chunk_sizes),
-        'max_chunk_size': np.max(chunk_sizes),
-        'std_chunk_size': np.std(chunk_sizes),
-        'total_chars': sum(chunk_sizes),
-        'median_chunk_size': np.median(chunk_sizes)
+        "strategy": strategy_name,
+        "chunk_count": len(chunks),
+        "avg_chunk_size": np.mean(chunk_sizes),
+        "min_chunk_size": np.min(chunk_sizes),
+        "max_chunk_size": np.max(chunk_sizes),
+        "std_chunk_size": np.std(chunk_sizes),
+        "total_chars": sum(chunk_sizes),
+        "median_chunk_size": np.median(chunk_sizes),
     }
+
 
 def measure_semantic_coherence(chunks, model_name="all-MiniLM-L6-v2"):
     """Measure semantic coherence within chunks."""
     if not chunks:
-        return {'avg_coherence': 0, 'min_coherence': 0, 'max_coherence': 0}
+        return {"avg_coherence": 0, "min_coherence": 0, "max_coherence": 0}
 
     model = SentenceTransformer(model_name)
     coherence_scores = []
 
     for chunk in chunks:
-        text = chunk.get('text', '')
+        text = chunk.get("text", "")
         # Split into sentences (simple approach)
-        sentences = [s.strip() for s in text.split('.') if len(s.strip()) > 10]
+        sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 10]
 
         if len(sentences) < 2:
             continue
@@ -128,8 +132,8 @@ def measure_semantic_coherence(chunks, model_name="all-MiniLM-L6-v2"):
         # Calculate pairwise similarities
         similarities = []
         for i in range(len(embeddings) - 1):
-            sim = np.dot(embeddings[i], embeddings[i+1]) / (
-                np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[i+1])
+            sim = np.dot(embeddings[i], embeddings[i + 1]) / (
+                np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[i + 1])
             )
             similarities.append(sim)
 
@@ -137,14 +141,15 @@ def measure_semantic_coherence(chunks, model_name="all-MiniLM-L6-v2"):
             coherence_scores.append(np.mean(similarities))
 
     if not coherence_scores:
-        return {'avg_coherence': 0, 'min_coherence': 0, 'max_coherence': 0}
+        return {"avg_coherence": 0, "min_coherence": 0, "max_coherence": 0}
 
     return {
-        'avg_coherence': np.mean(coherence_scores),
-        'min_coherence': np.min(coherence_scores),
-        'max_coherence': np.max(coherence_scores),
-        'std_coherence': np.std(coherence_scores)
+        "avg_coherence": np.mean(coherence_scores),
+        "min_coherence": np.min(coherence_scores),
+        "max_coherence": np.max(coherence_scores),
+        "std_coherence": np.std(coherence_scores),
     }
+
 
 def test_chunking_strategies_comparison():
     """Compare all chunking strategies on the same text."""
@@ -152,19 +157,15 @@ def test_chunking_strategies_comparison():
 
     # Initialize all strategies
     fixed_chunker = FixedSizeChunking(chunk_size=1000, overlap=200)
-    fast_semantic_chunker = FastSemanticChunking(
-        chunk_size=1000,
-        similarity_threshold=0.5
-    )
+    fast_semantic_chunker = FastSemanticChunking(chunk_size=1000, similarity_threshold=0.5)
     science_semantic_chunker = ScienceDetailSemanticChunking(
-        chunk_size=1000,
-        similarity_threshold=0.5
+        chunk_size=1000, similarity_threshold=0.5
     )
 
     # Generate chunks
-    logger.info("\n" + "="*80)
+    logger.info("\n" + "=" * 80)
     logger.info("CHUNKING STRATEGIES COMPARATIVE ANALYSIS")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
     logger.info("\nGenerating chunks with each strategy...")
     fixed_chunks = fixed_chunker.chunk(text)
@@ -177,9 +178,9 @@ def test_chunking_strategies_comparison():
     logger.info(f"✓ Science Detail Semantic: {len(science_semantic_chunks)} chunks")
 
     # Analyze each strategy
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("CHUNK STATISTICS")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     fixed_stats = analyze_chunks(fixed_chunks, "Fixed-Size")
     fast_stats = analyze_chunks(fast_semantic_chunks, "Fast Semantic")
@@ -188,20 +189,24 @@ def test_chunking_strategies_comparison():
     all_stats = [fixed_stats, fast_stats, science_stats]
 
     # Print comparison table
-    logger.info(f"\n{'Strategy':<25} {'Count':<10} {'Avg Size':<12} {'Min':<10} {'Max':<10} {'Median':<10}")
+    logger.info(
+        f"\n{'Strategy':<25} {'Count':<10} {'Avg Size':<12} {'Min':<10} {'Max':<10} {'Median':<10}"
+    )
     logger.info("-" * 80)
     for stats in all_stats:
-        logger.info(f"{stats['strategy']:<25} "
-              f"{stats['chunk_count']:<10} "
-              f"{stats['avg_chunk_size']:<12.0f} "
-              f"{stats['min_chunk_size']:<10.0f} "
-              f"{stats['max_chunk_size']:<10.0f} "
-              f"{stats['median_chunk_size']:<10.0f}")
+        logger.info(
+            f"{stats['strategy']:<25} "
+            f"{stats['chunk_count']:<10} "
+            f"{stats['avg_chunk_size']:<12.0f} "
+            f"{stats['min_chunk_size']:<10.0f} "
+            f"{stats['max_chunk_size']:<10.0f} "
+            f"{stats['median_chunk_size']:<10.0f}"
+        )
 
     # Semantic coherence analysis
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("SEMANTIC COHERENCE ANALYSIS")
-    logger.info("-"*80)
+    logger.info("-" * 80)
     logger.info("(Higher scores indicate more semantically coherent chunks)")
 
     fixed_coherence = measure_semantic_coherence(fixed_chunks)
@@ -210,23 +215,29 @@ def test_chunking_strategies_comparison():
 
     logger.info(f"\n{'Strategy':<25} {'Avg Coherence':<15} {'Min':<10} {'Max':<10}")
     logger.info("-" * 80)
-    logger.info(f"{'Fixed-Size':<25} {fixed_coherence['avg_coherence']:<15.4f} "
-          f"{fixed_coherence['min_coherence']:<10.4f} {fixed_coherence['max_coherence']:<10.4f}")
-    logger.info(f"{'Fast Semantic':<25} {fast_coherence['avg_coherence']:<15.4f} "
-          f"{fast_coherence['min_coherence']:<10.4f} {fast_coherence['max_coherence']:<10.4f}")
-    logger.info(f"{'Science Detail Semantic':<25} {science_coherence['avg_coherence']:<15.4f} "
-          f"{science_coherence['min_coherence']:<10.4f} {science_coherence['max_coherence']:<10.4f}")
+    logger.info(
+        f"{'Fixed-Size':<25} {fixed_coherence['avg_coherence']:<15.4f} "
+        f"{fixed_coherence['min_coherence']:<10.4f} {fixed_coherence['max_coherence']:<10.4f}"
+    )
+    logger.info(
+        f"{'Fast Semantic':<25} {fast_coherence['avg_coherence']:<15.4f} "
+        f"{fast_coherence['min_coherence']:<10.4f} {fast_coherence['max_coherence']:<10.4f}"
+    )
+    logger.info(
+        f"{'Science Detail Semantic':<25} {science_coherence['avg_coherence']:<15.4f} "
+        f"{science_coherence['min_coherence']:<10.4f} {science_coherence['max_coherence']:<10.4f}"
+    )
 
     # Key findings
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("KEY FINDINGS")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     # Chunk count comparison
     counts = {
-        'Fixed-Size': fixed_stats['chunk_count'],
-        'Fast Semantic': fast_stats['chunk_count'],
-        'Science Detail Semantic': science_stats['chunk_count']
+        "Fixed-Size": fixed_stats["chunk_count"],
+        "Fast Semantic": fast_stats["chunk_count"],
+        "Science Detail Semantic": science_stats["chunk_count"],
     }
     most_chunks = max(counts, key=counts.get)
     fewest_chunks = min(counts, key=counts.get)
@@ -237,19 +248,21 @@ def test_chunking_strategies_comparison():
 
     # Size consistency
     size_consistency = {
-        'Fixed-Size': fixed_stats['std_chunk_size'],
-        'Fast Semantic': fast_stats['std_chunk_size'],
-        'Science Detail Semantic': science_stats['std_chunk_size']
+        "Fixed-Size": fixed_stats["std_chunk_size"],
+        "Fast Semantic": fast_stats["std_chunk_size"],
+        "Science Detail Semantic": science_stats["std_chunk_size"],
     }
     most_consistent = min(size_consistency, key=size_consistency.get)
     logger.info("\n📏 Size Consistency (lower std = more consistent):")
-    logger.info(f"   Most consistent: {most_consistent} (std: {size_consistency[most_consistent]:.0f})")
+    logger.info(
+        f"   Most consistent: {most_consistent} (std: {size_consistency[most_consistent]:.0f})"
+    )
 
     # Semantic coherence
     coherence_scores = {
-        'Fixed-Size': fixed_coherence['avg_coherence'],
-        'Fast Semantic': fast_coherence['avg_coherence'],
-        'Science Detail Semantic': science_coherence['avg_coherence']
+        "Fixed-Size": fixed_coherence["avg_coherence"],
+        "Fast Semantic": fast_coherence["avg_coherence"],
+        "Science Detail Semantic": science_coherence["avg_coherence"],
     }
     most_coherent = max(coherence_scores, key=coherence_scores.get)
     logger.info("\n🧠 Semantic Coherence:")
@@ -262,10 +275,19 @@ def test_chunking_strategies_comparison():
 
     # Return stats for further analysis
     return {
-        'fixed': {'stats': fixed_stats, 'coherence': fixed_coherence, 'chunks': fixed_chunks},
-        'fast_semantic': {'stats': fast_stats, 'coherence': fast_coherence, 'chunks': fast_semantic_chunks},
-        'science_semantic': {'stats': science_stats, 'coherence': science_coherence, 'chunks': science_semantic_chunks}
+        "fixed": {"stats": fixed_stats, "coherence": fixed_coherence, "chunks": fixed_chunks},
+        "fast_semantic": {
+            "stats": fast_stats,
+            "coherence": fast_coherence,
+            "chunks": fast_semantic_chunks,
+        },
+        "science_semantic": {
+            "stats": science_stats,
+            "coherence": science_coherence,
+            "chunks": science_semantic_chunks,
+        },
     }
+
 
 def test_chunk_boundary_quality():
     """Test how well chunk boundaries align with semantic boundaries."""
@@ -273,15 +295,17 @@ def test_chunk_boundary_quality():
 
     fixed_chunker = FixedSizeChunking(chunk_size=1000, overlap=200)
     fast_semantic_chunker = FastSemanticChunking(chunk_size=1000, similarity_threshold=0.5)
-    science_semantic_chunker = ScienceDetailSemanticChunking(chunk_size=1000, similarity_threshold=0.5)
+    science_semantic_chunker = ScienceDetailSemanticChunking(
+        chunk_size=1000, similarity_threshold=0.5
+    )
 
     fixed_chunks = fixed_chunker.chunk(text)
     fast_chunks = fast_semantic_chunker.chunk(text)
     science_chunks = science_semantic_chunker.chunk(text)
 
-    logger.info("\n" + "="*80)
+    logger.info("\n" + "=" * 80)
     logger.info("CHUNK BOUNDARY QUALITY ANALYSIS")
-    logger.info("="*80)
+    logger.info("=" * 80)
 
     def analyze_boundaries(chunks, strategy_name):
         """Analyze chunk boundaries in detail."""
@@ -290,7 +314,7 @@ def test_chunk_boundary_quality():
         problematic_chunks = []
 
         for i, chunk in enumerate(chunks):
-            chunk_text = chunk.get('text', '').strip()
+            chunk_text = chunk.get("text", "").strip()
             if not chunk_text:
                 continue
 
@@ -308,25 +332,22 @@ def test_chunk_boundary_quality():
 
             # Check for mid-sentence break
             # A proper sentence ending should be: . ! ? followed by optional quote/space
-            is_sentence_end = (
-                last_char in '.!?' or
-                (last_char in '"\'' and len(stripped) > 1 and stripped[-2] in '.!?')
+            is_sentence_end = last_char in ".!?" or (
+                last_char in "\"'" and len(stripped) > 1 and stripped[-2] in ".!?"
             )
 
             if not is_sentence_end:
                 breaks += 1
-                problematic_chunks.append({
-                    'index': i,
-                    'ending': last_part,
-                    'last_char': repr(last_char)
-                })
+                problematic_chunks.append(
+                    {"index": i, "ending": last_part, "last_char": repr(last_char)}
+                )
 
         return {
-            'breaks': breaks,
-            'total': len(chunks),
-            'percentage': (breaks / len(chunks) * 100) if chunks else 0,
-            'endings': endings[:3],  # Show first 3 endings as samples
-            'problematic': problematic_chunks[:3]  # Show first 3 problematic chunks
+            "breaks": breaks,
+            "total": len(chunks),
+            "percentage": (breaks / len(chunks) * 100) if chunks else 0,
+            "endings": endings[:3],  # Show first 3 endings as samples
+            "problematic": problematic_chunks[:3],  # Show first 3 problematic chunks
         }
 
     fixed_analysis = analyze_boundaries(fixed_chunks, "Fixed-Size")
@@ -334,71 +355,83 @@ def test_chunk_boundary_quality():
     science_analysis = analyze_boundaries(science_chunks, "Science Detail Semantic")
 
     logger.info("\nMid-sentence breaks (chunks not ending with . ! ?):")
-    logger.info(f"  Fixed-Size: {fixed_analysis['breaks']}/{fixed_analysis['total']} chunks ({fixed_analysis['percentage']:.1f}%)")
-    logger.info(f"  Fast Semantic: {fast_analysis['breaks']}/{fast_analysis['total']} chunks ({fast_analysis['percentage']:.1f}%)")
-    logger.info(f"  Science Detail Semantic: {science_analysis['breaks']}/{science_analysis['total']} chunks ({science_analysis['percentage']:.1f}%)")
+    logger.info(
+        f"  Fixed-Size: {fixed_analysis['breaks']}/{fixed_analysis['total']} chunks ({fixed_analysis['percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Fast Semantic: {fast_analysis['breaks']}/{fast_analysis['total']} chunks ({fast_analysis['percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Science Detail Semantic: {science_analysis['breaks']}/{science_analysis['total']} chunks ({science_analysis['percentage']:.1f}%)"
+    )
 
     # Show sample chunk endings
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("SAMPLE CHUNK ENDINGS (last 50 chars of each chunk)")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     logger.info("\nFixed-Size (first 3 chunks):")
-    for i, ending in enumerate(fixed_analysis['endings'], 1):
+    for i, ending in enumerate(fixed_analysis["endings"], 1):
         logger.info(f"  Chunk {i}: ...{ending[-30:]}")
 
     logger.info("\nFast Semantic (first 3 chunks):")
-    for i, ending in enumerate(fast_analysis['endings'], 1):
+    for i, ending in enumerate(fast_analysis["endings"], 1):
         logger.info(f"  Chunk {i}: ...{ending[-30:]}")
 
     logger.info("\nScience Detail Semantic (first 3 chunks):")
-    for i, ending in enumerate(science_analysis['endings'], 1):
+    for i, ending in enumerate(science_analysis["endings"], 1):
         logger.info(f"  Chunk {i}: ...{ending[-30:]}")
 
     # Show problematic chunks if any
-    if fixed_analysis['problematic'] or fast_analysis['problematic'] or science_analysis['problematic']:
-        logger.info("\n" + "-"*80)
+    if (
+        fixed_analysis["problematic"]
+        or fast_analysis["problematic"]
+        or science_analysis["problematic"]
+    ):
+        logger.info("\n" + "-" * 80)
         logger.info("PROBLEMATIC CHUNKS (ending mid-sentence)")
-        logger.info("-"*80)
+        logger.info("-" * 80)
 
-        if fixed_analysis['problematic']:
+        if fixed_analysis["problematic"]:
             logger.info("\nFixed-Size:")
-            for prob in fixed_analysis['problematic']:
+            for prob in fixed_analysis["problematic"]:
                 logger.info(f"  Chunk {prob['index']}: ends with {prob['last_char']}")
                 logger.info(f"    ...{prob['ending'][-40:]}")
 
-        if fast_analysis['problematic']:
+        if fast_analysis["problematic"]:
             logger.info("\nFast Semantic:")
-            for prob in fast_analysis['problematic']:
+            for prob in fast_analysis["problematic"]:
                 logger.info(f"  Chunk {prob['index']}: ends with {prob['last_char']}")
                 logger.info(f"    ...{prob['ending'][-40:]}")
 
-        if science_analysis['problematic']:
+        if science_analysis["problematic"]:
             logger.info("\nScience Detail Semantic:")
-            for prob in science_analysis['problematic']:
+            for prob in science_analysis["problematic"]:
                 logger.info(f"  Chunk {prob['index']}: ends with {prob['last_char']}")
                 logger.info(f"    ...{prob['ending'][-40:]}")
     else:
         logger.info("\n✓ All chunks appear to end at sentence boundaries!")
 
     # Additional analysis: check for incomplete sentences
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("SENTENCE COMPLETENESS CHECK")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     def check_sentence_completeness(chunks):
         """Check if chunks contain complete sentences."""
         incomplete = 0
         for chunk in chunks:
-            text = chunk.get('text', '').strip()
+            text = chunk.get("text", "").strip()
             # Count sentences (simple heuristic: periods followed by space or end)
-            sentences = [s.strip() for s in text.split('.') if s.strip()]
+            sentences = [s.strip() for s in text.split(".") if s.strip()]
             # If last "sentence" doesn't end with punctuation, might be incomplete
-            if sentences and not any(sentences[-1].endswith(p) for p in ['.', '!', '?', '"', "'"]):
+            if sentences and not any(sentences[-1].endswith(p) for p in [".", "!", "?", '"', "'"]):
                 # Check if it's actually incomplete or just the last sentence
                 last_sent = sentences[-1]
                 # If it's very short or doesn't look like a complete thought
-                if len(last_sent) < 20 and not any(word in last_sent.lower() for word in ['the', 'a', 'an', 'is', 'are']):
+                if len(last_sent) < 20 and not any(
+                    word in last_sent.lower() for word in ["the", "a", "an", "is", "are"]
+                ):
                     incomplete += 1
         return incomplete
 
@@ -412,14 +445,14 @@ def test_chunk_boundary_quality():
     logger.info(f"  Science Detail Semantic: {science_incomplete}/{len(science_chunks)} chunks")
 
     # Paragraph break analysis
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("PARAGRAPH BOUNDARY ANALYSIS")
-    logger.info("-"*80)
+    logger.info("-" * 80)
 
     def analyze_paragraph_breaks(chunks, original_text):
         """Analyze if chunks break at paragraph boundaries."""
         # Split original text into paragraphs (double newlines or significant whitespace)
-        paragraphs = [p.strip() for p in original_text.split('\n\n') if p.strip()]
+        paragraphs = [p.strip() for p in original_text.split("\n\n") if p.strip()]
         paragraph_starts = [original_text.find(p) for p in paragraphs]
 
         mid_paragraph_breaks = 0
@@ -430,12 +463,12 @@ def test_chunk_boundary_quality():
             current_chunk = chunks[i]
             next_chunk = chunks[i + 1]
 
-            current_text = current_chunk.get('text', '')
-            next_text = next_chunk.get('text', '')
+            current_text = current_chunk.get("text", "")
+            next_text = next_chunk.get("text", "")
 
             # Find where current chunk ends in original text
             # This is approximate - we'll use chunk boundaries
-            current_end_pos = current_chunk.get('end_char', len(current_text))
+            current_end_pos = current_chunk.get("end_char", len(current_text))
 
             # Check if break is at paragraph boundary
             # A paragraph boundary is typically: end of paragraph + whitespace + start of next
@@ -455,8 +488,10 @@ def test_chunk_boundary_quality():
 
             if current_ends_clean and next_starts_clean:
                 # Check for paragraph-like break: ends with punctuation, next starts with capital/number
-                ends_with_punct = current_ends_clean[-1] in '.!?'
-                starts_with_capital = next_starts_clean[0].isupper() or next_starts_clean[0].isdigit()
+                ends_with_punct = current_ends_clean[-1] in ".!?"
+                starts_with_capital = (
+                    next_starts_clean[0].isupper() or next_starts_clean[0].isdigit()
+                )
 
                 if ends_with_punct and starts_with_capital:
                     # Check if there's significant whitespace (paragraph break)
@@ -469,19 +504,31 @@ def test_chunk_boundary_quality():
                 mid_paragraph_breaks += 1
                 # Store details for first few problematic breaks
                 if len(break_details) < 3:
-                    break_details.append({
-                        'chunk_index': i,
-                        'current_ending': current_ends_clean[-30:] if len(current_ends_clean) > 30 else current_ends_clean,
-                        'next_starting': next_starts_clean[:30] if len(next_starts_clean) > 30 else next_starts_clean
-                    })
+                    break_details.append(
+                        {
+                            "chunk_index": i,
+                            "current_ending": (
+                                current_ends_clean[-30:]
+                                if len(current_ends_clean) > 30
+                                else current_ends_clean
+                            ),
+                            "next_starting": (
+                                next_starts_clean[:30]
+                                if len(next_starts_clean) > 30
+                                else next_starts_clean
+                            ),
+                        }
+                    )
 
         total_breaks = len(chunks) - 1
         return {
-            'mid_paragraph': mid_paragraph_breaks,
-            'paragraph_boundary': paragraph_boundary_breaks,
-            'total_breaks': total_breaks,
-            'paragraph_boundary_percentage': (paragraph_boundary_breaks / total_breaks * 100) if total_breaks > 0 else 0,
-            'break_details': break_details
+            "mid_paragraph": mid_paragraph_breaks,
+            "paragraph_boundary": paragraph_boundary_breaks,
+            "total_breaks": total_breaks,
+            "paragraph_boundary_percentage": (
+                (paragraph_boundary_breaks / total_breaks * 100) if total_breaks > 0 else 0
+            ),
+            "break_details": break_details,
         }
 
     fixed_para_analysis = analyze_paragraph_breaks(fixed_chunks, text)
@@ -489,33 +536,43 @@ def test_chunk_boundary_quality():
     science_para_analysis = analyze_paragraph_breaks(science_chunks, text)
 
     logger.info("\nParagraph boundary breaks (chunks breaking at paragraph boundaries):")
-    logger.info(f"  Fixed-Size: {fixed_para_analysis['paragraph_boundary']}/{fixed_para_analysis['total_breaks']} breaks ({fixed_para_analysis['paragraph_boundary_percentage']:.1f}%)")
-    logger.info(f"  Fast Semantic: {fast_para_analysis['paragraph_boundary']}/{fast_para_analysis['total_breaks']} breaks ({fast_para_analysis['paragraph_boundary_percentage']:.1f}%)")
-    logger.info(f"  Science Detail Semantic: {science_para_analysis['paragraph_boundary']}/{science_para_analysis['total_breaks']} breaks ({science_para_analysis['paragraph_boundary_percentage']:.1f}%)")
+    logger.info(
+        f"  Fixed-Size: {fixed_para_analysis['paragraph_boundary']}/{fixed_para_analysis['total_breaks']} breaks ({fixed_para_analysis['paragraph_boundary_percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Fast Semantic: {fast_para_analysis['paragraph_boundary']}/{fast_para_analysis['total_breaks']} breaks ({fast_para_analysis['paragraph_boundary_percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Science Detail Semantic: {science_para_analysis['paragraph_boundary']}/{science_para_analysis['total_breaks']} breaks ({science_para_analysis['paragraph_boundary_percentage']:.1f}%)"
+    )
 
-    if fixed_para_analysis['break_details'] or fast_para_analysis['break_details'] or science_para_analysis['break_details']:
+    if (
+        fixed_para_analysis["break_details"]
+        or fast_para_analysis["break_details"]
+        or science_para_analysis["break_details"]
+    ):
         logger.info("\nMid-paragraph breaks (first 3 examples):")
-        if fixed_para_analysis['break_details']:
+        if fixed_para_analysis["break_details"]:
             logger.info("\n  Fixed-Size:")
-            for detail in fixed_para_analysis['break_details']:
+            for detail in fixed_para_analysis["break_details"]:
                 logger.info(f"    Break after chunk {detail['chunk_index']}:")
                 logger.info(f"      ...{detail['current_ending']}")
                 logger.info(f"      {detail['next_starting']}...")
 
     # Overlap quality analysis
-    logger.info("\n" + "-"*80)
+    logger.info("\n" + "-" * 80)
     logger.info("OVERLAP QUALITY ANALYSIS")
-    logger.info("-"*80)
+    logger.info("-" * 80)
     logger.info("(Only applies to Fixed-Size chunking with overlap)")
 
     def analyze_overlap_quality(chunks, overlap_size=200):
         """Analyze the quality of overlaps between chunks."""
         if len(chunks) < 2:
             return {
-                'total_overlaps': 0,
-                'meaningful_overlaps': 0,
-                'sentence_boundary_overlaps': 0,
-                'avg_overlap_size': 0
+                "total_overlaps": 0,
+                "meaningful_overlaps": 0,
+                "sentence_boundary_overlaps": 0,
+                "avg_overlap_size": 0,
             }
 
         meaningful_overlaps = 0
@@ -526,8 +583,8 @@ def test_chunk_boundary_quality():
             current_chunk = chunks[i]
             next_chunk = chunks[i + 1]
 
-            current_text = current_chunk.get('text', '').strip()
-            next_text = next_chunk.get('text', '').strip()
+            current_text = current_chunk.get("text", "").strip()
+            next_text = next_chunk.get("text", "").strip()
 
             # Find overlap by comparing end of current with start of next
             # Simple approach: check last N chars of current vs first N chars of next
@@ -557,29 +614,32 @@ def test_chunk_boundary_quality():
 
                 # Check if overlap region starts with sentence beginning (capital letter after punctuation)
                 # or ends with sentence ending (punctuation)
-                starts_at_sentence = (
-                    next_start[0].isupper() or
-                    (len(next_start) > 1 and next_start[0] in ' \n' and next_start[1].isupper())
+                starts_at_sentence = next_start[0].isupper() or (
+                    len(next_start) > 1 and next_start[0] in " \n" and next_start[1].isupper()
                 )
-                ends_at_sentence = current_end[-1] in '.!?'
+                ends_at_sentence = current_end[-1] in ".!?"
 
                 if starts_at_sentence or ends_at_sentence:
                     sentence_boundary_overlaps += 1
 
                 # Check if overlap is "meaningful" (contains complete words, not mid-word)
                 # Simple heuristic: check if overlap contains spaces (suggests complete words)
-                if ' ' in current_end or ' ' in next_start:
+                if " " in current_end or " " in next_start:
                     meaningful_overlaps += 1
 
         total_overlaps = len(chunks) - 1
         return {
-            'total_overlaps': total_overlaps,
-            'meaningful_overlaps': meaningful_overlaps,
-            'meaningful_percentage': (meaningful_overlaps / total_overlaps * 100) if total_overlaps > 0 else 0,
-            'sentence_boundary_overlaps': sentence_boundary_overlaps,
-            'sentence_boundary_percentage': (sentence_boundary_overlaps / total_overlaps * 100) if total_overlaps > 0 else 0,
-            'avg_overlap_size': np.mean(overlap_sizes) if overlap_sizes else 0,
-            'overlap_sizes': overlap_sizes
+            "total_overlaps": total_overlaps,
+            "meaningful_overlaps": meaningful_overlaps,
+            "meaningful_percentage": (
+                (meaningful_overlaps / total_overlaps * 100) if total_overlaps > 0 else 0
+            ),
+            "sentence_boundary_overlaps": sentence_boundary_overlaps,
+            "sentence_boundary_percentage": (
+                (sentence_boundary_overlaps / total_overlaps * 100) if total_overlaps > 0 else 0
+            ),
+            "avg_overlap_size": np.mean(overlap_sizes) if overlap_sizes else 0,
+            "overlap_sizes": overlap_sizes,
         }
 
     # Only Fixed-Size chunking uses overlap
@@ -587,21 +647,28 @@ def test_chunk_boundary_quality():
 
     logger.info("\nFixed-Size Overlap Analysis (target overlap: 200 chars):")
     logger.info(f"  Total overlaps: {fixed_overlap_analysis['total_overlaps']}")
-    logger.info(f"  Meaningful overlaps (contain complete words): {fixed_overlap_analysis['meaningful_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['meaningful_percentage']:.1f}%)")
-    logger.info(f"  Sentence boundary overlaps: {fixed_overlap_analysis['sentence_boundary_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['sentence_boundary_percentage']:.1f}%)")
-    logger.info(f"  Average overlap size: {fixed_overlap_analysis['avg_overlap_size']:.0f} characters")
+    logger.info(
+        f"  Meaningful overlaps (contain complete words): {fixed_overlap_analysis['meaningful_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['meaningful_percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Sentence boundary overlaps: {fixed_overlap_analysis['sentence_boundary_overlaps']}/{fixed_overlap_analysis['total_overlaps']} ({fixed_overlap_analysis['sentence_boundary_percentage']:.1f}%)"
+    )
+    logger.info(
+        f"  Average overlap size: {fixed_overlap_analysis['avg_overlap_size']:.0f} characters"
+    )
 
     # Overlap quality score
-    if fixed_overlap_analysis['total_overlaps'] > 0:
-        quality_score = (
-            (fixed_overlap_analysis['meaningful_percentage'] / 100) * 0.5 +
-            (fixed_overlap_analysis['sentence_boundary_percentage'] / 100) * 0.5
-        )
+    if fixed_overlap_analysis["total_overlaps"] > 0:
+        quality_score = (fixed_overlap_analysis["meaningful_percentage"] / 100) * 0.5 + (
+            fixed_overlap_analysis["sentence_boundary_percentage"] / 100
+        ) * 0.5
         logger.info(f"  Overall overlap quality score: {quality_score:.2f}/1.0")
         logger.info("    (0.5 = meaningful overlaps, 0.5 = sentence boundaries)")
 
     # For semantic chunking, check if there's any natural overlap/continuity
-    logger.info("\nSemantic Chunking Continuity (no explicit overlap, but check for context preservation):")
+    logger.info(
+        "\nSemantic Chunking Continuity (no explicit overlap, but check for context preservation):"
+    )
 
     def check_semantic_continuity(chunks):
         """Check if semantic chunks maintain context continuity."""
@@ -611,8 +678,8 @@ def test_chunk_boundary_quality():
             current_chunk = chunks[i]
             next_chunk = chunks[i + 1]
 
-            current_text = current_chunk.get('text', '').strip()
-            next_text = next_chunk.get('text', '').strip()
+            current_text = current_chunk.get("text", "").strip()
+            next_text = next_chunk.get("text", "").strip()
 
             # Check if chunks are topically related
             # Simple heuristic: check for common words (excluding very common words)
@@ -621,7 +688,18 @@ def test_chunk_boundary_quality():
 
             common_words = current_words.intersection(next_words)
             # Exclude very common words
-            stop_words = {'that', 'this', 'with', 'from', 'their', 'there', 'these', 'those', 'which', 'would'}
+            stop_words = {
+                "that",
+                "this",
+                "with",
+                "from",
+                "their",
+                "there",
+                "these",
+                "those",
+                "which",
+                "would",
+            }
             common_words = common_words - stop_words
 
             if len(current_words) > 0 and len(next_words) > 0:
@@ -629,25 +707,29 @@ def test_chunk_boundary_quality():
                 continuity_scores.append(continuity)
 
         return {
-            'avg_continuity': np.mean(continuity_scores) if continuity_scores else 0,
-            'min_continuity': np.min(continuity_scores) if continuity_scores else 0,
-            'max_continuity': np.max(continuity_scores) if continuity_scores else 0
+            "avg_continuity": np.mean(continuity_scores) if continuity_scores else 0,
+            "min_continuity": np.min(continuity_scores) if continuity_scores else 0,
+            "max_continuity": np.max(continuity_scores) if continuity_scores else 0,
         }
 
     fast_continuity = check_semantic_continuity(fast_chunks)
     science_continuity = check_semantic_continuity(science_chunks)
 
-    logger.info(f"  Fast Semantic continuity: {fast_continuity['avg_continuity']:.3f} (higher = better context preservation)")
-    logger.info(f"  Science Detail Semantic continuity: {science_continuity['avg_continuity']:.3f} (higher = better context preservation)")
+    logger.info(
+        f"  Fast Semantic continuity: {fast_continuity['avg_continuity']:.3f} (higher = better context preservation)"
+    )
+    logger.info(
+        f"  Science Detail Semantic continuity: {science_continuity['avg_continuity']:.3f} (higher = better context preservation)"
+    )
 
     assert True  # Test always passes, this is for analysis
+
 
 if __name__ == "__main__":
     # Run comparative analysis
     logger.info("Running comparative chunking analysis...")
     test_chunking_strategies_comparison()
     test_chunk_boundary_quality()
-    logger.info("\n" + "="*80)
+    logger.info("\n" + "=" * 80)
     logger.info("Analysis complete!")
-    logger.info("="*80)
-
+    logger.info("=" * 80)

@@ -2,7 +2,6 @@
 Integration tests for FastAPI service.
 """
 
-
 # Add project root to Python path
 
 
@@ -11,10 +10,12 @@ from fastapi.testclient import TestClient
 from rag_system.rag_service import app
 import os
 
+
 @pytest.fixture
 def client():
     """Create test client."""
     return TestClient(app)
+
 
 def test_root_endpoint(client):
     """Test root endpoint."""
@@ -24,6 +25,7 @@ def test_root_endpoint(client):
     assert "service" in data
     assert "endpoints" in data
 
+
 def test_health_endpoint(client):
     """Test health check endpoint."""
     response = client.get("/health")
@@ -31,20 +33,19 @@ def test_health_endpoint(client):
     data = response.json()
     assert "status" in data
 
+
 def test_query_endpoint_missing_key(client):
     """Test query endpoint with missing query."""
     response = client.post("/query", json={})
     assert response.status_code == 422  # Validation error
 
+
 def test_query_endpoint(client):
     """Test query endpoint."""
-    if not os.getenv('GROQ_API_KEY'):
+    if not os.getenv("GROQ_API_KEY"):
         pytest.skip("GROQ_API_KEY not set")
 
-    response = client.post(
-        "/query",
-        json={"query": "What is reinforcement learning?", "top_k": 3}
-    )
+    response = client.post("/query", json={"query": "What is reinforcement learning?", "top_k": 3})
 
     # Should either succeed, fail gracefully, or return 404 if the vector store is empty
     assert response.status_code in [200, 404, 500]
@@ -54,6 +55,7 @@ def test_query_endpoint(client):
         assert "answer" in data
         assert "sources" in data
         assert "query" in data
+
 
 def test_rebuild_index_endpoint_no_papers(client):
     """Test rebuild_index endpoint when no papers exist."""
@@ -65,6 +67,7 @@ def test_rebuild_index_endpoint_no_papers(client):
     # This will return 404 if file doesn't exist, 500 if other error
     response = client.post("/rebuild_index?chunking_strategy=fixed")
     assert response.status_code in [200, 404, 500]
+
 
 def test_query_request_model():
     """Test QueryRequest model validation."""
@@ -78,4 +81,3 @@ def test_query_request_model():
     # Default top_k
     request = QueryRequest(query="Test query")
     assert request.top_k == 5
-

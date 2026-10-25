@@ -8,34 +8,35 @@ logger = logging.getLogger(__name__)
 from src.integrations.google_calendar_authentication_helper import get_calendar_credentials
 
 from src.utils.path_utils import load_env_vars
+
 load_env_vars()
 
 # This defines what our app is allowed to do.
 # Using read-write access to enable syncing actual activities back to calendar
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+SCOPES = ["https://www.googleapis.com/auth/calendar"]
+
 
 def get_calendar_service():
     """
     Handles the OAuth 2.0 flow and returns a service object to interact with the API.
-    
-    Note: 
+
+    Note:
     - credentials.json should be from the Google Cloud project (see .auth/ directory)
     - token.json will be created for the authenticated user account during OAuth flow
     - Token is cached so user doesn't need to re-authenticate every time
-    
+
     Returns:
         googleapiclient.discovery.Resource: Calendar API service object
-        
+
     Raises:
         FileNotFoundError: If credentials.json is not found
         Exception: If OAuth flow fails
     """
     try:
         creds = get_calendar_credentials(scopes=SCOPES)
-        service = build('calendar', 'v3', credentials=creds, cache_discovery=False)
+        service = build("calendar", "v3", credentials=creds, cache_discovery=False)
         logger.info("Calendar service initialized successfully via helper.")
         return service
     except Exception as e:
         logger.error(f"Failed to build calendar service: {e}")
         raise
-

@@ -3,16 +3,18 @@ User routes.
 
 Handles user profile and Nexus Guild invitation.
 """
+
 import logging
 from flask import Blueprint, request, jsonify
 
 from src.database.mongo_storage import SovereignMongoStorage
 from src.routes.auth_middleware import require_api_key
 
-user_bp = Blueprint('user', __name__)
+user_bp = Blueprint("user", __name__)
 logger = logging.getLogger("APP_ROUTER")
 
-@user_bp.route('/profile', methods=['GET'])
+
+@user_bp.route("/profile", methods=["GET"])
 @require_api_key
 def get_profile():
     """
@@ -29,19 +31,22 @@ def get_profile():
             return jsonify({"error": "User not found"}), 404
 
         # Don't return sensitive stuff if any
-        return jsonify({
-            "email": user_doc.get("email"),
-            "username": user_doc.get("username"),
-            "profile": user_doc.get("profile"),
-            "guild_invite_status": user_doc.get("guild_invite_status", "pending"),
-            "role": user_doc.get("role", "user"),
-            "privacy_opt_in_analytics": user_doc.get("privacy_opt_in_analytics", False)
-        })
+        return jsonify(
+            {
+                "email": user_doc.get("email"),
+                "username": user_doc.get("username"),
+                "profile": user_doc.get("profile"),
+                "guild_invite_status": user_doc.get("guild_invite_status", "pending"),
+                "role": user_doc.get("role", "user"),
+                "privacy_opt_in_analytics": user_doc.get("privacy_opt_in_analytics", False),
+            }
+        )
     except Exception as e:
         logger.error(f"Error fetching profile for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@user_bp.route('/profile/username', methods=['PUT'])
+
+@user_bp.route("/profile/username", methods=["PUT"])
 @require_api_key
 def update_username():
     """
@@ -68,10 +73,9 @@ def update_username():
         success = storage.update_username(user_email, new_username.strip())
 
         if success:
-            return jsonify({
-                "message": "Username updated successfully.",
-                "username": new_username.strip()
-            })
+            return jsonify(
+                {"message": "Username updated successfully.", "username": new_username.strip()}
+            )
         else:
             return jsonify({"error": "Failed to update username"}), 500
 
@@ -79,7 +83,8 @@ def update_username():
         logger.error(f"Error updating username for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@user_bp.route('/invite', methods=['POST'])
+
+@user_bp.route("/invite", methods=["POST"])
 @require_api_key
 def update_invite_status():
     """
@@ -102,10 +107,7 @@ def update_invite_status():
 
         if success:
             logger.info(f"User {user_email} {status} the Nexus Guild invitation.")
-            return jsonify({
-                "message": f"Invitation {status}.",
-                "guild_invite_status": status
-            })
+            return jsonify({"message": f"Invitation {status}.", "guild_invite_status": status})
         else:
             return jsonify({"error": "Failed to update invitation status"}), 500
 
@@ -113,7 +115,8 @@ def update_invite_status():
         logger.error(f"Error updating invite for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-@user_bp.route('/opt_in_analytics', methods=['POST'])
+
+@user_bp.route("/opt_in_analytics", methods=["POST"])
 @require_api_key
 def update_analytics_opt_in():
     """
@@ -134,10 +137,12 @@ def update_analytics_opt_in():
         success = storage.toggle_privacy_opt_in(user_email, bool(opt_in))
 
         if success:
-            return jsonify({
-                "message": "Privacy preferences updated.",
-                "privacy_opt_in_analytics": bool(opt_in)
-            })
+            return jsonify(
+                {
+                    "message": "Privacy preferences updated.",
+                    "privacy_opt_in_analytics": bool(opt_in),
+                }
+            )
         else:
             return jsonify({"error": "Failed to update privacy preferences"}), 500
 

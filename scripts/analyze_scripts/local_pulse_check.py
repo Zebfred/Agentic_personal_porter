@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import json
 from datetime import datetime
@@ -6,6 +7,7 @@ from datetime import datetime
 # Setup path so we can import from src
 
 from src.utils.path_utils import load_env_vars
+
 
 def run_pulse_check():
     """
@@ -17,6 +19,7 @@ def run_pulse_check():
     load_env_vars()
     try:
         from src.utils.pulse_service import PulseService
+
         pulse_data = PulseService.get_system_heartbeat()
 
         class DateTimeEncoder(json.JSONEncoder):
@@ -27,6 +30,7 @@ def run_pulse_check():
 
         # Write to log file
         from src.utils.path_utils import get_project_root
+
         log_dir = get_project_root() / "scripts/analyze_scripts/logs"
         log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,6 +45,7 @@ def run_pulse_check():
 
     except Exception as e:
         logger.info(f"Error running pulse check: {e}")
+
 
 if __name__ == "__main__":
     run_pulse_check()

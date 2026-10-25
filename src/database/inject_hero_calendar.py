@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import os
 from datetime import datetime
@@ -9,11 +10,13 @@ from src.constants import ACTUAL_CATEGORY_MAPPING
 from src.database.neo4j_client.connection import get_driver
 from src.database.inject_hero_foundation import get_or_create_time_chunk
 
+
 class SovereignGraphInjector:
     """
     Handles the high-stakes MERGE logic into the Neo4j Identity Graph.
     Uses the 'Twin-Track' ingestion logic to separate Intent from Actual.
     """
+
     # Programmatically reverse your dictionary so we map Mongo Pillar -> Neo4j Intent
     REVERSE_INTENT_MAP = {
         v: k for k, v in ACTUAL_CATEGORY_MAPPING["intent_to_actual_mapping"].items()
@@ -23,14 +26,16 @@ class SovereignGraphInjector:
         self.driver = get_driver()
 
     def close(self):
-        if hasattr(self, 'driver') and self.driver:
+        if hasattr(self, "driver") and self.driver:
             self.driver.close()
 
     def inject_calendar_to_graph(self, formatted_events, user_email=None, username="system"):
         if user_email is None:
             user_email = os.environ.get("NEXUS_ADMIN_EMAIL", "")
         if not user_email:
-            raise ValueError("user_email is required: pass it explicitly or set NEXUS_ADMIN_EMAIL env var.")
+            raise ValueError(
+                "user_email is required: pass it explicitly or set NEXUS_ADMIN_EMAIL env var."
+            )
 
         intent_events = []
         actual_events = []
@@ -39,7 +44,7 @@ class SovereignGraphInjector:
         for raw_event in formatted_events:
             # Unpack unified_events schema
             intent_data = raw_event.get("intent", {})
-            actual_data = raw_event.get("actual", {}) # May not exist yet if only intent
+            actual_data = raw_event.get("actual", {})  # May not exist yet if only intent
             time_slot = raw_event.get("time_slot", {})
             metadata = raw_event.get("metadata", {})
 
@@ -51,13 +56,15 @@ class SovereignGraphInjector:
                 "pillar": intent_data.get("pillar_id", "Uncategorized"),
                 "subcategory": intent_data.get("subcategory", "Uncategorized"),
                 # We assume these are intents initially unless actual data exists
-                "record_type": "Actual" if actual_data else "Intent"
+                "record_type": "Actual" if actual_data else "Intent",
             }
 
             # If it has actual data, overlay it
             if actual_data:
                 event["title"] = actual_data.get("title", event["title"])
-                event["duration_minutes"] = actual_data.get("duration_minutes", event["duration_minutes"])
+                event["duration_minutes"] = actual_data.get(
+                    "duration_minutes", event["duration_minutes"]
+                )
                 event["human_confirmed"] = actual_data.get("human_confirmed", False)
                 event["matches_intent"] = actual_data.get("matches_intent", False)
                 event["is_valuable_detour"] = actual_data.get("is_valuable_detour", False)
@@ -159,19 +166,24 @@ class SovereignGraphInjector:
         try:
             with self.driver.session() as session:
                 if intent_events:
-                    result_i = session.run(intent_query, user_email=user_email, events=intent_events)
+                    result_i = session.run(
+                        intent_query, user_email=user_email, events=intent_events
+                    )
                     summary_i = result_i.single()
-                    injected_count += (summary_i["count"] if summary_i else 0)
+                    injected_count += summary_i["count"] if summary_i else 0
 
                 if actual_events:
-                    result_a = session.run(actual_query, user_email=user_email, events=actual_events)
+                    result_a = session.run(
+                        actual_query, user_email=user_email, events=actual_events
+                    )
                     summary_a = result_a.single()
-                    injected_count += (summary_a["count"] if summary_a else 0)
+                    injected_count += summary_a["count"] if summary_a else 0
 
             return injected_count
         except Exception as e:
             logger.info(f"![GRAPH ERROR]: Failed to inject events: {e}")
             return 0
+
 
 if __name__ == "__main__":
     # Test block for manual verification
@@ -186,7 +198,7 @@ if __name__ == "__main__":
                 "record_type": "Intent",
                 "start": "2026-03-03T09:00:00-06:00",
                 "subcategory": "Deep Work",
-                "title": "Planned Work Session"
+                "title": "Planned Work Session",
             },
             {
                 "gcal_id": "actual_test_456",
@@ -199,8 +211,8 @@ if __name__ == "__main__":
                 "title": "Replan of implementation for Porter Project",
                 "human_confirmed": True,
                 "matches_intent": True,
-                "is_valuable_detour": False
-            }
+                "is_valuable_detour": False,
+            },
         ]
         count = injector.inject_calendar_to_graph(sample_mongo_payload)
         logger.info(f"Injected {count} test events into Neo4j.")

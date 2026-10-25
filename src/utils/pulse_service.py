@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class PulseService:
     @staticmethod
     def get_system_heartbeat():
@@ -32,39 +33,61 @@ class PulseService:
             try:
                 driver = get_driver()
                 with driver.session() as session:
-                    node_res = session.execute_read(lambda tx: tx.run("MATCH (n) RETURN count(n) as c").single())
-                    if node_res: neo4j_node_count = node_res["c"]
+                    node_res = session.execute_read(
+                        lambda tx: tx.run("MATCH (n) RETURN count(n) as c").single()
+                    )
+                    if node_res:
+                        neo4j_node_count = node_res["c"]
 
-                    edge_res = session.execute_read(lambda tx: tx.run("MATCH ()-[r]->() RETURN count(r) as c").single())
-                    if edge_res: neo4j_edge_count = edge_res["c"]
+                    edge_res = session.execute_read(
+                        lambda tx: tx.run("MATCH ()-[r]->() RETURN count(r) as c").single()
+                    )
+                    if edge_res:
+                        neo4j_edge_count = edge_res["c"]
 
-                    day_res = session.execute_read(lambda tx: tx.run("MATCH (d:Day) RETURN d.date as date ORDER BY d.date DESC LIMIT 1").single())
-                    if day_res: latest_day_node = day_res["date"]
+                    day_res = session.execute_read(
+                        lambda tx: tx.run(
+                            "MATCH (d:Day) RETURN d.date as date ORDER BY d.date DESC LIMIT 1"
+                        ).single()
+                    )
+                    if day_res:
+                        latest_day_node = day_res["date"]
             except Exception as e:
                 logger.error(f"Error querying Neo4j for Pulse: {e}")
 
             db = storage.db
             mongo_counts = {
                 "raw_calendar_events": db[MongoConfig.RAW_COLLECTION].estimated_document_count(),
-                "formatted_calendar_events": db[MongoConfig.FORMATTED_COLLECTION].estimated_document_count(),
-                "daily_categorized_events": db[MongoConfig.DAILY_CATEGORIZED_EVENTS].estimated_document_count(),
-                "calendar_events_timeseries": db[MongoConfig.RAW_TIMESERIES_COLLECTION].estimated_document_count(),
+                "formatted_calendar_events": db[
+                    MongoConfig.FORMATTED_COLLECTION
+                ].estimated_document_count(),
+                "daily_categorized_events": db[
+                    MongoConfig.DAILY_CATEGORIZED_EVENTS
+                ].estimated_document_count(),
+                "calendar_events_timeseries": db[
+                    MongoConfig.RAW_TIMESERIES_COLLECTION
+                ].estimated_document_count(),
                 "event_intentions": db[MongoConfig.INTENT_COLLECTION].estimated_document_count(),
                 "event_actuals": db[MongoConfig.ACTUAL_COLLECTION].estimated_document_count(),
-                "unified_events": db[MongoConfig.UNIFIED_EVENTS_COLLECTION].estimated_document_count(),
-                "journal_time_entries": db['journal_time_entries'].estimated_document_count(),
-                "agent_reflections": db['agent_reflections'].estimated_document_count(),
-                "first_serving_traces": db['first_serving_traces'].estimated_document_count(),
-                "weekly_expectations": db['weekly_expectations'].estimated_document_count()
+                "unified_events": db[
+                    MongoConfig.UNIFIED_EVENTS_COLLECTION
+                ].estimated_document_count(),
+                "journal_time_entries": db["journal_time_entries"].estimated_document_count(),
+                "agent_reflections": db["agent_reflections"].estimated_document_count(),
+                "first_serving_traces": db["first_serving_traces"].estimated_document_count(),
+                "weekly_expectations": db["weekly_expectations"].estimated_document_count(),
             }
 
             # LangSmith / Environment Check
             langchain_project = os.getenv("LANGCHAIN_PROJECT", "porter_mach_3")
             env_status = {
-                "LANGCHAIN_API_KEY_CONFIGURED": bool(os.getenv("LANGCHAIN_API_KEY") and os.getenv("LANGCHAIN_API_KEY") != "YOUR_API_KEY_HERE"),
+                "LANGCHAIN_API_KEY_CONFIGURED": bool(
+                    os.getenv("LANGCHAIN_API_KEY")
+                    and os.getenv("LANGCHAIN_API_KEY") != "YOUR_API_KEY_HERE"
+                ),
                 "LANGCHAIN_TRACING_V2": os.getenv("LANGCHAIN_TRACING_V2", "false"),
                 "LANGCHAIN_PROJECT": langchain_project,
-                "OPENAI_API_KEY_CONFIGURED": bool(os.getenv("OPENAI_API_KEY"))
+                "OPENAI_API_KEY_CONFIGURED": bool(os.getenv("OPENAI_API_KEY")),
             }
 
             # Pull Last 5 Traces from LangSmith
@@ -72,28 +95,35 @@ class PulseService:
             try:
                 if env_status["LANGCHAIN_API_KEY_CONFIGURED"]:
                     from langsmith import Client
+
                     ls_client = Client()
                     runs = ls_client.list_runs(
-                        project_name=langchain_project,
-                        is_root=True,
-                        limit=5
+                        project_name=langchain_project, is_root=True, limit=5
                     )
                     for r in runs:
-                        recent_traces.append({
-                            "name": r.name,
-                            "status": "error" if r.error else "success",
-                            "error": r.error,
-                            "total_tokens": r.total_tokens,
-                            "latency_seconds": (r.end_time - r.start_time).total_seconds() if r.end_time and r.start_time else None,
-                            "start_time": r.start_time.isoformat() if r.start_time else None
-                        })
+                        recent_traces.append(
+                            {
+                                "name": r.name,
+                                "status": "error" if r.error else "success",
+                                "error": r.error,
+                                "total_tokens": r.total_tokens,
+                                "latency_seconds": (
+                                    (r.end_time - r.start_time).total_seconds()
+                                    if r.end_time and r.start_time
+                                    else None
+                                ),
+                                "start_time": r.start_time.isoformat() if r.start_time else None,
+                            }
+                        )
             except Exception as ls_err:
                 recent_traces.append({"error": f"Failed to fetch from LangSmith: {ls_err}"})
 
             # Fetch recent FinOps Traces
             recent_finops_traces = []
             try:
-                cursor = db["first_serving_traces"].find({}, {"_id": 0}).sort("timestamp", -1).limit(5)
+                cursor = (
+                    db["first_serving_traces"].find({}, {"_id": 0}).sort("timestamp", -1).limit(5)
+                )
                 for doc in cursor:
                     recent_finops_traces.append(doc)
             except Exception as fe:
@@ -102,6 +132,7 @@ class PulseService:
             # Agent Health Monitor
             try:
                 from src.database.mongo_client.agent_health import AgentHeartbeatManager
+
                 health_manager = AgentHeartbeatManager()
                 agent_health = health_manager.get_all_agent_statuses()
             except Exception as hm_err:
@@ -110,8 +141,16 @@ class PulseService:
             # Calculate Sync Integrity (Simple Boolean for the Dashboard)
             cal_status = cal_sync.get("status", "unknown").lower() if cal_sync else "unknown"
             vec_status = vec_sync.get("status", "unknown").lower() if vec_sync else "unknown"
-            sync_integrity = "FAIL" if ("error" in cal_status or "failed" in cal_status or
-                                        "error" in vec_status or "failed" in vec_status) else "OK"
+            sync_integrity = (
+                "FAIL"
+                if (
+                    "error" in cal_status
+                    or "failed" in cal_status
+                    or "error" in vec_status
+                    or "failed" in vec_status
+                )
+                else "OK"
+            )
 
             pulse_data = {
                 "sync_integrity": sync_integrity,
@@ -120,14 +159,14 @@ class PulseService:
                 "graph_db": {
                     "node_count": neo4j_node_count,
                     "edge_count": neo4j_edge_count,
-                    "latest_day_node": latest_day_node
+                    "latest_day_node": latest_day_node,
                 },
                 "mongo_collections_counts": mongo_counts,
                 "environment_and_observability": env_status,
                 "langsmith_recent_traces": recent_traces,
                 "finops_recent_traces": recent_finops_traces,
                 "agent_health": agent_health,
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             return pulse_data
 

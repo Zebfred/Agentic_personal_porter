@@ -4,7 +4,9 @@ This module defines project-wide test fixtures for pytest.
 Fixtures defined here are automatically available to all tests in the project
 without needing to be imported.
 """
+
 import pytest
+
 
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_logging(request):

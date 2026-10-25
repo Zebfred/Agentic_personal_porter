@@ -10,6 +10,7 @@ from src.database.inject_hero_calendar import SovereignGraphInjector
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("SeedCalendar")
 
+
 def seed_past_month():
     """
     Pulls raw calendar data spanning exactly 30 days back from today.
@@ -22,24 +23,28 @@ def seed_past_month():
     start_date = (today - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
     end_date = today.replace(hour=23, minute=59, second=59)
 
-    time_min = start_date.isoformat() + 'Z'
-    time_max = end_date.isoformat() + 'Z'
+    time_min = start_date.isoformat() + "Z"
+    time_max = end_date.isoformat() + "Z"
 
     logger.info(f"Targeting: {time_min} through {time_max}")
 
     # 1. Fetch from Google
     try:
         service = get_calendar_service()
-        events_result = service.events().list(
-            calendarId='primary',
-            timeMin=time_min,
-            timeMax=time_max,
-            singleEvents=True,
-            orderBy='startTime',
-            maxResults=2500
-        ).execute()
+        events_result = (
+            service.events()
+            .list(
+                calendarId="primary",
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime",
+                maxResults=2500,
+            )
+            .execute()
+        )
 
-        events = events_result.get('items', [])
+        events = events_result.get("items", [])
         logger.info(f"Retrieved {len(events)} raw events from Google Calendar.")
 
     except Exception as e:
@@ -58,11 +63,7 @@ def seed_past_month():
         event["ingested_at"] = today.isoformat()
 
         # Insert them into the raw collection
-        mongo.raw_col.update_one(
-            {"id": event.get("id")},
-            {"$set": event},
-            upsert=True
-        )
+        mongo.raw_col.update_one({"id": event.get("id")}, {"$set": event}, upsert=True)
 
     logger.info("Successfully dropped all events into MongoDB raw_calendar_events.")
 
@@ -81,7 +82,7 @@ def seed_past_month():
 
         # Mark as strictly synced so they don't resend
         if neo4j_count > 0:
-            synced_ids = [e.get('gcal_id') for e in ready_events]
+            synced_ids = [e.get("gcal_id") for e in ready_events]
             mongo.mark_neo4j_synced(synced_ids)
             logger.info(f"Successfully bridged {neo4j_count} Events into Neo4j Identity Graph!")
         else:
@@ -90,6 +91,7 @@ def seed_past_month():
         injector.close()
     else:
         logger.info("No formatted events were ready or valid for Neo4j injection.")
+
 
 if __name__ == "__main__":
     seed_past_month()

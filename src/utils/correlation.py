@@ -14,6 +14,7 @@ Why deterministic (not UUID): same inputs always produce the same ID,
 making debugging in MongoDB shell or Neo4j browser trivial — you can
 visually trace a record by reading its ID.
 """
+
 import logging
 from datetime import datetime, timezone
 
@@ -48,9 +49,7 @@ def generate_correlation_id(
         'weekly-W26-2026-06-29-Hero'
     """
     if not user_id or not day_str:
-        logger.warning(
-            f"Cannot generate correlation ID: user_id='{user_id}', day_str='{day_str}'"
-        )
+        logger.warning(f"Cannot generate correlation ID: user_id='{user_id}', day_str='{day_str}'")
         return f"{entry_type}-UNKNOWN-{user_id or 'anonymous'}"
 
     # Derive ISO week number from the date string

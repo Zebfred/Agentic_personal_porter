@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import sys
 import json
@@ -36,29 +37,26 @@ def verify_local_graph_structure(hero_name: str):
         "Hero": hero_name,
         "Calendar": "Primary",
         "Structure": {
-            "Intention": defaultdict(list), # Planned/Blueprint events
-            "Actual": defaultdict(list)     # Realized/Logged events
-        }
+            "Intention": defaultdict(list),  # Planned/Blueprint events
+            "Actual": defaultdict(list),  # Realized/Logged events
+        },
     }
 
     logger.info(f"Processing {len(events)} events into graph hierarchy...")
 
     for event in events:
         # Extract metadata for classification mapping
-        record_type = event.get('record_type', 'Unknown')
-        pillar = event.get('pillar', 'Uncategorized')
-        subcategory = event.get('subcategory', 'General')
+        record_type = event.get("record_type", "Unknown")
+        pillar = event.get("pillar", "Uncategorized")
+        subcategory = event.get("subcategory", "General")
 
         # Build the leaf node
         event_node = {
-            "title": event.get('title'),
-            "start": event.get('start'),
+            "title": event.get("title"),
+            "start": event.get("start"),
             "duration": f"{event.get('duration_minutes')}m",
-            "gcal_id": event.get('gcal_id'),
-            "classification": {
-                "intent_bridge": pillar,
-                "goal_detail": subcategory
-            }
+            "gcal_id": event.get("gcal_id"),
+            "classification": {"intent_bridge": pillar, "goal_detail": subcategory},
         }
 
         # Place into hierarchy
@@ -77,15 +75,18 @@ def verify_local_graph_structure(hero_name: str):
             # Show a sample of the first event in this pillar for verification
             if event_list:
                 sample = event_list[0]
-                logger.info(f"      📍 Sample: \"{sample['title']}\" -> [{sample['classification']['goal_detail']}]")
+                logger.info(
+                    f"      📍 Sample: \"{sample['title']}\" -> [{sample['classification']['goal_detail']}]"
+                )
 
     # Optional: Save a snapshot for Vim review
     snapshot_path = root / "data" / "graph_structure_snapshot.json"
-    with open(snapshot_path, 'w') as f:
+    with open(snapshot_path, "w") as f:
         json.dump(local_graph, f, indent=4)
 
     logger.info(f"\nFull graph snapshot saved to: {snapshot_path}")
     logger.info("Use 'vi' to inspect the full mapping and verify Goal Classifications.")
+
 
 if __name__ == "__main__":
     hero = sys.argv[1] if len(sys.argv) > 1 else "Hero"

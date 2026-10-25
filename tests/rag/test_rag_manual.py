@@ -9,6 +9,7 @@ Usage:
 """
 
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 
 # Add project root to Python path
@@ -19,14 +20,15 @@ from rag_system.rag_core.vector_store import VectorStore
 from rag_system.rag_core.embeddings import SciBERTEmbedder
 import os
 
+
 def main():
     """Test RAG pipeline manually."""
-    logger.info("="*60)
+    logger.info("=" * 60)
     logger.info("RAG Pipeline Manual Test")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     # Check for GROQ API key
-    if not os.getenv('GROQ_API_KEY'):
+    if not os.getenv("GROQ_API_KEY"):
         logger.info("\n⚠️  Warning: GROQ_API_KEY not set in environment")
         logger.info("   Set it with: export GROQ_API_KEY='your-key'")
         logger.info("   Or create a .env file with GROQ_API_KEY=your-key")
@@ -81,11 +83,11 @@ def main():
     all_test_queries = [
         ("Basic Theory Queries", basic_theory_queries),
         ("Relating Theory to Code Development", theory_to_code_queries),
-        ("Teaching Theory to People of Any Level", adaptive_teaching_queries)
+        ("Teaching Theory to People of Any Level", adaptive_teaching_queries),
     ]
 
     logger.info("\n3. Testing queries...")
-    logger.info("="*60)
+    logger.info("=" * 60)
 
     total_queries = sum(len(queries) for _, queries in all_test_queries)
     query_counter = 0
@@ -93,7 +95,7 @@ def main():
     for section_name, queries in all_test_queries:
         logger.info(f"\n{'='*60}")
         logger.info(f"SECTION: {section_name.upper()}")
-        logger.info('='*60)
+        logger.info("=" * 60)
 
         for query in queries:
             query_counter += 1
@@ -107,33 +109,51 @@ def main():
                 logger.info(f"\nAnswer:\n{result['answer']}")
 
                 # Check if answer addresses the query type
-                if "code" in query.lower() or "implement" in query.lower() or "python" in query.lower():
-                    if "def " not in result['answer'] and "class " not in result['answer']:
+                if (
+                    "code" in query.lower()
+                    or "implement" in query.lower()
+                    or "python" in query.lower()
+                ):
+                    if "def " not in result["answer"] and "class " not in result["answer"]:
                         logger.info("\n  ⚠️  EXPECTED LIMITATION: Answer doesn't contain code.")
-                        logger.info("      Current system retrieves theory but doesn't generate code.")
+                        logger.info(
+                            "      Current system retrieves theory but doesn't generate code."
+                        )
 
-                if "beginner" in query.lower() or "10 years old" in query.lower() or "like i'm" in query.lower():
-                    if any(word in result['answer'].lower() for word in ["bellman", "gradient", "stochastic", "optimization"]):
-                        logger.info("\n  ⚠️  EXPECTED LIMITATION: Answer may be too technical for beginner level.")
-                        logger.info("      Current system doesn't adapt complexity to audience level.")
+                if (
+                    "beginner" in query.lower()
+                    or "10 years old" in query.lower()
+                    or "like i'm" in query.lower()
+                ):
+                    if any(
+                        word in result["answer"].lower()
+                        for word in ["bellman", "gradient", "stochastic", "optimization"]
+                    ):
+                        logger.info(
+                            "\n  ⚠️  EXPECTED LIMITATION: Answer may be too technical for beginner level."
+                        )
+                        logger.info(
+                            "      Current system doesn't adapt complexity to audience level."
+                        )
 
                 logger.info(f"\nSources ({len(result['sources'])}):")
-                for j, source in enumerate(result['sources'], 1):
+                for j, source in enumerate(result["sources"], 1):
                     logger.info(f"  {j}. {source['paper_title']}")
                     logger.info(f"     Section: {source['section']}")
                     logger.info(f"     Similarity: {source['similarity_score']:.3f}")
 
-                logger.info("\n" + "="*60)
+                logger.info("\n" + "=" * 60)
 
             except Exception as e:
                 logger.info(f"❌ Error: {e}")
                 import traceback
+
                 traceback.print_exc()
 
     logger.info("\n✓ All tests completed!")
     logger.info("\nNote: The 'Theory to Code' and 'Adaptive Teaching' sections are expected")
     logger.info("      to show limitations - these require additional features beyond basic RAG.")
 
+
 if __name__ == "__main__":
     main()
-

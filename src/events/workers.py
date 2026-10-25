@@ -15,6 +15,7 @@ Usage:
 Consumer Group: porter-workers
 Stream: stream:journal_events
 """
+
 import json
 import os
 import signal
@@ -33,7 +34,7 @@ logger = setup_logger("cdc_workers")
 CONSUMER_NAME = os.getenv("WORKER_ID", f"worker-{os.getpid()}")
 BATCH_SIZE = 10
 BLOCK_MS = 5000  # 5 seconds — blocks waiting for new messages
-IDLE_SLEEP = 1   # seconds between empty reads
+IDLE_SLEEP = 1  # seconds between empty reads
 
 # Graceful shutdown flag
 _shutdown = False
@@ -50,16 +51,18 @@ signal.signal(signal.SIGTERM, _handle_signal)
 signal.signal(signal.SIGINT, _handle_signal)
 
 
-def process_vector_embed(correlation_id: str, entry_type: str, payload: Dict[str, Any], user_id: str) -> bool:
+def process_vector_embed(
+    correlation_id: str, entry_type: str, payload: Dict[str, Any], user_id: str
+) -> bool:
     """
     Worker A: Embed journal text into ChromaDB with correlation_id metadata.
-    
+
     Args:
         correlation_id: Cross-system lineage ID.
         entry_type: 'log', 'freeform', or 'weekly'.
         payload: Deserialized journal data.
         user_id: Owner of the entry.
-        
+
     Returns:
         True if embedding succeeded, False otherwise.
     """
@@ -86,6 +89,7 @@ def process_vector_embed(correlation_id: str, entry_type: str, payload: Dict[str
 
         # Embed using BGE-M3
         from src.database.vector_database.embedding_client import BGEM3EmbeddingsClient
+
         emb_client = BGEM3EmbeddingsClient()
         embedding = emb_client.get_embedding(text)
 
@@ -95,14 +99,20 @@ def process_vector_embed(correlation_id: str, entry_type: str, payload: Dict[str
 
         # Store in ChromaDB with correlation_id metadata
         chroma = ChromaExperimentalClient()
-        chroma.insert_batch([{
-            "text": text,
-            "pillar": pillar,
-            "embedding": embedding,
-            "correlation_id": correlation_id
-        }])
+        chroma.insert_batch(
+            [
+                {
+                    "text": text,
+                    "pillar": pillar,
+                    "embedding": embedding,
+                    "correlation_id": correlation_id,
+                }
+            ]
+        )
 
-        logger.info(f"[CDC Worker] ✅ Embedded {correlation_id} ({entry_type}) -> ChromaDB [{len(text)} chars]")
+        logger.info(
+            f"[CDC Worker] ✅ Embedded {correlation_id} ({entry_type}) -> ChromaDB [{len(text)} chars]"
+        )
         return True
 
     except Exception as e:
@@ -113,10 +123,10 @@ def process_vector_embed(correlation_id: str, entry_type: str, payload: Dict[str
 def process_event(event_data: Dict[str, str]) -> bool:
     """
     Route an event to the appropriate worker based on its type.
-    
+
     Args:
         event_data: Raw Redis stream message fields.
-        
+
     Returns:
         True if processing succeeded (message should be ACKed).
     """
@@ -172,7 +182,7 @@ def run_consumer():
                 consumername=CONSUMER_NAME,
                 streams={STREAM_KEY: ">"},
                 count=BATCH_SIZE,
-                block=BLOCK_MS
+                block=BLOCK_MS,
             )
 
             if not messages:
@@ -189,10 +199,14 @@ def run_consumer():
                             logger.debug(f"[CDC Worker] ACKed message {msg_id}")
                         else:
                             # Don't ACK — message will be retried via pending entries
-                            logger.warning(f"[CDC Worker] Processing failed for {msg_id}, will retry")
+                            logger.warning(
+                                f"[CDC Worker] Processing failed for {msg_id}, will retry"
+                            )
 
                     except Exception as e:
-                        logger.error(f"[CDC Worker] Error processing message {msg_id}: {e}", exc_info=True)
+                        logger.error(
+                            f"[CDC Worker] Error processing message {msg_id}: {e}", exc_info=True
+                        )
 
             consecutive_errors = 0  # Reset on successful batch
 
@@ -201,7 +215,9 @@ def run_consumer():
             break
         except Exception as e:
             consecutive_errors += 1
-            logger.error(f"[CDC Worker] Consumer loop error ({consecutive_errors}/{max_consecutive_errors}): {e}")
+            logger.error(
+                f"[CDC Worker] Consumer loop error ({consecutive_errors}/{max_consecutive_errors}): {e}"
+            )
 
             if consecutive_errors >= max_consecutive_errors:
                 logger.critical("[CDC Worker] Too many consecutive errors. Shutting down.")

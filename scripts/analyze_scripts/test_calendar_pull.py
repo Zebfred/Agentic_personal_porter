@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import json
 
@@ -8,11 +9,13 @@ from src.database.calendar_raw_sync_to_mongo import SovereignCalendarSync
 from src.database.mongo_storage import SovereignMongoStorage
 from src.utils.path_utils import get_project_root
 
+
 def _is_gmail_address(email):
     if not isinstance(email, str):
         return False
     local_part, sep, domain = email.rpartition("@")
     return bool(sep and local_part) and domain.lower() == "gmail.com"
+
 
 def main():
     logger.info("=== Starting Calendar Pull Test ===")
@@ -41,10 +44,13 @@ def main():
     # Test 1: Sliding Window
     logger.info("\n--- Test 1: Sliding Window ---")
     try:
-        ops_count_sliding = cal_sync.pull_sliding_window(user_email=user_email, refresh_token=refresh_token)
+        ops_count_sliding = cal_sync.pull_sliding_window(
+            user_email=user_email, refresh_token=refresh_token
+        )
         logger.info(f"✅ Sliding window pulled {ops_count_sliding} events successfully.")
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         logger.info(f"❌ Sliding window pull failed: {e}")
 
@@ -54,9 +60,7 @@ def main():
         oldest_cursor = storage.get_historical_sync_cursor(user_email)
         logger.info(f"Current oldest cursor: {oldest_cursor}")
         ops_count_historic, new_cursor = cal_sync.pull_historical_backlog(
-            user_email=user_email,
-            refresh_token=refresh_token,
-            oldest_cursor=oldest_cursor
+            user_email=user_email, refresh_token=refresh_token, oldest_cursor=oldest_cursor
         )
         logger.info(f"✅ Historical backlog pulled {ops_count_historic} events successfully.")
         logger.info(f"New cursor would be: {new_cursor}")
@@ -66,6 +70,7 @@ def main():
         # storage.update_historical_sync_cursor(user_email, new_cursor)
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         logger.info(f"❌ Historical backlog pull failed: {e}")
 
@@ -76,7 +81,9 @@ def main():
     sample_file = sample_dir / "Mongo_sample.json"
 
     # Grab 5 recent events from the raw collection
-    sample_events = list(cal_sync.raw_collection.find({"user_email": user_email}).sort("_id", -1).limit(5))
+    sample_events = list(
+        cal_sync.raw_collection.find({"user_email": user_email}).sort("_id", -1).limit(5)
+    )
 
     # Convert ObjectIds to strings for JSON serialization
     for ev in sample_events:
@@ -87,6 +94,7 @@ def main():
         json.dump(sample_events, f, indent=2)
 
     logger.info(f"✅ Exported {len(sample_events)} sample events to {sample_file}")
+
 
 if __name__ == "__main__":
     main()

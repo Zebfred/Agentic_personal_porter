@@ -5,11 +5,13 @@ from src.database.neo4j_client.connection import get_driver
 
 logger = logging.getLogger(__name__)
 
+
 class SovereignContextEngine:
     """
     The 'Bridge' between the Neo4j Identity Graph and the CrewAI Agents.
     Extracts high-fidelity context snapshots to ground the LLM.
     """
+
     def __init__(self):
         self.driver = get_driver()
 
@@ -45,10 +47,7 @@ class SovereignContextEngine:
         record = result.single()
         if not record:
             return {"principles": [], "intentions": []}
-        return {
-            "principles": record["principles"],
-            "intentions": record["active_intentions"]
-        }
+        return {"principles": record["principles"], "intentions": record["active_intentions"]}
 
     def analyze_day_delta(self, planned_events, actual_events, hero_context):
         r"""
@@ -56,13 +55,15 @@ class SovereignContextEngine:
         """
         delta_report = []
         for actual in actual_events:
-            match = next((p for p in planned_events if p.get('start') == actual.get('start')), None)
+            match = next((p for p in planned_events if p.get("start") == actual.get("start")), None)
             delta_status = self.calculate_delta(match, actual, hero_context)
-            delta_report.append({
-                "event": actual.get('title', 'Unnamed'),
-                "status": delta_status,
-                "timestamp": actual.get('start')
-            })
+            delta_report.append(
+                {
+                    "event": actual.get("title", "Unnamed"),
+                    "status": delta_status,
+                    "timestamp": actual.get("start"),
+                }
+            )
         return delta_report
 
     def calculate_delta(self, planned, actual, context):
@@ -70,22 +71,22 @@ class SovereignContextEngine:
         Logic for categorizing the gap between Intent and Reality.
         Refined for hero_ambition category matching.
         """
-        category = actual.get('category', 'Unknown')
+        category = actual.get("category", "Unknown")
 
         # 1. Fog of War Check
-        if category == 'Unknown' or not category:
-            duration = actual.get('duration_minutes', 0)
+        if category == "Unknown" or not category:
+            duration = actual.get("duration_minutes", 0)
             return "Fog of War" if duration > 30 else "Unaccounted"
 
         # 2. Alignment Check
         # Does the actual category exist in our Neo4j 'Active Intentions'?
-        intentions = [i.lower() for i in context.get('intentions', [])]
+        intentions = [i.lower() for i in context.get("intentions", [])]
         is_aligned = any(category.lower() in intent for intent in intentions)
 
         if not planned:
             return "Valuable Detour" if is_aligned else "Spontaneous Action"
 
-        if planned.get('category') == category:
+        if planned.get("category") == category:
             return "Forward Progress"
 
         return "High-Friction Deviation"

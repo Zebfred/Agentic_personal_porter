@@ -8,6 +8,7 @@ user-facing response (graceful degradation).
 Stream: stream:journal_events
 Consumer Group: porter-workers
 """
+
 import json
 import logging
 import os
@@ -35,11 +36,9 @@ def _get_redis() -> Optional[Any]:
 
     try:
         import redis
+
         _redis_client = redis.StrictRedis.from_url(
-            redis_url,
-            decode_responses=True,
-            socket_connect_timeout=3,
-            socket_timeout=3
+            redis_url, decode_responses=True, socket_connect_timeout=3, socket_timeout=3
         )
         # Verify connectivity
         _redis_client.ping()
@@ -57,10 +56,7 @@ CONSUMER_GROUP = "porter-workers"
 
 
 def publish_journal_event(
-    correlation_id: str,
-    entry_type: str,
-    payload: Dict[str, Any],
-    user_id: str = "Hero"
+    correlation_id: str, entry_type: str, payload: Dict[str, Any], user_id: str = "Hero"
 ) -> bool:
     """
     Publish a journal event to the Redis Stream for async CDC processing.
@@ -89,8 +85,10 @@ def publish_journal_event(
 
         # XADD to the stream. Redis auto-generates the message ID.
         msg_id = client.xadd(STREAM_KEY, event)
-        logger.info(f"[CDC] Published event {msg_id} to {STREAM_KEY} "
-                     f"[CID:{correlation_id}] type={entry_type}")
+        logger.info(
+            f"[CDC] Published event {msg_id} to {STREAM_KEY} "
+            f"[CID:{correlation_id}] type={entry_type}"
+        )
         return True
 
     except Exception as e:

@@ -2,16 +2,18 @@
 """
 Sovereign Schema Consolidation & Validation Engine
 File: src/database/schema_consolidation.py
-Operational Strategy: Enforces database purity, drop-wipes duplicate agent sprawl, 
+Operational Strategy: Enforces database purity, drop-wipes duplicate agent sprawl,
                       and runs a local data sanity pass to ensure O(1) operational readiness.
 """
+
 import os
 import sys
 from datetime import datetime
 from pymongo import MongoClient, errors
 
 # Absolute path configuration utilizing the Base Config pattern
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 
 def execute_sovereign_consolidation():
     print("✨ Initiating System Collection Consolidation Protocol...")
@@ -25,7 +27,9 @@ def execute_sovereign_consolidation():
         db = client["porter_collections"]
         print(f"✅ Connected to Local Landing Zone substrate at: {mongo_uri}")
     except errors.ServerSelectionTimeoutError:
-        print("❌ Error: MongoDB deployment unreachable on target URI. Is the local instance active?")
+        print(
+            "❌ Error: MongoDB deployment unreachable on target URI. Is the local instance active?"
+        )
         sys.exit(1)
 
     # 2. Hard target names for elimination (The sprawl cleanup list)
@@ -34,7 +38,7 @@ def execute_sovereign_consolidation():
         "calendar_intent_events",
         "calendar_unified_events",
         "daily_categorized_events",
-        "formatted_calendar_events"
+        "formatted_calendar_events",
     ]
 
     existing_collections = db.list_collection_names()
@@ -59,8 +63,8 @@ def execute_sovereign_consolidation():
                 timeseries={
                     "timeField": "timestamp",
                     "metaField": "metadata",
-                    "granularity": "seconds"
-                }
+                    "granularity": "seconds",
+                },
             )
             print(f"✅ Created native Time-Series substrate: '{ts_collection}'")
         except Exception as e:
@@ -78,7 +82,9 @@ def execute_sovereign_consolidation():
 
         # ⚡ Bolt Optimization: Add compound index for frequent temporal queries
         db[col].create_index([("user_id", 1), ("time_slot.start", -1)])
-        print(f" ⚡ Applied compound temporal index [user_id, time_slot.start] to collection: '{col}'")
+        print(
+            f" ⚡ Applied compound temporal index [user_id, time_slot.start] to collection: '{col}'"
+        )
 
     # 5. Local Data Handshake Sanity Pass (Simulating Local Operation)
     print("\n🧪 Executing Local State Ingestion Test...")
@@ -90,15 +96,13 @@ def execute_sovereign_consolidation():
         "duration_minutes": 120,
         "pillar": "Career Goal",
         "processed_at": datetime.utcnow().isoformat(),
-        "record_type": "Intention"
+        "record_type": "Intention",
     }
 
     try:
         # Idempotent database check
         db["event_intentions"].update_one(
-            {"gcal_id": mock_id},
-            {"$set": mock_intention},
-            upsert=True
+            {"gcal_id": mock_id}, {"$set": mock_intention}, upsert=True
         )
         count = db["event_intentions"].estimated_document_count()
         print(f"✅ Local loop execution validated. Estimated Intention Document Count: {count}")
@@ -107,9 +111,14 @@ def execute_sovereign_consolidation():
 
     print("\n🚀 Database consolidation finalized. System workspace is clean.")
 
+
 if __name__ == "__main__":
     # Security Sanity Audit: Check tracking boundary parameters
     if os.path.exists(".env") or os.path.exists("token.json"):
-        print("🚨 SECURITY MISMATCH DETECTED: Sensitive environment tokens found outside your secure frontend path!")
-        print("⚠️ Ensure credentials live in your local front-end environment and verify your git boundaries immediately.")
+        print(
+            "🚨 SECURITY MISMATCH DETECTED: Sensitive environment tokens found outside your secure frontend path!"
+        )
+        print(
+            "⚠️ Ensure credentials live in your local front-end environment and verify your git boundaries immediately."
+        )
     execute_sovereign_consolidation()

@@ -13,13 +13,18 @@ os.environ.setdefault("MONGO_URI", "mongodb://localhost:27017/gcal-data")
 
 from unittest.mock import MagicMock
 
+
 @pytest.fixture(autouse=True)
 def mock_mongo(monkeypatch):
     """Provides a zero-cost, ephemeral in-memory MongoDB for tests."""
     mock_client = mongomock.MongoClient()
-    monkeypatch.setattr("src.database.mongo_storage.MongoClient", lambda *args, **kwargs: mock_client)
+    monkeypatch.setattr(
+        "src.database.mongo_storage.MongoClient", lambda *args, **kwargs: mock_client
+    )
     try:
-        monkeypatch.setattr("src.database.mongo_client.connection.MongoClient", lambda *args, **kwargs: mock_client)
+        monkeypatch.setattr(
+            "src.database.mongo_client.connection.MongoClient", lambda *args, **kwargs: mock_client
+        )
     except Exception:
         pass
     return mock_client
@@ -39,5 +44,3 @@ def mock_neo4j(monkeypatch):
     except Exception:
         pass
     return mock_driver
-
-

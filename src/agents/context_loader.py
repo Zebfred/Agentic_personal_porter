@@ -1,6 +1,7 @@
 from src.database.context_engine import SovereignContextEngine
 from src.agents.gtky_identity_architect import GTKYIdentityArchitect
 
+
 def get_context(username="Hero"):
     """
     Canonical implementation of get_context.
@@ -12,7 +13,7 @@ def get_context(username="Hero"):
 
     # Load the JSON Artifacts
     architect = GTKYIdentityArchitect()
-    hero_context['ambition'] = architect.get_ambition()
-    hero_context['detriments'] = architect.get_detriments()
+    hero_context["ambition"] = architect.get_ambition()
+    hero_context["detriments"] = architect.get_detriments()
 
     return hero_context

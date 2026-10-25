@@ -47,6 +47,7 @@ MODELS_BASELINE_GROQ: List[AgentLLMConfig] = [
     AgentLLMConfig(provider="groq", model="llama-3.3-70b-versatile"),
 ]
 
+
 def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
     """Load model list from verified_candidates.json if it exists.
 
@@ -55,11 +56,11 @@ def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
     """
     import json
     from src.utils.path_utils import get_project_root
+
     root = get_project_root()
     candidates_path = root / "scratch" / "verified_candidates.json"
     if not candidates_path.exists():
         return None
-
 
     try:
         with open(candidates_path) as f:
@@ -67,21 +68,23 @@ def _load_verified_candidates() -> Optional[List[AgentLLMConfig]]:
 
         configs = []
         for entry in data.get("harness_config", []):
-            configs.append(AgentLLMConfig(
-                provider=entry["provider"],
-                model=entry["model"],
-            ))
+            configs.append(
+                AgentLLMConfig(
+                    provider=entry["provider"],
+                    model=entry["model"],
+                )
+            )
 
         if configs:
             console.print(
-                f"[dim]Loaded {len(configs)} verified models from "
-                f"{candidates_path.name}[/dim]"
+                f"[dim]Loaded {len(configs)} verified models from " f"{candidates_path.name}[/dim]"
             )
         return configs if configs else None
 
     except Exception as e:
         console.print(f"[yellow]Warning: Could not load verified candidates: {e}[/yellow]")
         return None
+
 
 def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> float:
     """Estimates the cost of a single invocation in USD."""
@@ -91,6 +94,7 @@ def _estimate_cost(model_name: str, input_tokens: int, output_tokens: int) -> fl
     input_cost = (input_tokens / 1_000_000) * rates["input"]
     output_cost = (output_tokens / 1_000_000) * rates["output"]
     return input_cost + output_cost
+
 
 def _get_rate_limit_sleep(provider: str) -> float:
     """Returns the sleep interval between calls to respect rate limits.
@@ -106,6 +110,7 @@ def _get_rate_limit_sleep(provider: str) -> float:
         return 2.5
     # Vertex AI — use 3s delay to avoid 429 RESOURCE_EXHAUSTED
     return 3.0
+
 
 def run_categorization_eval(
     include_gemini: bool = True,
@@ -150,25 +155,33 @@ def run_categorization_eval(
         console.print("[red]No models selected for evaluation.[/red]")
         return []
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", (
-            "You are 'The Categorizer'. You are no longer a deep contextual "
-            "philosophical coach. Your sole responsibility is to evaluate daily "
-            "events and definitively map them to exactly one of the designated "
-            "9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\n"
-            "Goal: Perform strict, low-latency categorization of Intention vs. "
-            "Actual events across the 9 Core Pillars."
-        )),
-        ("user", (
-            "1. Analyze the following FRONTEND PAYLOAD quickly submitted by {username}:\n"
-            "'{journal_entry}'\n\n"
-            "2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n"
-            "3. Identify EXACTLY which of the 9 Hero pillars this combination represents: "
-            "(1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, "
-            "6. Community, 7. Leisure, 8. Spirit, 9. Duty).\n"
-            "Expected output: A single structured JSON block."
-        ))
-    ])
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                (
+                    "You are 'The Categorizer'. You are no longer a deep contextual "
+                    "philosophical coach. Your sole responsibility is to evaluate daily "
+                    "events and definitively map them to exactly one of the designated "
+                    "9 Hero Pillars (e.g. Health, Wealth, Core). Fast, objective, and strict.\n\n"
+                    "Goal: Perform strict, low-latency categorization of Intention vs. "
+                    "Actual events across the 9 Core Pillars."
+                ),
+            ),
+            (
+                "user",
+                (
+                    "1. Analyze the following FRONTEND PAYLOAD quickly submitted by {username}:\n"
+                    "'{journal_entry}'\n\n"
+                    "2. Contextualize it against his last 5 Calendar Events:\n{actuals_str}\n\n"
+                    "3. Identify EXACTLY which of the 9 Hero pillars this combination represents: "
+                    "(1. Core Identity, 2. Mind, 3. Body/Health, 4. Heart/Social, 5. Wealth/Career, "
+                    "6. Community, 7. Leisure, 8. Spirit, 9. Duty).\n"
+                    "Expected output: A single structured JSON block."
+                ),
+            ),
+        ]
+    )
 
     results_summary: List[Dict[str, Any]] = []
 
@@ -182,14 +195,16 @@ def run_categorization_eval(
             chain = prompt | llm
         except Exception as e:
             console.print(f"[red]Failed to initialize model: {e}[/red]")
-            results_summary.append({
-                "model": config.model,
-                "provider": config.provider,
-                "accuracy": "INIT_FAIL",
-                "avg_latency": "N/A",
-                "total_cost_usd": "N/A",
-                "error": str(e),
-            })
+            results_summary.append(
+                {
+                    "model": config.model,
+                    "provider": config.provider,
+                    "accuracy": "INIT_FAIL",
+                    "avg_latency": "N/A",
+                    "total_cost_usd": "N/A",
+                    "error": str(e),
+                }
+            )
             continue
 
         success_count = 0
@@ -202,21 +217,23 @@ def run_categorization_eval(
         for case in test_cases:
             start_time = time.time()
             try:
-                res = chain.invoke({
-                    "username": "Hero",
-                    "journal_entry": case["journal_entry"],
-                    "actuals_str": case["actuals_str"]
-                })
+                res = chain.invoke(
+                    {
+                        "username": "Hero",
+                        "journal_entry": case["journal_entry"],
+                        "actuals_str": case["actuals_str"],
+                    }
+                )
                 end_time = time.time()
                 latency = end_time - start_time
                 total_latency += latency
 
                 # Attempt to extract token counts from response metadata
                 # LangChain models expose this via response_metadata on the raw AIMessage
-                if hasattr(res, 'response_metadata'):
+                if hasattr(res, "response_metadata"):
                     meta = res.response_metadata
-                    total_input_tokens += meta.get('usage', {}).get('prompt_tokens', 0)
-                    total_output_tokens += meta.get('usage', {}).get('completion_tokens', 0)
+                    total_input_tokens += meta.get("usage", {}).get("prompt_tokens", 0)
+                    total_output_tokens += meta.get("usage", {}).get("completion_tokens", 0)
 
                 # Check accuracy — normalize by stripping the number prefix.
                 # Expected format: "3. Body/Health" or "Body/Health"
@@ -225,10 +242,14 @@ def run_categorization_eval(
                 got_raw = res.Pillar.lower().strip()
 
                 # Strip leading "N. " prefix from both (e.g., "3. body/health" → "body/health")
-                expected_norm = re.sub(r'^\d+\.\s*', '', expected_raw)
-                got_norm = re.sub(r'^\d+\.\s*', '', got_raw)
+                expected_norm = re.sub(r"^\d+\.\s*", "", expected_raw)
+                got_norm = re.sub(r"^\d+\.\s*", "", got_raw)
 
-                is_correct = expected_norm == got_norm or expected_norm in got_norm or got_norm in expected_norm
+                is_correct = (
+                    expected_norm == got_norm
+                    or expected_norm in got_norm
+                    or got_norm in expected_norm
+                )
                 if is_correct:
                     success_count += 1
                     console.print(
@@ -256,21 +277,25 @@ def run_categorization_eval(
         avg_latency = total_latency / num_cases if num_cases else 0
         total_cost = _estimate_cost(config.model, total_input_tokens, total_output_tokens)
 
-        results_summary.append({
-            "model": config.model,
-            "provider": config.provider,
-            "accuracy": f"{success_count}/{num_cases}",
-            "avg_latency": f"{avg_latency:.2f}s",
-            "total_input_tokens": total_input_tokens,
-            "total_output_tokens": total_output_tokens,
-            "total_cost_usd": f"${total_cost:.6f}",
-            "errors": errors if errors else None,
-        })
+        results_summary.append(
+            {
+                "model": config.model,
+                "provider": config.provider,
+                "accuracy": f"{success_count}/{num_cases}",
+                "avg_latency": f"{avg_latency:.2f}s",
+                "total_input_tokens": total_input_tokens,
+                "total_output_tokens": total_output_tokens,
+                "total_cost_usd": f"${total_cost:.6f}",
+                "errors": errors if errors else None,
+            }
+        )
 
     return results_summary
 
+
 if __name__ == "__main__":
     from src.utils.path_utils import load_env_vars
+
     load_env_vars()
 
     console.print("\n[bold]Starting Categorization Evaluation Harness...[/bold]\n")
@@ -287,8 +312,7 @@ if __name__ == "__main__":
     for r in results:
         tokens = f"{r.get('total_input_tokens', '?')}/{r.get('total_output_tokens', '?')}"
         table.add_row(
-            r["provider"], r["model"], r["accuracy"],
-            r["avg_latency"], tokens, r["total_cost_usd"]
+            r["provider"], r["model"], r["accuracy"], r["avg_latency"], tokens, r["total_cost_usd"]
         )
 
     console.print(table)

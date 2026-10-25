@@ -10,6 +10,7 @@ Adheres strictly to:
   - Exponential backoff via `invoke_with_retry` (`src/utils/retry_utils.py`)
   - Strict Pydantic v2 return models (`JiraIssueRecord`)
 """
+
 import os
 import re
 import logging
@@ -89,10 +90,7 @@ class JiraClient:
         base_url = os.environ.get("JIRA_BASE_URL", "").strip()
         email = os.environ.get("JIRA_EMAIL", "").strip()
         api_token = os.environ.get("JIRA_API_TOKEN", "").strip()
-        project_key = (
-            project_key_override
-            or os.environ.get("JIRA_PROJECT_KEY", "PORTER").strip()
-        )
+        project_key = project_key_override or os.environ.get("JIRA_PROJECT_KEY", "PORTER").strip()
 
         if not base_url or not email or not api_token:
             raise JiraClientError(
@@ -209,9 +207,7 @@ class JiraClient:
             },
         )
         if resp.status_code != 200:
-            raise JiraClientError(
-                f"Failed to fetch Jira issues (HTTP {resp.status_code})."
-            )
+            raise JiraClientError(f"Failed to fetch Jira issues (HTTP {resp.status_code}).")
 
         payload = resp.json()
         raw_issues = payload.get("issues", [])
@@ -223,21 +219,15 @@ class JiraClient:
                 continue
             fields = item.get("fields", {}) or {}
             summary = str(fields.get("summary") or "Untitled Issue")[:255]
-            status_name = str(
-                (fields.get("status") or {}).get("name") or "To Do"
-            )
-            issue_type_raw = str(
-                (fields.get("issuetype") or {}).get("name") or "Task"
-            )
+            status_name = str((fields.get("status") or {}).get("name") or "To Do")
+            issue_type_raw = str((fields.get("issuetype") or {}).get("name") or "Task")
             issue_type: IssueType = (
                 issue_type_raw  # type: ignore[assignment]
                 if issue_type_raw in ("Epic", "Story", "Task", "Sub-task")
                 else "Task"
             )
             labels = [str(lbl) for lbl in (fields.get("labels") or [])]
-            description_text = self._extract_plain_text_from_adf(
-                fields.get("description")
-            )
+            description_text = self._extract_plain_text_from_adf(fields.get("description"))
             task_match = TASK_ID_REGEX.search(summary)
             task_id = task_match.group(1) if task_match else None
             persona = self._extract_persona_from_labels(labels)
@@ -292,9 +282,7 @@ class JiraClient:
             json_payload={"fields": fields},
         )
         if resp.status_code not in (200, 201):
-            raise JiraClientError(
-                f"Failed to create Jira issue (HTTP {resp.status_code})."
-            )
+            raise JiraClientError(f"Failed to create Jira issue (HTTP {resp.status_code}).")
         data = resp.json()
         created_key = str(data.get("key", "")).strip()
         if not created_key:

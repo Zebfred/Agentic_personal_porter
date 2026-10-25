@@ -5,6 +5,7 @@ from pathlib import Path
 # Resolve project root (three levels up from src/utils/logging_config.py)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
+
 def setup_logger(name: str) -> logging.Logger:
     """
     Creates and returns a configured logger for the given module name.
@@ -17,9 +18,7 @@ def setup_logger(name: str) -> logging.Logger:
         logger.setLevel(logging.INFO)
 
         # Formatter: Timestamp - LoggerName - Level - Message
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
         # Console Handler
         console_handler = logging.StreamHandler(sys.stdout)
@@ -29,7 +28,7 @@ def setup_logger(name: str) -> logging.Logger:
 
         # File Handler (project root)
         log_file = PROJECT_ROOT / "porter.log"
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)

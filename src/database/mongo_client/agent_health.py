@@ -4,10 +4,12 @@ import uuid
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
 
+
 class AgentHeartbeatManager:
     """
     Manages the health and execution logging for all background agents and orchestrators.
     """
+
     def __init__(self):
         self.db = MongoConnectionManager.get_db()
         self.collection = self.db[MongoConfig.AGENT_HEALTH_COLLECTION]
@@ -28,13 +30,15 @@ class AgentHeartbeatManager:
             "context": context or {},
             "result_summary": None,
             "error_msg": None,
-            "username": username or "system"
+            "username": username or "system",
         }
 
         self.collection.insert_one(payload)
         return run_id
 
-    def end_agent_run(self, run_id: str, status: str, result_summary: str = None, error_msg: str = None):
+    def end_agent_run(
+        self, run_id: str, status: str, result_summary: str = None, error_msg: str = None
+    ):
         """
         Finalizes an agent run, calculating duration and logging success/failure.
         status should typically be "success" or "fail".
@@ -57,7 +61,7 @@ class AgentHeartbeatManager:
                 "end_time": end_time,
                 "duration_seconds": duration,
                 "result_summary": result_summary,
-                "error_msg": error_msg
+                "error_msg": error_msg,
             }
         }
 
@@ -69,15 +73,17 @@ class AgentHeartbeatManager:
         """
         pipeline = [
             {"$sort": {"start_time": -1}},
-            {"$group": {
-                "_id": "$agent_name",
-                "latest_run_id": {"$first": "$_id"},
-                "status": {"$first": "$status"},
-                "start_time": {"$first": "$start_time"},
-                "end_time": {"$first": "$end_time"},
-                "duration_seconds": {"$first": "$duration_seconds"},
-                "error_msg": {"$first": "$error_msg"}
-            }}
+            {
+                "$group": {
+                    "_id": "$agent_name",
+                    "latest_run_id": {"$first": "$_id"},
+                    "status": {"$first": "$status"},
+                    "start_time": {"$first": "$start_time"},
+                    "end_time": {"$first": "$end_time"},
+                    "duration_seconds": {"$first": "$duration_seconds"},
+                    "error_msg": {"$first": "$error_msg"},
+                }
+            },
         ]
 
         results = self.collection.aggregate(pipeline)
@@ -90,7 +96,7 @@ class AgentHeartbeatManager:
                 "start_time": r.get("start_time").isoformat() if r.get("start_time") else None,
                 "end_time": r.get("end_time").isoformat() if r.get("end_time") else None,
                 "duration_seconds": r.get("duration_seconds"),
-                "error_msg": r.get("error_msg")
+                "error_msg": r.get("error_msg"),
             }
 
         return status_dict

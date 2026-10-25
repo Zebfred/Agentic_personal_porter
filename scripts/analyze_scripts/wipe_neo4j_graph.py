@@ -1,16 +1,20 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 
 # Add project root to path
 
 from src.database.neo4j_client import get_driver
 
+
 def wipe_graph():
     """
     WARNING: Wipes the entire Neo4j graph. Use with extreme caution.
     This is intended to clear the legacy single-user graph before starting the new multi-user architecture.
     """
-    logger.info("WARNING: You are about to delete ALL nodes and relationships in the Neo4j database.")
+    logger.info(
+        "WARNING: You are about to delete ALL nodes and relationships in the Neo4j database."
+    )
     confirmation = input("Type 'WIPE' to confirm: ")
 
     if confirmation != "WIPE":
@@ -36,6 +40,7 @@ def wipe_graph():
         logger.info(f"Error wiping graph: {e}")
     finally:
         driver.close()
+
 
 if __name__ == "__main__":
     wipe_graph()

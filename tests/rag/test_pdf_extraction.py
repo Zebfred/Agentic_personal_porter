@@ -2,17 +2,18 @@
 Unit tests for PDF extraction module.
 """
 
-
 # Add project root to Python path
 
 
 import pytest
 from rag_system.pipeline.data_pipeline.pdf_extractor import PDFExtractor
 
+
 def test_pdf_extractor_initialization():
     """Test PDFExtractor initialization."""
     extractor = PDFExtractor()
     assert extractor.output_dir.exists()
+
 
 def test_extract_text_nonexistent_file():
     """Test extraction with non-existent file raises error."""
@@ -20,16 +21,18 @@ def test_extract_text_nonexistent_file():
     with pytest.raises(FileNotFoundError):
         extractor.extract_text("nonexistent.pdf")
 
+
 def test_extract_title_from_metadata():
     """Test title extraction from PDF metadata."""
     extractor = PDFExtractor()
 
     # Mock metadata
-    metadata = {'title': 'Test Paper Title'}
+    metadata = {"title": "Test Paper Title"}
     text = "Some content here."
 
     title = extractor._extract_title(text, metadata)
-    assert title == 'Test Paper Title'
+    assert title == "Test Paper Title"
+
 
 def test_extract_abstract_pattern():
     """Test abstract extraction using regex patterns."""
@@ -47,6 +50,7 @@ The abstract should be long enough to pass the length check, which requires it t
     assert abstract is not None
     assert len(abstract) > 50
 
+
 def test_extract_sections():
     """Test section extraction."""
     extractor = PDFExtractor()
@@ -63,7 +67,8 @@ This is methodology content. This final section must also be over 100 characters
 
     sections = extractor._extract_sections(text)
     assert len(sections) > 0
-    assert any('Introduction' in s['header'] for s in sections)
+    assert any("Introduction" in s["header"] for s in sections)
+
 
 def test_extract_batch():
     """Test batch extraction."""
@@ -76,5 +81,4 @@ def test_extract_batch():
     # Test with non-existent files (should handle gracefully)
     results = extractor.extract_batch(["nonexistent1.pdf", "nonexistent2.pdf"])
     assert len(results) == 2
-    assert all('error' in r for r in results)
-
+    assert all("error" in r for r in results)

@@ -10,6 +10,7 @@ Usage:
     from src.utils.llm_resilience import get_resilient_llm
     llm = get_resilient_llm(task="categorizer")
 """
+
 import logging
 from typing import Optional
 
@@ -22,24 +23,15 @@ logger = logging.getLogger(__name__)
 
 # Default model configurations for the three tiers
 TIER_1_CONFIG = AgentLLMConfig(
-    provider="groq",
-    model="llama-3.3-70b-versatile",
-    temperature=0.0,
-    max_tokens=4096
+    provider="groq", model="llama-3.3-70b-versatile", temperature=0.0, max_tokens=4096
 )
 
 TIER_2_CONFIG = AgentLLMConfig(
-    provider="google_genai",
-    model="gemini-2.5-flash",
-    temperature=0.0,
-    max_tokens=4096
+    provider="google_genai", model="gemini-2.5-flash", temperature=0.0, max_tokens=4096
 )
 
 TIER_3_CONFIG = AgentLLMConfig(
-    provider="google_genai",
-    model="gemini-2.5-pro",
-    temperature=0.0,
-    max_tokens=4096
+    provider="google_genai", model="gemini-2.5-pro", temperature=0.0, max_tokens=4096
 )
 
 

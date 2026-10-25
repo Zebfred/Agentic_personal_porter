@@ -4,11 +4,11 @@ Tests for the CDC Event Publisher.
 Validates Redis publish behavior including serialization,
 graceful degradation when Redis is unavailable, and stream formatting.
 """
+
 import json
 import os
 import sys
 from unittest.mock import patch, MagicMock
-
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -121,7 +121,9 @@ class TestEnsureConsumerGroup:
     def test_existing_group_busygroup(self, mock_get_redis):
         """Verify BUSYGROUP error is handled gracefully (group already exists)."""
         mock_client = MagicMock()
-        mock_client.xgroup_create.side_effect = Exception("BUSYGROUP Consumer Group name already exists")
+        mock_client.xgroup_create.side_effect = Exception(
+            "BUSYGROUP Consumer Group name already exists"
+        )
         mock_get_redis.return_value = mock_client
 
         result = ensure_consumer_group()
@@ -147,12 +149,14 @@ class TestWorkerProcessing:
 
         with patch("src.events.workers.process_vector_embed") as mock_embed:
             mock_embed.return_value = True
-            result = process_event({
-                "correlation_id": "log-W27-test",
-                "entry_type": "log",
-                "user_id": "Hero",
-                "payload": json.dumps({"intention": "Test", "actual": "Testing"}),
-            })
+            result = process_event(
+                {
+                    "correlation_id": "log-W27-test",
+                    "entry_type": "log",
+                    "user_id": "Hero",
+                    "payload": json.dumps({"intention": "Test", "actual": "Testing"}),
+                }
+            )
             assert result is True
             mock_embed.assert_called_once()
 
@@ -161,11 +165,13 @@ class TestWorkerProcessing:
         from src.events.workers import process_event
 
         with patch("src.events.workers.process_vector_embed") as mock_embed:
-            result = process_event({
-                "correlation_id": "test-bad-json",
-                "entry_type": "log",
-                "user_id": "Hero",
-                "payload": "NOT VALID JSON {{{",
-            })
+            result = process_event(
+                {
+                    "correlation_id": "test-bad-json",
+                    "entry_type": "log",
+                    "user_id": "Hero",
+                    "payload": "NOT VALID JSON {{{",
+                }
+            )
             assert result is False
             mock_embed.assert_not_called()

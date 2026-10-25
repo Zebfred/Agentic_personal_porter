@@ -1,16 +1,18 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 from .connection import get_driver
+
 
 def log_to_neo4j(log_data: dict, username: str, correlation_id: str = None) -> str:
     """
     Logs a complete journal entry to the Neo4j database.
-    
+
     Args:
         log_data: The journal entry data dict.
         username: The user's display name.
         correlation_id: Optional cross-system lineage ID for data provenance.
-    
+
     Returns:
         A confirmation message string.
     """
@@ -20,31 +22,33 @@ def log_to_neo4j(log_data: dict, username: str, correlation_id: str = None) -> s
 
         # another potential fix
         # We must check if result_node is not None before trying to access it.
-        if result_node is not None and 'activity' in result_node:
+        if result_node is not None and "activity" in result_node:
             return f"Successfully logged entry for '{result_node['activity']}'"
         else:
-            logger.info("!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node.")
+            logger.info(
+                "!!! NEO4J WRITE FAILED: The Cypher query did not return the expected node."
+            )
             return "Failed to log entry to Neo4j."
+
 
 def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = None):
     """
     Enhanced function that creates nodes and relationships with meaningful connections.
     Includes source_id (correlation_id) for cross-system data lineage.
     """
-    intention_text = log_data.get('intention', '')
-    actual_text = log_data.get('actual', '')
-    feeling = log_data.get('feeling', '')
-    brain_fog = log_data.get('brainFog', 0)
-    matches_intent = log_data.get('matchesIntent', False)
-    is_valuable_detour = log_data.get('isValuableDetour', False)
-    inventory_note = log_data.get('inventoryNote', '')
+    intention_text = log_data.get("intention", "")
+    actual_text = log_data.get("actual", "")
+    feeling = log_data.get("feeling", "")
+    brain_fog = log_data.get("brainFog", 0)
+    matches_intent = log_data.get("matchesIntent", False)
+    is_valuable_detour = log_data.get("isValuableDetour", False)
+    inventory_note = log_data.get("inventoryNote", "")
 
     # Determine time of day from timeChunk for state tracking
-    time_chunk = log_data.get('timeChunk', '')
+    time_chunk = log_data.get("timeChunk", "")
     time_of_day = _extract_time_of_day(time_chunk)
 
-    query = (
-        """
+    query = """
         // Find or create Hero
         MERGE (u:Hero {hero: $username})
         
@@ -152,28 +156,28 @@ def _create_log_entry(tx, log_data: dict, username: str, correlation_id: str = N
         RETURN a, int, r
         """
 
+    result = tx.run(
+        query,
+        username=username,
+        day=log_data.get("day"),
+        timeChunkId=log_data.get("timeChunk"),
+        intention=intention_text,
+        actual=actual_text,
+        feeling=feeling,
+        brainFog=int(brain_fog) if brain_fog else 0,
+        matchesIntent=matches_intent,
+        isValuableDetour=is_valuable_detour,
+        inventoryNote=inventory_note,
+        reflection=log_data.get("reflection", ""),
+        timeOfDay=time_of_day,
+        correlation_id=correlation_id or "",
     )
-
-    result = tx.run(query,
-                    username=username,
-                    day=log_data.get('day'),
-                    timeChunkId=log_data.get('timeChunk'),
-                    intention=intention_text,
-                    actual=actual_text,
-                    feeling=feeling,
-                    brainFog=int(brain_fog) if brain_fog else 0,
-                    matchesIntent=matches_intent,
-                    isValuableDetour=is_valuable_detour,
-                    inventoryNote=inventory_note,
-                    reflection=log_data.get('reflection', ''),
-                    timeOfDay=time_of_day,
-                    correlation_id=correlation_id or ''
-                   )
 
     record = result.single()
     if record:
-        return record.get('a')
+        return record.get("a")
     return None
+
 
 def create_identity_graph(username, origin_story, ambitions):
     """
@@ -208,27 +212,39 @@ def create_identity_graph(username, origin_story, ambitions):
 
     # Execute query with parameters using execute_write for robust transaction handling
     with driver.session() as session:
-        session.execute_write(lambda tx: tx.run(query, username=username, origin_story=origin_story, ambitions=ambitions))
+        session.execute_write(
+            lambda tx: tx.run(
+                query, username=username, origin_story=origin_story, ambitions=ambitions
+            )
+        )
     user_id_graph = f"Identity graph created/updated successfully for user {username}"
     logger.info(user_id_graph)
     return user_id_graph
 
-def create_goal(username: str, description: str, category: str = "general",
-                priority: str = "medium", timeframe: str = "ongoing") -> dict:
+
+def create_goal(
+    username: str,
+    description: str,
+    category: str = "general",
+    priority: str = "medium",
+    timeframe: str = "ongoing",
+) -> dict:
     """
     Create a Goal node in Neo4j.
     """
     driver = get_driver()
     with driver.session() as session:
-        result = session.execute_write(_create_goal_tx, username, description,
-                                      category, priority, timeframe)
+        result = session.execute_write(
+            _create_goal_tx, username, description, category, priority, timeframe
+        )
     return dict(result) if result is not None else {}
 
-def _create_goal_tx(tx, username: str, description: str, category: str,
-                   priority: str, timeframe: str):
+
+def _create_goal_tx(
+    tx, username: str, description: str, category: str, priority: str, timeframe: str
+):
     """Transaction function to create a goal."""
-    query = (
-        """
+    query = """
         MATCH (u:Hero {hero: $username})
         CREATE (g:Goal {
             description: $description,
@@ -241,22 +257,28 @@ def _create_goal_tx(tx, username: str, description: str, category: str,
         MERGE (u)-[:HAS_GOAL]->(g)
         RETURN g
         """
+    result = tx.run(
+        query,
+        username=username,
+        description=description,
+        category=category,
+        priority=priority,
+        timeframe=timeframe,
     )
-    result = tx.run(query, username=username, description=description,
-                   category=category, priority=priority, timeframe=timeframe)
     record = result.single()
-    return record.get('g') if record else None
+    return record.get("g") if record else None
+
 
 def _extract_time_of_day(time_chunk_id: str) -> str:
     """
     Extract time of day category from time chunk ID.
     """
     time_chunk_map = {
-        'late-night': 'night',
-        'early-morning': 'morning',
-        'late-morning': 'morning',
-        'afternoon': 'afternoon',
-        'evening': 'evening',
-        'early-night': 'night'
+        "late-night": "night",
+        "early-morning": "morning",
+        "late-morning": "morning",
+        "afternoon": "afternoon",
+        "evening": "evening",
+        "early-night": "night",
     }
-    return time_chunk_map.get(time_chunk_id, 'unknown')
+    return time_chunk_map.get(time_chunk_id, "unknown")

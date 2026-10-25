@@ -8,15 +8,16 @@ from src.config import NeoConfig
 # defeats connection pooling and is a massive performance bottleneck.
 _driver_instance = None
 
+
 def get_driver():
     """Returns a singleton connection driver to the Neo4j database, utilizing connection pooling."""
     global _driver_instance
     if _driver_instance is None:
         _driver_instance = GraphDatabase.driver(
-            NeoConfig.NEO4J_URI,
-            auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
+            NeoConfig.NEO4J_URI, auth=(NeoConfig.NEO4J_USER, NeoConfig.NEO4J_PASS)
         )
     return _driver_instance
+
 
 def close_driver():
     """Gracefully shuts down the Neo4j driver and closes all connections in the pool."""

@@ -1,4 +1,5 @@
 from src.utils.logging_config import setup_logger
+
 logger = setup_logger(__name__)
 import json
 from datetime import datetime
@@ -7,6 +8,7 @@ from datetime import datetime
 
 from src.database.mongo_storage import SovereignMongoStorage
 from src.utils.path_utils import get_project_root
+
 
 def sample_mongo_data(limit=5):
     """
@@ -30,7 +32,7 @@ def sample_mongo_data(limit=5):
         logger.info("⚠️ No raw events found.")
     else:
         raw_file = out_dir / f"Gcal_raw_{date_str}.json"
-        with open(raw_file, 'w') as f:
+        with open(raw_file, "w") as f:
             json.dump(raw_samples, f, indent=4, default=str)
         logger.info(f"✅ Saved {len(raw_samples)} raw events to: {raw_file}")
 
@@ -41,9 +43,10 @@ def sample_mongo_data(limit=5):
         logger.info("⚠️ No formatted events found.")
     else:
         fmt_file = out_dir / f"Gcal_formatted_{date_str}.json"
-        with open(fmt_file, 'w') as f:
+        with open(fmt_file, "w") as f:
             json.dump(formatted_samples, f, indent=4, default=str)
         logger.info(f"✅ Saved {len(formatted_samples)} formatted events to: {fmt_file}")
+
 
 if __name__ == "__main__":
     # You can change the limit here if you want to see more examples.
