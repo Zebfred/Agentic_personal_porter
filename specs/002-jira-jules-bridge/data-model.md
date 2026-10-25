@@ -20,7 +20,7 @@ Valid persona identifiers aligned with `documentation/architecture/agent-roster.
 - `"dave"` — DevOps, CI/CD & Infrastructure (`.jules/dave.md`, `make test-dave`)
 - `"crii"` — Adversarial Inquisitor & Failure Modes (`.jules/crii.md`, `make test-crii`)
 - `"jovol"` — JS Functional Components & Spec Kit (`.jules/jovol.md`, `make test-jovol`)
-- `"silas"` — Default Final Verification Gatekeeper (`.agent/rules/silas_protocol.md`, `make verify-done`)
+- `"silas"` — Default Final Verification Gatekeeper (`.agents/rules/silas_protocol.md`, `make verify-done`)
 
 ### 1.2 `SyncStatus` (Enum / Literal)
 - `"synced"` — Local record matches upstream Jira state.

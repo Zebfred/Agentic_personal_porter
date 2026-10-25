@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-10-17
-**Feature**: [spec.md](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/specs/002-jira-jules-bridge/spec.md)
+**Feature**: [spec.md](../spec.md)
 
 ## Content Quality
 

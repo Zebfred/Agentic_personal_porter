@@ -83,8 +83,8 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Frontend-to-Backend End-to-End Validation:** Rigorously verify that the new frontend UI elements we are working with right now are correctly routing to and triggering the backend endpoints.
 
 ## Verification Log
-- **[Oct 2026 - Nexus Constitution & Zero-Cost TDD Architecture]**
-  - Established top-level **Nexus LLC Constitution** in private repository storage (`Notes_repo` and `agentic-private-brain`).
+- **[Oct 2026 - Spec-Kit Constitution & Zero-Cost TDD Architecture]**
+  - Established top-level **Organization Constitution** in private repository storage.
   - Updated Porter project constitution (`documentation/architecture/spec-kit-constitution.md` v1.2.0) to inherit universal governance mindfully while keeping the public specification focused strictly on Porter technical contracts (Neo4j, Redis, Weaviate, Local MongoDB, Fiona WCAG).
   - Integrated zero-cost local MongoDB architecture: added `mongomock` dev dependency with `mock_mongo` fixture in `tests/conftest.py`, and added `mongo:7.0` container to `docker-compose.yml`. Updated `.auth/.env` to local URI.
   - Implemented push-button `make verify-done` automated quality gate enforcing `ruff check`, `mypy`, and `pytest tests/unit`.

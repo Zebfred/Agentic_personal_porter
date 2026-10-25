@@ -40,10 +40,10 @@ To eliminate cognitive friction, maintain zero-trust security, and preserve deve
 
 ## 2. Specialized Cross-Cutting Personas (Jules-Aligned Profiles)
 
-All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md` adhering to Google Jules operational standards (dated learnings, vulnerability playbooks, and concrete prevention rules).
+All cross-cutting personas maintain dedicated **Persona Definitions** in `.agents/agents/*.md` and chronological **Jules Activity Logs** in `.jules/*.md` (plus dispatch telemetry in `.jules/activity.log`).
 
 ### 🛡️ Sentinel — Security & Hardening Agent
-* **Profile Source**: [`.jules/sentinel.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/sentinel.md)
+* **Profile Source**: [`.agents/agents/sentinel.md`](../../.agents/agents/sentinel.md) | **Activity Log**: [`.jules/sentinel.md`](../../.jules/sentinel.md)
 * **Antigravity Agent Name**: `sentinel`
 * **Core Directives**:
   1. **Zero Secret Leakage**: Reject hardcoded secrets, API keys, or fallbacks. All secrets reside in `.auth/` or environment variables with fail-secure behavior.
@@ -56,7 +56,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### ⚡ Bolt — Performance & Database Optimization Agent
-* **Profile Source**: [`.jules/bolt.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/bolt.md)
+* **Profile Source**: [`.agents/agents/bolt.md`](../../.agents/agents/bolt.md) | **Activity Log**: [`.jules/bolt.md`](../../.jules/bolt.md)
 * **Antigravity Agent Name**: `bolt`
 * **Core Directives**:
   1. **Explicit Query Projections**: Apply projection dictionaries (e.g. `{"_id": 0, "gcal_id": 1}`) to all batch `find()` queries to prevent deserialization bloat.
@@ -69,7 +69,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### 🎨 Palette — Frontend, Aesthetics & Accessibility Agent
-* **Profile Source**: [`.jules/palette.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/palette.md) & [`.agent/rules/Fiona_protocol.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.agent/rules/Fiona_protocol.md)
+* **Profile Source**: [`.agents/agents/palette.md`](../../.agents/agents/palette.md) & [`.agents/rules/Fiona_protocol.md`](../../.agents/rules/Fiona_protocol.md) | **Activity Log**: [`.jules/palette.md`](../../.jules/palette.md)
 * **Antigravity Agent Name**: `palette`
 * **Core Directives**:
   1. **Label Association**: Every `<input>` and `<textarea>` must have an explicit `<label for="...">` (use `.sr-only` if visually hidden).
@@ -82,7 +82,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### 🏛️ Archie — System Architect Consultant
-* **Profile Source**: [`.jules/archie.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/archie.md)
+* **Profile Source**: [`.agents/agents/archie.md`](../../.agents/agents/archie.md) | **Activity Log**: [`.jules/archie.md`](../../.jules/archie.md)
 * **Antigravity Agent Name**: `archie`
 * **Core Directives**:
   1. **Contract-First Typing**: All HTTP boundaries and inter-service data transfers must utilize strict Pydantic v2 models in `src/schemas/`.
@@ -93,19 +93,19 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### 📚 DocDoc — Documentation & Knowledge Chronicler
-* **Profile Source**: [`.jules/docdoc.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/docdoc.md)
+* **Profile Source**: [`.agents/agents/docdoc.md`](../../.agents/agents/docdoc.md) | **Activity Log**: [`.jules/docdoc.md`](../../.jules/docdoc.md)
 * **Antigravity Agent Name**: `docdoc` (evolved from Librarian)
 * **Core Directives**:
   1. **Directory Boundary**: All markdown lives exclusively in `documentation/` (except root `README.md`).
   2. **Strict Kebab-Case**: Enforce lowercase `kebab-case` for all files and directories in `documentation/`.
   3. **Zero-Deletion Policy**: Never permanently delete code or documentation; archive outdated work into `.legacy_hr/` partitioned by year/quarter. Clean all `.bk` files immediately.
   4. **Living Chronicle & Brain Sync**: Maintain `documentation/year0.md`. Copy completed task artifacts to `agentic-private-brain/completed-tasks/` and execute `make sync-brain`.
-* **Automated Test Target**: `make test-docdoc` (automated markdown location, kebab-case naming, and dangling backup validation).
+* **Automated Test Target**: `make test-docdoc` (automated markdown location, kebab-case naming, relative path hygiene, and dangling backup validation).
 
 ---
 
 ### ⚙️ Dave — DevOps, CI/CD & Infrastructure Engineer
-* **Profile Source**: [`.jules/dave.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/dave.md)
+* **Profile Source**: [`.agents/agents/dave.md`](../../.agents/agents/dave.md) | **Activity Log**: [`.jules/dave.md`](../../.jules/dave.md)
 * **Antigravity Agent Name**: `dave`
 * **Core Directives**:
   1. **Supply Chain Hardening**: Pin all third-party GitHub Actions to immutable 40-character commit SHAs with version comments (e.g. `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`).
@@ -116,7 +116,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### 🔍 Crii — Adversarial Inquisitor & Failure Mode Hunter
-* **Profile Source**: [`.jules/crii.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/crii.md)
+* **Profile Source**: [`.agents/agents/crii.md`](../../.agents/agents/crii.md) | **Activity Log**: [`.jules/crii.md`](../../.jules/crii.md)
 * **Antigravity Agent Name**: `crii`
 * **Core Directives**:
   1. **Adversarial Input Fuzzing**: Actively formulate test fixtures injecting null bytes, extreme string lengths, malformed JSON, and unexpected types into endpoints and parsers.
@@ -127,7 +127,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### ⚛️ Jovol — JS Functional Component & Spec Kit Specialist
-* **Profile Source**: [`.jules/jovol.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.jules/jovol.md) & [`scratch/jovol.txt`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/scratch/jovol.txt)
+* **Profile Source**: [`.agents/agents/jovol.md`](../../.agents/agents/jovol.md) | **Activity Log**: [`.jules/jovol.md`](../../.jules/jovol.md)
 * **Antigravity Agent Name**: `jovol`
 * **Core Directives**:
   1. **Spec Kit Assembly**: Assemble UI views in `components/views/` using only approved atomic primitives from `components/spec-kit/` documented in `COMPONENT_REGISTRY.md`. Never invent arbitrary raw Tailwind styles.
@@ -140,7 +140,7 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 ---
 
 ### 🏛️ Silas — Systems Architect & Verification Gatekeeper
-* **Profile Source**: [`.agent/rules/silas_protocol.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.agent/rules/silas_protocol.md) & [`spec-kit-constitution.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/architecture/spec-kit-constitution.md)
+* **Profile Source**: [`.agents/agents/silas.md`](../../.agents/agents/silas.md) & [`.agents/rules/silas_protocol.md`](../../.agents/rules/silas_protocol.md) & [`spec-kit-constitution.md`](spec-kit-constitution.md) | **Activity Log**: [`.jules/silas.md`](../../.jules/silas.md)
 * **Antigravity Agent Name**: `silas`
 * **Core Directives**:
   1. **Final Gate Enforcement**: Acts as the ultimate release gatekeeper. No feature merges without clean passage through Silas's quality suite.
@@ -153,9 +153,9 @@ All cross-cutting personas maintain dedicated **Jules Profiles** in `.jules/*.md
 
 | Domain Agent | Active Sprint Document | Primary Scope | Primary Quality Partners |
 | :--- | :--- | :--- | :--- |
-| `backend-porter` | [`documentation/current-work/active-backend-tasks.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-backend-tasks.md) | Flask routes, DB connectors, calendar sync | 🛡️ Sentinel, ⚡ Bolt & 🏛️ Archie |
-| `frontend-porter` | [`documentation/current-work/active-frontend-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-frontend-dev.md) | HTML UI, Vanilla JS state, Tailwind CSS v4, Next.js | 🎨 Palette & ⚛️ Jovol |
-| `agentic-porter` | [`documentation/current-work/active-agent-dev.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/current-work/active-agent-dev.md) | GTKY agents, Socratic mirror, LLM prompts | 🏛️ Archie, 🔍 Crii & ⚙️ Dave |
+| `backend-porter` | [`documentation/current-work/active-backend-tasks.md`](../current-work/active-backend-tasks.md) | Flask routes, DB connectors, calendar sync | 🛡️ Sentinel, ⚡ Bolt & 🏛️ Archie |
+| `frontend-porter` | [`documentation/current-work/active-frontend-dev.md`](../current-work/active-frontend-dev.md) | HTML UI, Vanilla JS state, Tailwind CSS v4, Next.js | 🎨 Palette & ⚛️ Jovol |
+| `agentic-porter` | [`documentation/current-work/active-agent-dev.md`](../current-work/active-agent-dev.md) | GTKY agents, Socratic mirror, LLM prompts | 🏛️ Archie, 🔍 Crii & ⚙️ Dave |
 
 ---
 

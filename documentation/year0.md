@@ -96,15 +96,15 @@ In early October 2026, the project underwent its most significant operational ev
 
 ### Key Milestones
 1. **Hierarchical Constitution**:
-   * Isolated company-wide contracts (Nexus LLC Constitution) inside the private submodule [`agentic-private-brain`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/agentic-private-brain/).
-   * Enforced local project constitution in [`documentation/architecture/spec-kit-constitution.md`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/documentation/architecture/spec-kit-constitution.md).
+   * Isolated upstream organizational governance contracts inside private repository storage.
+   * Enforced local project constitution in [`documentation/architecture/spec-kit-constitution.md`](./architecture/spec-kit-constitution.md).
 2. **Zero-Cost Local Development**:
    * Eliminated external database reliance for testing using `mongomock` fixtures and containerized local MongoDB (`porter-mongo:7.0`).
 3. **Tooling & Environment Simplification**:
    * Retired Conda; standardized 100% on `uv` (`uv.lock`, `uv run pytest`) for sub-second test execution and unified dependency trees.
 4. **Complete Workspace Archival**:
    * Built compressed multi-year archives (`archive_2025.tar.gz`, `archive_2026_Q1.tar.gz`, `archive_2026_Q2.tar.gz`, `archive_2026_Q3.tar.gz`).
-   * Moved all outdated architecture design documents into [`.legacy_hr/2026/outdated-doc/`](file:///home/bizon/Programming/Agentic_workflows/Agentic_personal_porter/.legacy_hr/2026/outdated-doc/).
+   * Moved all outdated architecture design documents into `.legacy_hr/2026/outdated-doc/`.
    * Standardized all active project documentation into strict `kebab-case`.
 
 ---

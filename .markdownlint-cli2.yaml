@@ -1,0 +1,30 @@
+# markdownlint-cli2 configuration — Nexus LLC & DocDoc Standard
+config:
+  MD009: true  # No trailing spaces at end of line
+  MD010: true  # No hard tabs
+  MD012: true  # No multiple consecutive blank lines (excess blank space check)
+  MD022: true  # Blank lines required around headings
+  MD031: true  # Blank lines required around fenced code blocks
+  MD032: true  # Blank lines required around lists
+  MD040: true  # Fenced code blocks must specify a language
+  MD041: true  # First line in a file must be a top-level heading
+  MD047: true  # Files must end with a single trailing newline
+  MD013: false # Line length (disabled for long URLs, tables, and commands)
+  MD024:
+    siblings_only: true # Allow duplicate heading titles across different sections
+  MD033: false # Allow inline HTML tags for badges, alignment, and details blocks
+  MD034: false # Allow bare URLs in tables and references
+  MD035: false # Horizontal rule style flexibility (--- vs ----)
+  MD060: false # Table column style alignment flexibility
+  MD029: false # Ordered list prefix style flexibility
+  MD025: false # Allow multiple h1 if combining sections
+  MD001: false # Heading increment flexibility
+ignores:
+  - "**/node_modules/**"
+  - "**/.legacy_hr/**"
+  - "**/.logs/**"
+  - "**/.auth/**"
+  - "**/.git/**"
+  - "**/.venv/**"
+  - "**/venv/**"
+  - "**/*.bk*"
