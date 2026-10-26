@@ -74,7 +74,8 @@ def get_inventory():
 @require_api_key
 def scan_artifacts():
     """
-    Triggers the Identity Architect to scan hero_origin.json for chronological gaps.
+    Triggers the Identity Architect to scan hero_origin.json and hero_ambition.json
+    for missing epochs, milestones, or empty descriptions.
     """
     try:
         from src.agents.gtky_identity_architect import GTKYIdentityArchitect
@@ -84,8 +85,8 @@ def scan_artifacts():
         username = user_doc.get("username", "system") if user_doc else "system"
 
         architect = GTKYIdentityArchitect(username=username)
-        scan_results = architect.scan_for_missing_origin()
-        return jsonify({"status": "success", "results": scan_results})
+        report = architect.scan_missing_artifacts()
+        return jsonify(report.model_dump(mode="json")), 200
     except Exception as e:
         logger.error(f"Error scanning artifacts: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500

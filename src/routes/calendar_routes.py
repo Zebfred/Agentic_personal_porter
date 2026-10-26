@@ -233,11 +233,11 @@ def approve_audits():
 @require_api_key
 def get_adventure_log():
     """
-    Returns a rolling 30-day summary of Intentions vs Actual Activities and Matched Intentions.
+    Returns a rolling summary of Intentions vs Actual Activities, Matched Intentions,
+    and week-over-week Detrimental Detour improvement.
     """
     try:
         from src.database.mongo_storage import SovereignMongoStorage
-        from src.config import MongoConfig
 
         mongo = SovereignMongoStorage()
 
@@ -245,42 +245,79 @@ def get_adventure_log():
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
-        # Calculate full suite of metrics for the Hub
-        intentions_count = mongo.db["event_intentions"].count_documents({"user_id": user_email})
-
-        actuals_count = mongo.db["event_actuals"].count_documents(
-            {"user_id": user_email}
-        ) + mongo.db["unified_events"].count_documents({"user_id": user_email})
-
-        unclassified_count = mongo.db[MongoConfig.RAW_TIMESERIES_COLLECTION].count_documents(
-            {"metadata.user_email": user_email, "metadata.sync_status": "staged"}
-        )
-
-        matched_count = mongo.db["unified_events"].count_documents({"user_id": user_email})
-
-        total_detours = mongo.db["event_actuals"].count_documents({"user_id": user_email})
-        valuable_detours = mongo.db["event_actuals"].count_documents(
-            {"user_id": user_email, "actual.detour_type": "valuable"}
-        )
-        detrimental_detours = mongo.db["event_actuals"].count_documents(
-            {"user_id": user_email, "actual.detour_type": "detrimental"}
-        )
-
-        if valuable_detours == 0 and detrimental_detours == 0 and total_detours > 0:
-            valuable_detours = total_detours
-
-        analysis = {
-            "intentions": intentions_count,
-            "calendar_events": actuals_count,
-            "unclassified": unclassified_count,
-            "matched": matched_count,
-            "valuable_detours": valuable_detours,
-            "detrimental_detours": detrimental_detours,
-            "detrimental_delta": "↓ 0%",
-        }
-        return jsonify({"status": "success", "data": analysis})
+        metrics = mongo.calculate_hub_metrics(user_email)
+        return jsonify({"status": "success", "data": metrics.model_dump(mode="json")})
     except Exception as e:
         logger.error(f"Error getting adventure log delta: {e}")
+        return jsonify({"error": "An internal server error occurred"}), 500
+
+
+@calendar_bp.route("/api/calendar/classification_queue", methods=["GET", "POST", "OPTIONS"])
+@require_api_key
+def handle_classification_queue():
+    """
+    GET: Fetch pending unclassified calendar events from `events_to_be_classified`.
+    POST: Stage a batch of unclassified calendar events idempotently via `bulk_write`.
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+
+    user_email = getattr(request, "user_email", None)
+    if not user_email:
+        return jsonify({"error": "User email context not found"}), 400
+
+    try:
+        from src.database.mongo_storage import SovereignMongoStorage
+        from src.schemas.hub_models import ClassificationQueueRequestSchema
+
+        mongo = SovereignMongoStorage()
+        if request.method == "GET":
+            status_filter = request.args.get("status", "pending_classification")
+            limit = int(request.args.get("limit", 50))
+            records = mongo.get_events_to_be_classified(
+                user_email=user_email, status=status_filter, limit=limit
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "count": len(records),
+                        "records": [
+                            r.model_dump(mode="json") if hasattr(r, "model_dump") else r
+                            for r in records
+                        ],
+                    }
+                ),
+                200,
+            )
+
+        raw_body = request.get_json(silent=True) or {}
+        try:
+            validated = ClassificationQueueRequestSchema.model_validate(raw_body)
+        except ValidationError as exc:
+            return (
+                jsonify({"error": "Invalid classification queue payload", "details": exc.errors()}),
+                400,
+            )
+
+        counts = mongo.stage_events_for_classification(
+            user_email=user_email,
+            events=validated.events,
+            source=validated.source,
+        )
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "staged_count": counts["upserted_count"] + counts["modified_count"],
+                    "upserted_count": counts["upserted_count"],
+                    "modified_count": counts["modified_count"],
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        logger.error(f"Error handling classification queue for {user_email}: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
 
 

@@ -37,6 +37,7 @@ class SovereignMongoStorage:
         self.reflections_col = self.db["agent_reflections"]
         self.system_status_col = self.db["system_status"]
         self.users_col = self.db["users"]
+        self.events_to_classify_col = self.db[MongoConfig.EVENTS_TO_BE_CLASSIFIED_COLLECTION]
         self._ensure_indexes()
 
     def _ensure_indexes(self):
@@ -44,6 +45,7 @@ class SovereignMongoStorage:
         if getattr(self.__class__, "_indexes_ensured", False):
             return
         from pymongo import ASCENDING, DESCENDING
+        from src.database.mongo_client.hub_storage import ensure_hub_indexes
 
         # In the Timeseries (raw events), index on email + start time for quick window querying
         self.raw_col.create_index([("metadata.user_email", ASCENDING), ("start_time", ASCENDING)])
@@ -51,7 +53,7 @@ class SovereignMongoStorage:
         # In formatted collections, index on email + start time
         self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
 
-        # Intent and Actual collections for quick queries
+        # Intent, Actual, Unified, and Classification Queue collections for quick queries
         try:
             self.db[MongoConfig.INTENT_COLLECTION].create_index(
                 [("user_id", ASCENDING), ("time_slot.start", DESCENDING)]
@@ -62,6 +64,7 @@ class SovereignMongoStorage:
             self.db[MongoConfig.UNIFIED_EVENTS_COLLECTION].create_index(
                 [("user_id", ASCENDING), ("time_slot.start", DESCENDING)]
             )
+            ensure_hub_indexes(self.db)
         except Exception as e:
             logger.warning(f"Failed to ensure temporal indexes: {e}")
 
@@ -117,7 +120,13 @@ class SovereignMongoStorage:
             return str(result.inserted_id)
 
     def save_freeform_journal(
-        self, date_str: str, text: str, user_id: str = "Hero", correlation_id: str = None
+        self,
+        date_str: str,
+        text: str,
+        user_id: str = "Hero",
+        correlation_id: str = None,
+        saga_status: str = "GRAPH_INJECTED",
+        reflection: str = None,
     ):
         """
         Saves a freeform daily journal entry for a specific date.
@@ -127,12 +136,20 @@ class SovereignMongoStorage:
             text: Freeform journal text.
             user_id: The username identifier.
             correlation_id: Optional cross-system lineage ID for data provenance.
+            saga_status: Pipeline ingestion status ('RECEIVED', 'LLM_PROCESSING', 'GRAPH_INJECTED', 'FAILED').
+            reflection: Optional AI reflection text associated with the journal entry.
         """
         query = {"date": date_str, "user_id": user_id}
         updated_at = datetime.now(timezone.utc).isoformat()
-        set_fields = {"text": text, "updated_at": updated_at}
+        set_fields = {
+            "text": text,
+            "updated_at": updated_at,
+            "saga_status": saga_status,
+        }
         if correlation_id:
             set_fields["correlation_id"] = correlation_id
+        if reflection is not None:
+            set_fields["reflection"] = reflection
         update = {"$set": set_fields}
         self.freeform_journal_col.update_one(query, update, upsert=True)
         return updated_at
@@ -158,15 +175,46 @@ class SovereignMongoStorage:
             j_query["correlation_id"] = correlation_id
             e_query["correlation_id"] = correlation_id
 
+        j_proj = {
+            "_id": 0,
+            "date": 1,
+            "text": 1,
+            "correlation_id": 1,
+            "updated_at": 1,
+            "saga_status": 1,
+            "reflection": 1,
+        }
+        e_proj = {
+            "_id": 0,
+            "week_start_date": 1,
+            "expectation_text": 1,
+            "correlation_id": 1,
+            "updated_at": 1,
+            "saga_status": 1,
+            "reflection": 1,
+        }
+
         journals = list(
-            self.freeform_journal_col.find(j_query, {"_id": 0}).sort("date", -1).limit(limit)
+            self.freeform_journal_col.find(j_query, j_proj).sort("date", -1).limit(limit)
         )
         expectations = list(
             self.db["weekly_expectations"]
-            .find(e_query, {"_id": 0})
+            .find(e_query, e_proj)
             .sort("week_start_date", -1)
             .limit(limit)
         )
+
+        def _norm_saga(raw_val) -> str:
+            if isinstance(raw_val, dict):
+                return str(raw_val.get("status", "GRAPH_INJECTED"))
+            if isinstance(raw_val, str) and raw_val in {
+                "RECEIVED",
+                "LLM_PROCESSING",
+                "GRAPH_INJECTED",
+                "FAILED",
+            }:
+                return raw_val
+            return "GRAPH_INJECTED"
 
         history = []
         for j in journals:
@@ -176,6 +224,8 @@ class SovereignMongoStorage:
                     "date": j.get("date"),
                     "text": j.get("text", ""),
                     "correlation_id": j.get("correlation_id", ""),
+                    "saga_status": _norm_saga(j.get("saga_status")),
+                    "reflection": j.get("reflection"),
                     "updated_at": j.get("updated_at"),
                 }
             )
@@ -186,12 +236,14 @@ class SovereignMongoStorage:
                     "date": e.get("week_start_date"),
                     "text": e.get("expectation_text", ""),
                     "correlation_id": e.get("correlation_id", ""),
+                    "saga_status": _norm_saga(e.get("saga_status")),
+                    "reflection": e.get("reflection"),
                     "updated_at": e.get("updated_at"),
                 }
             )
 
         # Sort combined history by date descending
-        history.sort(key=lambda x: x["date"], reverse=True)
+        history.sort(key=lambda x: x["date"] or "", reverse=True)
         return history[:limit]
 
     def update_journal_sync_status(
@@ -584,6 +636,34 @@ class SovereignMongoStorage:
             {"gcal_id": {"$in": gcal_ids}},
             {"$set": {"neo4j_synced": True, "neo4j_last_sync": datetime.now(timezone.utc)}},
         )
+
+    def stage_events_for_classification(
+        self, user_email: str, events: list, source: str = "gcal_sync"
+    ) -> dict:
+        """Stage unclassified calendar events into events_to_be_classified via bulk_write."""
+        from src.database.mongo_client.hub_storage import stage_events_for_classification
+
+        return stage_events_for_classification(self.db, user_email, events)
+
+    def get_events_to_be_classified(
+        self, user_email: str, status: str = "pending_classification", limit: int = 50
+    ) -> list:
+        """Fetch projected tenant-scoped events from events_to_be_classified."""
+        from src.database.mongo_client.hub_storage import get_events_to_be_classified
+
+        return get_events_to_be_classified(self.db, user_email, limit=limit)
+
+    def calculate_hub_metrics(self, user_email: str):
+        """Compute tenant-scoped Porter Hub progress metrics and week-over-week detour delta."""
+        from src.database.mongo_client.hub_storage import calculate_hub_metrics
+
+        return calculate_hub_metrics(self.db, user_email)
+
+    def save_weekly_intentions_batch(self, user_email: str, username: str, payload) -> dict:
+        """Persist a full week's intentions and optional summary in a single batch."""
+        from src.database.mongo_client.hub_storage import save_weekly_intentions_batch
+
+        return save_weekly_intentions_batch(self.db, user_email, username, payload)
 
 
 # --- Execution Entry Point ---

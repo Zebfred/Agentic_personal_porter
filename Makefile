@@ -114,6 +114,12 @@ else
 endif
 	@echo "=== ALL QUALITY GATES PASSED: TASK DONE ==="
 
+test-roster: ## Run verification gates across all 8 Google Jules roster personas
+	PROJECT_ID=test-project DISABLE_CLOUD_LOGGING=true $(PYTHON) scripts/porter_cli_agents.py verify roster
+
+test-silas: ## Run the full Silas verification gate via porter_cli_agents
+	PROJECT_ID=test-project DISABLE_CLOUD_LOGGING=true $(PYTHON) scripts/porter_cli_agents.py verify silas
+
 install-hooks: ## Activate standardized Git hooks (.githooks/pre-commit & pre-push)
 	uv run --no-project python scripts/git_hooks_runner.py install
 

@@ -149,3 +149,23 @@ def update_analytics_opt_in():
     except Exception as e:
         logger.error(f"Error updating privacy opt-in for {user_email}: {e}")
         return jsonify({"error": "Internal server error"}), 500
+
+
+@user_bp.route("/hub_metrics", methods=["GET"])
+@require_api_key
+def get_hub_metrics():
+    """
+    Returns aggregated Porter Hub progress metrics and week-over-week detour delta
+    for the authenticated tenant (`GET /api/user/hub_metrics`).
+    """
+    user_email = getattr(request, "user_email", None)
+    if not user_email:
+        return jsonify({"error": "No email associated with token"}), 400
+
+    try:
+        storage = SovereignMongoStorage()
+        metrics = storage.calculate_hub_metrics(user_email)
+        return jsonify({"status": "success", "data": metrics.model_dump(mode="json")}), 200
+    except Exception as e:
+        logger.error(f"Error computing hub metrics for {user_email}: {e}", exc_info=True)
+        return jsonify({"error": "Internal server error"}), 500

@@ -78,6 +78,88 @@
                     <p class="text-muted">See <a href="/graph_explorer" class="text-primary hover:underline">Graph
                             Explorer</a> for detailed views.</p>
                 </section>
+
+                <!-- Spec-Kit / Jira <-> Google Jules Command Center (Admin View) -->
+                <section id="jira-jules-command-center" class="glass-panel p-6 rounded-2xl shadow-lg border-l-4 border-secondary bg-surface">
+                    <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-main flex items-center gap-2">
+                                <span>🚀</span> Spec-Kit / Jira ↔ Google Jules Bridge
+                            </h3>
+                            <p class="text-xs text-muted">Guild Command Center for Spec-Kit task staging, Jira synchronization, and Google Jules persona dispatch.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="bridge-feature-badge" class="text-xs font-mono bg-gray-200 text-gray-800 px-2.5 py-1 rounded-full font-bold">spec: loading...</span>
+                            <span id="bridge-jira-badge" class="text-xs font-mono bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-bold">Jira: checking...</span>
+                            <span id="bridge-jules-badge" class="text-xs font-mono bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-bold">Jules CLI: checking...</span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-4 pb-4 border-b border-border">
+                        <button id="btn-speckit-push" aria-label="Stage Spec-Kit tasks into Jira bridge"
+                            class="bg-primary hover:bg-primary-hover text-on-primary text-xs font-bold py-2 px-4 rounded-lg shadow transition">
+                            📋 Stage Spec-Kit Tasks (T001+)
+                        </button>
+                        <button id="btn-jira-sync" aria-label="Synchronize with upstream Jira project"
+                            class="bg-secondary hover:opacity-90 text-on-primary text-xs font-bold py-2 px-4 rounded-lg shadow transition">
+                            🔄 Sync Upstream Jira
+                        </button>
+                        <span id="bridge-action-feedback" class="text-xs text-muted self-center ml-2 font-medium" role="status" aria-live="polite"></span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        <div class="md:col-span-2">
+                            <label for="jules-task-select" class="block text-xs font-bold text-muted uppercase mb-1">Select Spec-Kit / Jira Task</label>
+                            <select id="jules-task-select"
+                                class="w-full bg-surface border border-border rounded-lg p-2.5 text-sm focus:outline-none focus:ring focus:border-primary">
+                                <option value="">Loading Spec-Kit tasks...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="jules-persona-select" class="block text-xs font-bold text-muted uppercase mb-1">Jules Roster Persona</label>
+                            <select id="jules-persona-select"
+                                class="w-full bg-surface border border-border rounded-lg p-2.5 text-sm focus:outline-none focus:ring focus:border-primary">
+                                <option value="">Auto-Route from Task</option>
+                                <option value="archie">🏛️ Archie (Architecture &amp; Schemas)</option>
+                                <option value="bolt">⚡ Bolt (Mongo/Neo4j Performance)</option>
+                                <option value="sentinel">🛡️ Sentinel (Security &amp; Auth)</option>
+                                <option value="palette">🎨 Palette (UX &amp; Accessibility)</option>
+                                <option value="jovol">⚛️ Jovol (JS &amp; UI Primitives)</option>
+                                <option value="crii">🔍 Crii (Adversarial QA &amp; Tests)</option>
+                                <option value="dave">⚙️ Dave (DevOps &amp; CI/CD)</option>
+                                <option value="docdoc">📚 DocDoc (Knowledge &amp; Specs)</option>
+                                <option value="silas">🏛️ Silas (Full Review Gate)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button id="btn-jules-preview" aria-label="Preview Google Jules Work Order in dry-run mode"
+                            class="bg-main hover:opacity-90 text-surface text-xs font-bold py-2 px-4 rounded-lg shadow transition">
+                            🔍 Preview Jules Work Order (Dry-Run)
+                        </button>
+                        <button id="btn-jules-dispatch" aria-label="Dispatch Work Order to Google Jules CLI"
+                            class="bg-primary hover:bg-primary-hover text-on-primary text-xs font-bold py-2 px-5 rounded-lg shadow transition">
+                            🤖 Dispatch to Google Jules
+                        </button>
+                    </div>
+
+                    <div id="jules-work-order-drawer" class="hidden bg-gray-900 text-gray-100 rounded-xl p-4 mb-4 text-xs font-mono overflow-x-auto">
+                        <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
+                            <span id="jules-drawer-title" class="font-bold text-purple-300">Jules Work Order Preview</span>
+                            <span id="jules-drawer-status" class="bg-purple-800 text-purple-100 px-2 py-0.5 rounded text-[11px]">dry_run</span>
+                        </div>
+                        <div id="jules-drawer-command" class="text-emerald-300 mb-2 break-all"></div>
+                        <pre id="jules-drawer-prompt" class="whitespace-pre-wrap text-gray-300 max-h-48 overflow-y-auto leading-relaxed"></pre>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-bold text-muted uppercase tracking-wider mb-2">Staged Tasks &amp; Recent Jules Dispatches</h4>
+                        <div id="jira-staged-list" class="space-y-2 max-h-56 overflow-y-auto">
+                            <div class="text-sm text-muted italic">Loading bridge tasks...</div>
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <!-- Right Column -->

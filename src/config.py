@@ -42,3 +42,6 @@ class MongoConfig:
     # Jira & Jules Bridge Collections
     JIRA_STAGING_COLLECTION = "jira_issues_staging"
     JULES_WORK_ORDERS_COLLECTION = "jules_work_orders"
+
+    # First-Serving Hub Classification Queue Collection
+    EVENTS_TO_BE_CLASSIFIED_COLLECTION = "events_to_be_classified"

@@ -57,6 +57,22 @@ As an authenticated Hero reviewing past journal entries and Socratic reflections
 
 ---
 
+### User Story 4 - Interactive Porter Hub GUI for Jira ↔ Google Jules Bridge & Live Browser Verification (Priority: P1)
+
+As an authenticated Hero or Nexus-Guild Admin using the Porter Hub browser interface (`index.html` and `admin_index.html`), I want a dedicated **Spec-Kit / Jira ↔ Google Jules Command Center** widget in the GUI—alongside live Hub Progress Metrics, One-Shot Weekly Planning, and Missing Artifact Scans—so that I can visually inspect Spec-Kit feature tasks (`T001`+), trigger Jira synchronization, preview formatted Jules Work Orders (with `.agents/roster/<persona>.md` rules), and dispatch tasks to Google Jules directly from the browser without relying solely on terminal CLI commands.
+
+**Why this priority**: Bridges the gap between backend/CLI readiness and interactive visual verification in the browser GUI, making both `002-jira-jules-bridge` and `003-first-serving-hub-api` immediately visible, testable, and actionable from the Porter Hub dashboard.
+
+**Independent Test**: Can be independently tested by opening the Porter Hub GUI (`/` or `/admin_index`), loading the Jira ↔ Jules Bridge status endpoint (`GET /api/integrations/jira/status`), clicking "Push Spec-Kit Tasks", selecting a task (e.g., `T001`), clicking "Preview Jules Work Order" to inspect the generated prompt in the GUI, and clicking "Dispatch to Jules".
+
+**Acceptance Scenarios**:
+
+1. **Given** an authenticated user on the Porter Hub (`index.html` or `admin_index.html`), **When** the dashboard loads, **Then** the **Jira ↔ Google Jules Command Center** panel displays the active Spec-Kit feature ID, parsed `tasks.md` items with inferred persona badges (`sentinel`, `bolt`, `palette`, `archie`, `docdoc`, `dave`, `crii`, `jovol`, `silas`), staged Jira ticket statuses, and recent Jules work orders via `GET /api/integrations/jira/status`.
+2. **Given** an authenticated user viewing the Command Center panel in the browser GUI, **When** the user selects a task and clicks **Preview Work Order** or **Dispatch to Jules**, **Then** the GUI invokes `POST /api/integrations/jules/dispatch` and renders the formatted `JulesWorkOrder` prompt (including `.agents/roster/<persona>.md` directives and verification gates) and session status directly in the browser.
+3. **Given** an authenticated user on the Porter Hub (`index.html`), **When** the user submits a one-shot weekly intention plan or views Hub Progress Metrics, **Then** the GUI calls `/api/planning` and `/api/user/hub_metrics` and immediately refreshes the rendered dashboard counters without a full page reload.
+
+---
+
 ### Edge Cases
 
 - **New Tenant with Zero Historical Data**: What happens when a newly registered Hero requests Hub Progress Metrics or Historical Journals? The system must return zeroed metric counters (with `0.0` week-over-week detour delta) and an empty journal list rather than raising division-by-zero or missing-collection errors.
@@ -75,6 +91,8 @@ As an authenticated Hero reviewing past journal entries and Socratic reflections
 - **FR-005**: System MUST provide missing-artifact discovery logic enabling the First-Serving Porter to inspect a Hero's `hero_origin.json` and `hero_ambition.json` profiles for empty or unpopulated fields and generate targeted onboarding prompts.
 - **FR-006**: System MUST provide a Historical Journal endpoint that returns reverse-chronological journal records, Socratic reflections, and explicit `saga_status` (`RECEIVED`, `LLM_PROCESSING`, `GRAPH_INJECTED`, `FAILED`) for the `journal_review.html` interface.
 - **FR-007**: All database reads and writes across the Hub metrics, classification queue, weekly planning, and journal review flows MUST use explicit field projections and batched `bulk_write` operations where multiple records are persisted.
+- **FR-008**: System MUST provide a `GET /api/integrations/jira/status` endpoint returning the active Spec-Kit feature's parsed tasks, tenant-scoped staged Jira issues (`jira_issues_staging`), recent `jules_work_orders`, and credential/CLI readiness flags for the Hub GUI.
+- **FR-009**: The Porter Hub GUI (`frontend/index.html`, `frontend/admin_index.html`, `frontend/js/user_hub.js`, and `frontend/js/admin_hub.js`) MUST render an interactive **Jira ↔ Google Jules Command Center** widget and a **One-Shot Weekly Planning** widget wired to `/api/integrations/jira/status`, `/api/integrations/jira/sync`, `/api/integrations/jira/speckit-push`, `/api/integrations/jules/dispatch`, `/api/planning`, and `/api/user/hub_metrics` with full ARIA/label accessibility (`Palette` / `Fiona Protocol`).
 
 ### Key Entities
 
@@ -83,6 +101,7 @@ As an authenticated Hero reviewing past journal entries and Socratic reflections
 - **Weekly Planning Payload (`WeeklyPlanningBatch`)**: Represents a Hero's one-shot weekly intention submission and the resulting structured list of planned intention blocks.
 - **Artifact Gap Summary (`ArtifactGapReport`)**: Represents the list of empty or incomplete keys discovered across a Hero's `hero_origin.json` and `hero_ambition.json` artifacts, paired with a suggested Socratic discovery prompt.
 - **Historical Journal Entry (`HistoricalJournalRecord`)**: Represents a persisted journal submission, its linked Socratic reflection, timestamp metadata, and pipeline `saga_status`.
+- **Bridge Dashboard Status (`JiraJulesBridgeStatus`)**: Represents the combined GUI state for the Spec-Kit / Jira ↔ Google Jules Command Center, including active feature tasks, synced/staged Jira issues, recent Jules work orders, and environment readiness flags.
 
 ## Success Criteria *(mandatory)*
 
@@ -93,6 +112,7 @@ As an authenticated Hero reviewing past journal entries and Socratic reflections
 - **SC-003**: 100% of empty fields in `hero_origin.json` and `hero_ambition.json` are accurately identified by the missing-artifact query service without failing when artifact files are missing or partially populated.
 - **SC-004**: 100% of historical journal records returned to the review UI include a valid `saga_status` value (`RECEIVED`, `LLM_PROCESSING`, `GRAPH_INJECTED`, or `FAILED`).
 - **SC-005**: All unit and contract tests for the feature execute completely offline using `mongomock` in under 2 seconds at $0.00 cloud cost.
+- **SC-006**: Authenticated users can visually inspect Spec-Kit tasks, sync/push Jira tickets, preview formatted Jules Work Orders, and dispatch to Google Jules directly from the Porter Hub GUI (`index.html` and `admin_index.html`) in $\le 3$ clicks (20-Second Recon Loop compliance).
 
 ## Assumptions
 

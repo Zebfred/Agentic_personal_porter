@@ -46,6 +46,19 @@ document.addEventListener('DOMContentLoaded', () => {
         Auth.fetchWithAuth(`/api/calendar/get_calendar_events?date=${dateStr}`).then(res => res.json()).then(data => {
             window.currentEvents = data.events || [];
         });
+
+        // Also fetch recent journal history with saga_status badges
+        Auth.fetchWithAuth(`/api/journal/history?limit=5`).then(res => res.json()).then(data => {
+            if (data.status === 'success' && Array.isArray(data.data) && intentList) {
+                data.data.slice(0, 3).forEach(entry => {
+                    const saga = escapeHTML(entry.saga_status || 'GRAPH_INJECTED');
+                    intentList.innerHTML += `<div class="bg-white border border-gray-200 p-2 mb-2 text-xs rounded shadow-sm flex justify-between items-center">
+                        <span class="truncate max-w-[75%]"><strong>${escapeHTML(entry.type.toUpperCase())} (${escapeHTML(entry.date)}):</strong> ${escapeHTML(entry.text)}</span>
+                        <span class="font-mono font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">${saga}</span>
+                    </div>`;
+                });
+            }
+        }).catch(() => {});
     }
 
     function renderReviewData(analysis) {

@@ -12,7 +12,7 @@ for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-MAX_SCRIPT_LINES, MAX_FUNCTION_LINES, LEGACY_EXEMPT_SCRIPTS = 200, 60, {"porter_cli_agents.py", "trace_lineage.py", "seed_calendar.py", "test_calendar_pull.py"}
+MAX_SCRIPT_LINES, MAX_FUNCTION_LINES, LEGACY_EXEMPT_SCRIPTS = 200, 60, {"trace_lineage.py", "seed_calendar.py", "test_calendar_pull.py"}
 KV_REDACT_RE = re.compile(r"(?i)\b(pass[w]ord|pass[w]d|tok[e]n|secr[e]t|api[_-]?k[e]y|access[_-]?k[e]y)\b\s*[:=]\s*([^\s,;]+)")
 
 

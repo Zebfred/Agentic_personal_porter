@@ -218,6 +218,95 @@ def save_log():
         return jsonify({"error": "An internal server error occurred"}), 500
 
 
+@journal_bp.route("/api/planning", methods=["GET", "POST", "OPTIONS"])
+@require_api_key
+def handle_one_shot_weekly_planning():
+    """
+    POST /api/planning: Batch-saves a full week's intentions into `event_intentions`
+    and optional `weekly_expectations` summary in a single atomic batch (`FR-005`).
+    GET /api/planning: Retrieves the planned intentions and summary for `week_start_date`.
+    """
+    if request.method == "OPTIONS":
+        return "", 204
+
+    user_email = getattr(request, "user_email", None)
+    if not user_email:
+        return jsonify({"error": "User email context not found"}), 400
+
+    try:
+        from src.schemas.hub_models import WeeklyPlanningRequestSchema
+
+        mongo_storage = SovereignMongoStorage()
+        user_doc = mongo_storage.get_user_by_email(user_email)
+        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+
+        if request.method == "GET":
+            week_start_date = request.args.get("week_start_date")
+            query: dict = {"user_id": {"$in": [user_email, username]}}
+            if week_start_date:
+                query["week_start_date"] = week_start_date
+
+            intent_proj = {
+                "_id": 0,
+                "week_start_date": 1,
+                "time_slot": 1,
+                "intent": 1,
+                "correlation_id": 1,
+                "updated_at": 1,
+            }
+            intentions = list(
+                mongo_storage.db[MongoConfig.INTENT_COLLECTION]
+                .find(query, intent_proj)
+                .sort("time_slot.start", -1)
+                .limit(50)
+            )
+            exp_doc = (
+                mongo_storage.db["weekly_expectations"].find_one(
+                    {
+                        "user_id": {"$in": [user_email, username]},
+                        "week_start_date": week_start_date,
+                    },
+                    {"_id": 0},
+                )
+                if week_start_date
+                else None
+            )
+            return (
+                jsonify(
+                    {
+                        "status": "success",
+                        "data": {
+                            "week_start_date": week_start_date,
+                            "expectation_text": (
+                                exp_doc.get("expectation_text", "") if exp_doc else ""
+                            ),
+                            "intentions": intentions,
+                        },
+                    }
+                ),
+                200,
+            )
+
+        raw_body = request.get_json(silent=True) or {}
+        try:
+            validated = WeeklyPlanningRequestSchema.model_validate(raw_body)
+        except ValidationError as exc:
+            return (
+                jsonify({"error": "Invalid weekly planning payload", "details": exc.errors()}),
+                400,
+            )
+
+        result = mongo_storage.save_weekly_intentions_batch(
+            user_email=user_email,
+            username=username,
+            payload=validated,
+        )
+        return jsonify(result), 200
+    except Exception as e:
+        logger.error(f"Error in one-shot weekly planning for {user_email}: {e}", exc_info=True)
+        return jsonify({"error": "An internal server error occurred"}), 500
+
+
 @journal_bp.route("/api/planning/weekly", methods=["POST", "OPTIONS"])
 @require_api_key
 def save_weekly_expectation():
