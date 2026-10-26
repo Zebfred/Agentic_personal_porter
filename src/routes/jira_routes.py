@@ -21,6 +21,7 @@ from src.orchestrators.speckit_jira_bridge import (
     sync_feature_to_jira,
 )
 from src.routes.auth_middleware import require_api_key
+from src.schemas.hub_models import JiraJulesBridgeStatus
 from src.schemas.jira_models import (
     JiraIssueRecord,
     JiraSyncRequestSchema,
@@ -32,6 +33,60 @@ from src.utils.path_utils import get_project_root
 logger = logging.getLogger("APP_ROUTER")
 
 jira_bp = Blueprint("jira_bp", __name__)
+
+
+@jira_bp.route("/integrations/jira/status", methods=["GET"])
+@require_api_key
+def get_jira_jules_bridge_status():
+    """
+    Returns active Spec-Kit tasks (`T001`+), tenant-scoped staged Jira issues,
+    recent Jules work orders, and Jira/Jules readiness flags for the Porter Hub GUI.
+    """
+    user_email = getattr(request, "user_email", "anonymous@localhost")
+    feature_dir_param = request.args.get("feature_dir")
+    root = get_project_root()
+
+    try:
+        if feature_dir_param:
+            f_dir = (root / feature_dir_param).resolve()
+            if not str(f_dir).startswith(str(root.resolve())):
+                return jsonify({"error": "Invalid feature_dir path boundary"}), 400
+        else:
+            f_dir = _resolve_default_feature_dir()
+    except Exception:
+        f_dir = _resolve_default_feature_dir()
+
+    feature_id = f_dir.name
+    tasks_path = f_dir / "tasks.md"
+    speckit_tasks: list[dict] = []
+    if tasks_path.exists():
+        parsed = parse_speckit_tasks_markdown(tasks_path, feature_id=feature_id)
+        speckit_tasks = [t.model_dump(mode="json") for t in parsed]
+
+    jira_configured = False
+    try:
+        JiraClient.from_env()
+        jira_configured = True
+    except JiraClientError:
+        jira_configured = False
+
+    dispatcher = JulesDispatcher()
+    jules_bin = dispatcher._resolve_jules_binary()
+    jules_cli_available = bool(jules_bin)
+
+    storage = JiraStorage()
+    staged_issues = storage.get_staged_issues(user_email=user_email, limit=50)
+    recent_orders = storage.get_recent_work_orders(user_email=user_email, limit=20)
+
+    status_payload = JiraJulesBridgeStatus(
+        feature_id=feature_id,
+        jira_configured=jira_configured,
+        jules_cli_available=jules_cli_available,
+        speckit_tasks=speckit_tasks,
+        staged_jira_issues=staged_issues,
+        recent_work_orders=recent_orders,
+    )
+    return jsonify({"status": "success", "data": status_payload.model_dump(mode="json")}), 200
 
 
 @jira_bp.route("/integrations/jira/sync", methods=["POST", "OPTIONS"])

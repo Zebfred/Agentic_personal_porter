@@ -94,34 +94,111 @@ class GTKYIdentityArchitect:
     def get_detriments(self):
         return self._read_json(self.detriments_file)
 
+    def scan_missing_artifacts(self):
+        """
+        Scans both `hero_origin.json` and `hero_ambition.json` for empty or placeholder
+        fields and returns a structured `ArtifactGapReport` with interview prompts.
+        """
+        from src.schemas.hub_models import ArtifactGapItem, ArtifactGapReport
+
+        gaps: list[ArtifactGapItem] = []
+
+        origin_data = self.get_origin_story()
+        if not origin_data or "origin_story" not in origin_data:
+            gaps.append(
+                ArtifactGapItem(
+                    artifact_name="hero_origin.json",
+                    field_path="origin_story.epochs",
+                    prompt="Your Origin Story timeline has not been initialized yet. Which life epoch should we map first?",
+                )
+            )
+        else:
+            epochs = origin_data.get("origin_story", {}).get("epochs", [])
+            for idx, ep in enumerate(epochs):
+                name = ep.get("name", f"Epoch {idx + 1}")
+                experiences = ep.get("experiences", [])
+                if not experiences or "Proper Instructions coming soon" in name:
+                    gaps.append(
+                        ArtifactGapItem(
+                            artifact_name="hero_origin.json",
+                            field_path=f"origin_story.epochs[{idx}]",
+                            prompt=f"Empty or placeholder epoch '{name}' in your Origin Story. What defining experiences belong here?",
+                        )
+                    )
+                for exp_idx, exp in enumerate(experiences):
+                    if not exp.get("title") and not exp.get("description"):
+                        gaps.append(
+                            ArtifactGapItem(
+                                artifact_name="hero_origin.json",
+                                field_path=f"origin_story.epochs[{idx}].experiences[{exp_idx}]",
+                                prompt=f"Empty slot in epoch '{name}'. Candidate focus: {ep.get('experience candidate', [])}",
+                            )
+                        )
+                    elif exp.get("title") and not str(exp.get("description", "")).strip():
+                        gaps.append(
+                            ArtifactGapItem(
+                                artifact_name="hero_origin.json",
+                                field_path=f"origin_story.epochs[{idx}].experiences[{exp_idx}].description",
+                                prompt=f"Details needed for event '{exp.get('title')}' in '{name}'.",
+                            )
+                        )
+
+        ambition_data = self.get_ambition()
+        if not ambition_data or (
+            isinstance(ambition_data, dict)
+            and not ambition_data.get("data")
+            and "Proper Instructions coming soon" in str(ambition_data.get("message", ""))
+        ):
+            gaps.append(
+                ArtifactGapItem(
+                    artifact_name="hero_ambition.json",
+                    field_path="ambition.primary_quest",
+                    prompt="Your Hero Ambition artifact has empty quests/milestones. What is your top 90-day Quest?",
+                )
+            )
+        elif isinstance(ambition_data, dict):
+            for key, val in ambition_data.items():
+                if key == "pending_porter_updates":
+                    continue
+                if val in ("", [], {}, None):
+                    gaps.append(
+                        ArtifactGapItem(
+                            artifact_name="hero_ambition.json",
+                            field_path=f"ambition.{key}",
+                            prompt=f"Ambition field '{key}' is currently empty. How would you define this goal?",
+                        )
+                    )
+                elif isinstance(val, dict) and not str(val.get("description", "ok")).strip():
+                    gaps.append(
+                        ArtifactGapItem(
+                            artifact_name="hero_ambition.json",
+                            field_path=f"ambition.{key}.description",
+                            prompt=f"Ambition '{key}' is missing a description or milestone target.",
+                        )
+                    )
+
+        if not gaps:
+            return ArtifactGapReport(
+                status="success",
+                has_gaps=False,
+                gaps=[],
+                results="Origin story and Hero Ambition artifacts are currently fully mapped out.",
+            )
+
+        bullet_lines = [f"- [{g.artifact_name}] {g.prompt}" for g in gaps[:4]]
+        results_text = (
+            "I noticed some gaps in your Hero Identity artifacts that need filling. Can you tell me more about:\n"
+            + "\n".join(bullet_lines)
+        )
+        return ArtifactGapReport(
+            status="success",
+            has_gaps=True,
+            gaps=gaps,
+            results=results_text,
+        )
+
     def scan_for_missing_origin(self) -> str:
         """
-        Scans hero_origin.json for epochs with missing or sparse descriptions.
-        If gaps are found, it generates interview targets to feed back to the user via the frontend.
+        Backwards-compatible string summary wrapper around `scan_missing_artifacts()`.
         """
-        data = self.get_origin_story()
-        if not data or "origin_story" not in data:
-            return "No origin story base found to scan."
-
-        missing_prompts = []
-        epochs = data.get("origin_story", {}).get("epochs", [])
-        for ep in epochs:
-            name = ep.get("name", "Unknown Epoch")
-            for exp in ep.get("experiences", []):
-                if not exp.get("title") and not exp.get("description"):
-                    missing_prompts.append(
-                        f"- Empty slot in epoch: '{name}'. Candidate focus: {ep.get('experience candidate', [])}"
-                    )
-                elif exp.get("title") and (
-                    not exp.get("description") or exp.get("description") == ""
-                ):
-                    missing_prompts.append(
-                        f"- Details needed for event: '{exp.get('title')}' in '{name}'."
-                    )
-
-        if not missing_prompts:
-            return "Origin story is currently fully mapped out."
-
-        out = "I noticed some gaps in your Origin Story timeline that need filling. Can you tell me more about:\n"
-        out += "\n".join(missing_prompts[:3])  # Only ask about 3 at a time to reduce cognitive load
-        return out
+        return self.scan_missing_artifacts().results

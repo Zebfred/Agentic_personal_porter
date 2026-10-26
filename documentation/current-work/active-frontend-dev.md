@@ -3,9 +3,12 @@
 This document tracks immediate, actionable tasks for the frontend interface (`app.js`, `index.html`, `inventory.html`).
 
 ## Highest Priority: Frontend Hub Overhaul
-*Status: UI Scaffolding complete - Merged to main*
+*Status: UI Scaffolding & `003-first-serving-hub-api` Interactive Hub + Jira/Jules Bridge GUI Complete*
 
-- [x] **The Porter Hub (`index.html`):** UI converted into a central dashboard displaying specific calculated metrics (*Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours*). *(Note: UI layout is complete; full backend aggregation via `/api/user/hub_metrics` is pending)*.
+- [x] **The Porter Hub (`index.html`):** UI converted into a central dashboard displaying specific calculated metrics (*Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours*, and *Detrimental Detours*) wired directly to `/api/user/hub_metrics` with week-over-week Detrimental Detour improvement delta.
+- [x] **Spec-Kit / Jira ↔ Google Jules Bridge Command Center (`index.html` & `admin_index.html`):** Interactive GUI panel allowing visual inspection of active Spec-Kit tasks (`T001`+), one-click staging to Jira (`POST /api/integrations/jira/speckit-push`), upstream Jira sync (`POST /api/integrations/jira/sync`), dry-run Work Order preview drawer, and live dispatch to `@google/jules` (`POST /api/integrations/jules/dispatch`).
+- [x] **One-Shot Weekly Planning Panel (`index.html`):** Accessible form wired to `POST /api/planning` for batch-logging weekly intentions and trajectory summaries.
+- [x] **Historical Saga Status Badges (`user_hub.js` & `journal_review.js`):** Explicit `RECEIVED`, `LLM_PROCESSING`, `GRAPH_INJECTED`, and `FAILED` status badges rendered on historical journal and weekly expectation records.
 - [x] **Adventure Time Log (`Adventure_Time_log.html`):** Migrate the current daily 20-minute chunking UI out of the index and into this dedicated route. Retain scope explicitly for the *current week*. (Redesigned & Namespaced - Human verification required).
 - [x] **Adventure Journal (NEW):** Built a dedicated UI and API integration for unstructured daily reflection and high-level weekly expectations. (Human verification required)
 - [ ] **Adventure Calendar (NEW):** Build a flexible `Adventure-calendar` endpoint and UI component. This will serve as the base for monthly, "last week", and "next week" rolling views chronologically while keeping frontend payload sizes low.

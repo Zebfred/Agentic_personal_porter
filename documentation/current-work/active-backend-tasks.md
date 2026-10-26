@@ -9,14 +9,23 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 > - **Saga Tracking**: Journal routes now natively inject `saga_status` (`RECEIVED`, `GRAPH_INJECTED`, `FAILED`). Agents must update this status to `LLM_PROCESSING` during execution.
 
 ## Priority: First-Serving Agent API & Hub Support
-*Status: Multi-Tenant Backend Partitioning Complete. Agent Pipelines are next.*
+*Status: Implemented & Verified in `003-first-serving-hub-api` (Human browser verification ready).*
 
-- [ ] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub. Ensure it respects `request.user_email`.
-- [ ] **Weekly Planning Endpoint (`/api/planning`):** Build an endpoint connecting to a new "Planning Agent" (or the First-Serving Porter) designed specifically to help the user log a full week's worth of general intentions in one shot.
-- [ ] **Events Classification Queue:** Create a dedicated MongoDB collection (`events_to_be_classified`) to hold raw GCal events that need agent or user triage before entering the Identity Graph.
-- [ ] **Hub Progress Metrics API:** Build `/api/user/hub_metrics` that explicitly calculates: *Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours, and week-over-week Detrimental Detour improvements*.
-- [ ] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user.(started)
-- [ ] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI. Ensure it returns `saga_status`.
+- [x] **Agent Chat Endpoint:** Create a secure WebSocket or POST route to handle real-time conversations with the First-Serving Porter on the new Hub. Ensure it respects `request.user_email`. (`/api/chat/porter` & `/api/chat/welcome`)
+- [x] **Weekly Planning Endpoint (`/api/planning`):** Build an endpoint connecting to a new "Planning Agent" (or the First-Serving Porter) designed specifically to help the user log a full week's worth of general intentions in one shot. (`POST /api/planning` & `GET /api/planning` with batched `bulk_write` in `src/database/mongo_client/hub_storage.py`)
+- [x] **Events Classification Queue:** Create a dedicated MongoDB collection (`events_to_be_classified`) to hold raw GCal events that need agent or user triage before entering the Identity Graph. (`GET / POST /api/calendar/classification_queue`)
+- [x] **Hub Progress Metrics API:** Build `/api/user/hub_metrics` that explicitly calculates: *Intentions Logged, Calendar Events Logged, Events to be Classified, Matched Intentions, Valuable Detours, and week-over-week Detrimental Detour improvements*. (`GET /api/user/hub_metrics` & `GET /api/calendar/adventure_log`)
+- [x] **Missing Artifact Queries:** Build logic allowing the First-Serving agent to query `hero_origin.json` and `hero_ambition.json` for empty fields and prompt the user. (`GTKYIdentityArchitect.scan_missing_artifacts()` & `GET /api/artifacts/scan`)
+- [x] **Historical Journal API:** Create an endpoint to serve historical journal records and LLM reflections for the new `journal_review.html` UI. Ensure it returns `saga_status`. (`GET /api/journal/history`)
+- [x] **Jira ↔ Google Jules Bridge Status API (`003-first-serving-hub-api`):** Added `GET /api/integrations/jira/status` returning active Spec-Kit feature tasks (`T001`+), tenant-scoped staged Jira issues, recent Jules Work Orders, and Jira/Jules CLI readiness flags.
+
+## Immediate Next Sprint: Runtime 500 Remediation for Local Dev & `mongomock` Fallback
+*Status: Triaged from `logs/app.log` during live `uv run python src/app.py` testing. Full root-cause analysis in `documentation/development/hub-runtime-500-triage.md`.*
+
+- [ ] **Singleton Client Unification (`src/database/mongo_storage.py`):** Update `SovereignMongoStorage.__init__()` to use `MongoConnectionManager.get_client()` instead of instantiating an unpooled `MongoClient(MongoConfig.MONGO_URI)` on every call.
+- [ ] **Fast Timeout & Automatic `mongomock` Dev Fallback (`src/database/mongo_client/connection.py`):** Set `serverSelectionTimeoutMS=2500` (replacing the 30-second PyMongo default hang) and automatically fall back to a singleton `mongomock.MongoClient()` when `localhost:27017` is unreachable during local GUI runs (`uv run python src/app.py` without Docker `mongo:7.0` running) or when `MONGO_USE_MOCK=true`.
+- [ ] **Non-Blocking Index Initialization (`src/database/mongo_storage.py`):** Move `self.raw_col.create_index(...)` and `self.formatted_col.create_index(...)` inside the `try...except Exception` block in `SovereignMongoStorage._ensure_indexes()` so `SovereignMongoStorage()` never crashes in `__init__()` when MongoDB is unreachable.
+- [ ] **Resilient Telemetry & File Fallbacks (`src/database/mongo_client/agent_health.py`, `src/routes/chat_routes.py`, `src/routes/inventory_routes.py`):** Make `AgentHealthManager.start_agent_run()` non-fatal when MongoDB is offline, and allow `/api/artifacts/scan` and `/api/chat/welcome` to gracefully degrade to local filesystem artifacts (`data/hero_artifacts/`) when MongoDB is unavailable.
 
 ## Completed: Silas Audit Multi-Tenant Partitioning
 *Status: Completed and ready for Agent integration.*

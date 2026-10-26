@@ -188,6 +188,52 @@ class JiraStorage:
         ]
         return self._execute_bulk_write(self.jules_col, ops)
 
+    def get_staged_issues(
+        self,
+        user_email: str,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        """Fetch projected tenant-scoped staged Jira issues for the Porter Hub GUI."""
+        proj = {
+            "_id": 0,
+            "jira_key": 1,
+            "task_id": 1,
+            "feature_id": 1,
+            "summary": 1,
+            "status": 1,
+            "persona": 1,
+            "sync_status": 1,
+            "updated_at": 1,
+        }
+        return list(
+            self.jira_col.find({"user_email": user_email}, proj)
+            .sort("updated_at", DESCENDING)
+            .limit(limit)
+        )
+
+    def get_recent_work_orders(
+        self,
+        user_email: str,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Fetch projected tenant-scoped Jules work orders for the Porter Hub GUI."""
+        proj = {
+            "_id": 0,
+            "work_order_id": 1,
+            "jira_key": 1,
+            "task_id": 1,
+            "persona": 1,
+            "dispatch_status": 1,
+            "jules_command": 1,
+            "created_at": 1,
+            "correlation_id": 1,
+        }
+        return list(
+            self.jules_col.find({"user_email": user_email}, proj)
+            .sort("created_at", DESCENDING)
+            .limit(limit)
+        )
+
     def merge_issues_to_neo4j(self, records: list[JiraIssueRecord]) -> int:
         """
         Idempotently merge JiraIssueRecord items into the Neo4j Identity Graph
