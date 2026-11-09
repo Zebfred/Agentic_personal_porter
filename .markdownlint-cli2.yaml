@@ -1,4 +1,4 @@
-# markdownlint-cli2 configuration — Nexus LLC & DocDoc Standard
+# markdownlint-cli2 configuration — Organization & DocDoc Standard
 config:
   MD009: true  # No trailing spaces at end of line
   MD010: true  # No hard tabs

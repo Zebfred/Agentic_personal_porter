@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
 """Standardized Antigravity CLI & IDE Lifecycle Hooks (agent_lifecycle_hooks.py).
 
-Enforces Nexus LLC guardrails at runtime across PreToolUse, PostToolUse, and Stop
-events while keeping generated scripts < 200 lines and functions < 60 lines.
+Enforces organization guardrails at runtime across PreToolUse, PostToolUse, and Stop
+events (including the 35-file PR / PR-Stack warning) while keeping scripts < 200L.
 """
 
 # fmt: off
 from __future__ import annotations
-
-import datetime
-import json
-import os
-import re
-import shutil
-import sys
+import datetime, json, os, re, shutil, subprocess, sys  # noqa: E401  # nosec B404
 from pathlib import Path
 from typing import Any
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-if hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+for _s in (sys.stdout, sys.stderr):
+    if hasattr(_s, "reconfigure"): _s.reconfigure(encoding="utf-8", errors="replace")
 
+PR_FILE_THRESHOLD = 35
 GUARDRAIL_PATTERNS = [
     (r"AI[z]a[0-9A-Za-z\-_]{35}", "Sentinel-G1 (Google Cloud Identifier)"),
     (r"GOC[S]PX-[0-9A-Za-z\-_]{20,}", "Sentinel-G2 (OAuth Client Identifier)"),
@@ -31,7 +24,6 @@ GUARDRAIL_PATTERNS = [
     (r"-----BEGIN [A-Z ]*PRIVATE[ ]KEY-----", "Sentinel-G6 (PEM Block)"),
     (r"(?i)mongodb\+[s]rv:\/\/[^:\s]+:[^@\s]+@", "Sentinel-G7 (Embedded Database URI)"),
 ]
-
 DESTRUCTIVE_CMD_PATTERNS = [
     (r"(?i)\bdrop\s+(table|database|schema)\b", "SQL DROP statement"),
     (r"(?i)\btruncate\s+table\b", "SQL TRUNCATE statement"),
@@ -39,9 +31,9 @@ DESTRUCTIVE_CMD_PATTERNS = [
     (r"(?i)\bgsutil\s+rm\s+-[rf]*r", "Recursive GCS bucket deletion"),
     (r"(?i)\bgit\s+push\b(?=.*--force\b)(?!.*--force-with-lease).*\b(main|master)\b", "Force-push to main/master"),
 ]
-
 ALLOWED_PLACEHOLDERS = ("${", "NORDPASS", "[REDACTED]", "<db_", "YOUR_", "example")
-SKIP_GOVERNANCE_FILES = {"agent_lifecycle_hooks.py", "git_hooks_runner.py", "verify_kb.py", "build_context_pack.py"}
+SKIP_GOVERNANCE_FILES = {"agent_lifecycle_hooks.py", "git_hooks_runner.py", "verify_kb.py", "verify_doc_hygiene.py", "build_context_pack.py"}
+FILE_EDIT_TOOLS = {"write_file", "edit_file", "write_to_file", "replace_file_content", "multi_replace_file_content"}
 
 
 def resolve_repo_root() -> Path:
@@ -49,11 +41,33 @@ def resolve_repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def check_branch_pr_threshold(repo_root: Path, threshold: int = PR_FILE_THRESHOLD) -> str | None:
+    """Return a warning if > `threshold` (35) files differ between current branch/tree and `main`."""
+    if not (repo_root / ".git").exists():
+        return None
+    changed: set[str] = set()
+    for base in ("origin/main...HEAD", "main...HEAD", "HEAD"):
+        res = subprocess.run(["git", "diff", "--name-only", base], cwd=str(repo_root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)  # nosec B603 B607
+        if res.returncode == 0:
+            changed.update(ln.strip() for ln in res.stdout.splitlines() if ln.strip())
+            break
+    st = subprocess.run(["git", "status", "--porcelain", "-uall"], cwd=str(repo_root), capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)  # nosec B603 B607
+    if st.returncode == 0:
+        changed.update(ln[3:].strip().split(" -> ")[-1] for ln in st.stdout.splitlines() if len(ln) > 3)
+    count = len(changed)
+    if count <= threshold:
+        return None
+    stacks = (count + threshold - 1) // threshold
+    return (
+        f"⚠️  [PR Stack Warning] {count} files differ from 'main' (threshold: {threshold}). "
+        f"Open a Pull Request now or split into a PR stack of ~{stacks} PRs (<= {threshold} files/PR)."
+    )
+
+
 def sweep_stray_backups(repo_root: Path) -> int:
     """Move any lingering `*.bk*` files outside `.legacy_hr/` into `.legacy_hr/DDMMYYYY/`."""
     try:
         from log_run import sweep_stray_backups_to_daily
-
         return sweep_stray_backups_to_daily(repo_root)
     except (ImportError, OSError):
         if not repo_root.exists():
@@ -76,7 +90,6 @@ def snapshot_before_edit(target_file: Path, repo_root: Path) -> Path | None:
     """Create a timestamped `.bk` backup inside `.legacy_hr/DDMMYYYY/` before modifying an existing file."""
     try:
         from log_run import archive_backup_file
-
         return archive_backup_file(target_file, repo_root, copy_only=True)
     except (ImportError, OSError):
         if not target_file.exists() or not target_file.is_file():
@@ -117,39 +130,22 @@ def validate_file_governance(target_file: Path, content: str, repo_root: Path) -
     return None
 
 
-FILE_EDIT_TOOLS = {
-    "write_file",
-    "edit_file",
-    "write_to_file",
-    "replace_file_content",
-    "multi_replace_file_content",
-}
-
-
 def handle_pre_tool_use(payload: dict[str, Any], repo_root: Path) -> dict[str, Any]:
     """Evaluate PreToolUse hook payload and return allow, ask, or deny decision."""
     tool_call = payload.get("toolCall") or {}
-    tool_name = tool_call.get("name", "")
-    args = tool_call.get("args") or {}
+    tool_name, args = tool_call.get("name", ""), tool_call.get("args") or {}
     if tool_name == "run_command":
         cmd = str(args.get("CommandLine", ""))
         for pattern, label in DESTRUCTIVE_CMD_PATTERNS:
             if re.search(pattern, cmd):
-                return {"decision": "ask", "reason": f"⚠️ Nexus Safety Hook: Confirm {label}."}
+                return {"decision": "ask", "reason": f"⚠️ Safety Hook: Confirm {label}."}
         return {"decision": "allow"}
     raw_target = args.get("Path") or args.get("TargetFile")
     if tool_name in FILE_EDIT_TOOLS and raw_target:
         target_path = Path(str(raw_target))
         chunks = args.get("ReplacementChunks") or []
         chunk_text = "\n".join(str(c.get("ReplacementContent", "")) for c in chunks if isinstance(c, dict))
-        content = str(
-            args.get("Content")
-            or args.get("Replacement")
-            or args.get("CodeContent")
-            or args.get("ReplacementContent")
-            or chunk_text
-            or ""
-        )
+        content = str(args.get("Content") or args.get("Replacement") or args.get("CodeContent") or args.get("ReplacementContent") or chunk_text or "")
         violation = validate_file_governance(target_path, content, repo_root)
         if violation:
             return {"decision": "deny", "reason": violation}
@@ -163,25 +159,22 @@ def main() -> int:
     repo_root = resolve_repo_root()
     if event == "pre-tool-use":
         raw_stdin = "" if sys.stdin.isatty() else sys.stdin.read().strip()
-        try:
-            payload = json.loads(raw_stdin) if raw_stdin else {}
-        except json.JSONDecodeError:
-            payload = {}
-        outcome = handle_pre_tool_use(payload, repo_root)
-        sys.stdout.write(json.dumps(outcome) + "\n")
+        try: payload = json.loads(raw_stdin) if raw_stdin else {}
+        except json.JSONDecodeError: payload = {}
+        sys.stdout.write(json.dumps(handle_pre_tool_use(payload, repo_root)) + "\n")
         return 0
-
     swept = sweep_stray_backups(repo_root)
+    pr_warn = check_branch_pr_threshold(repo_root) if event == "stop" else None
+    if pr_warn:
+        sys.stderr.write(f"{pr_warn}\n")
     try:
         from log_run import log_agent_run, rotate_tiered_directory, sanitize_project_name
-
         if event == "stop":
-            log_agent_run(repo_root, "antigravity-hook", f"Completed agent turn (swept={swept})", "SUCCESS")
+            log_agent_run(repo_root, "antigravity-hook", f"Completed agent turn (swept={swept})", "SUCCESS", details=pr_warn or "")
         else:
             rotate_tiered_directory(repo_root / ".legacy_hr", sanitize_project_name(repo_root))
     except (ImportError, OSError) as exc:
         sys.stderr.write(f"Lifecycle hook warning ({event}): {exc}\n")
-
     sys.stdout.write(json.dumps({"decision": "allow", "event": event, "swept_backups": swept}) + "\n")
     return 0
 

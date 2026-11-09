@@ -123,6 +123,30 @@ test-silas: ## Run the full Silas verification gate via porter_cli_agents
 install-hooks: ## Activate standardized Git hooks (.githooks/pre-commit & pre-push)
 	uv run --no-project python scripts/git_hooks_runner.py install
 
+pr-check: ## Verify 3-Tier branch protection and <= 35-file Stacked PR limit against BASE (default: main)
+	@base="$${BASE:-main}"; \
+	branch=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$branch" = "main" ] || [ "$$branch" = "master" ]; then \
+		echo "❌ Error: Cannot open a PR directly from '$$branch' (3-Tier Git Flow)."; exit 1; \
+	fi; \
+	count=$$(git diff --name-only "origin/$$base...HEAD" | wc -l | tr -d ' '); \
+	echo "📊 Branch '$$branch' vs 'origin/$$base': $$count changed file(s) (limit: <= 35)"; \
+	if [ "$$count" -gt 35 ]; then \
+		echo "❌ Error: $$count files modified (> 35). Split into a Stacked PR chain."; exit 1; \
+	fi; \
+	echo "✅ PR size check passed ($$count <= 35 files)."
+
+pr-create: pr-check ## Push current topic branch and create/view a GitHub PR targeting BASE (default: main)
+	@base="$${BASE:-main}"; \
+	branch=$$(git rev-parse --abbrev-ref HEAD); \
+	git push -u origin "$$branch"; \
+	if gh pr view "$$branch" >/dev/null 2>&1; then \
+		echo "ℹ️  Open PR already exists for '$$branch':"; \
+		gh pr view "$$branch" --json url,title,number; \
+	else \
+		gh pr create --base "$$base" --head "$$branch" --fill; \
+	fi
+
 pulse: ## Execute the local system health diagnostic
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "$$env:PYTHONPATH='.'; $(PYTHON) scripts/analyze_scripts/local_pulse_check.py"
