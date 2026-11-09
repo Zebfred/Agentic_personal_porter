@@ -68,7 +68,7 @@ graph TD
 ### Principle IV: 20-Second Recon Loop & Frontend Accessibility (Fiona & Palette)
 1. **The 20-Second Rule**: Any interface layout or verification workflow requiring more than three clicks to log or verify an actual activity is classified as a "UI failure."
 2. **Semantic CSS Tokens & Project Palette**: All frontend components MUST use semantic design tokens and CSS variables defined in the root stylesheet (e.g., `--primary-action`, `--text-on-primary`) rather than hardcoded or generic styles.
-3. **Glassmorphic Hero Aesthetic**: The UI must maintain a high-contrast, responsive, glassmorphic visual language built with Vanilla JavaScript and Tailwind CSS. A sharp visual distinction MUST be maintained between the Personal Hero view and the Nexus Business/Admin view.
+3. **Glassmorphic Hero Aesthetic**: The UI must maintain a high-contrast, responsive, glassmorphic visual language built with Vanilla JavaScript and Tailwind CSS. A sharp visual distinction MUST be maintained between the Personal Hero view and the Organization Business/Admin view.
 4. **WCAG Accessibility (A11y)**:
    - Every icon-only button (e.g., `<`, `>`, `×`) MUST have a descriptive `aria-label`.
    - Every form input and textarea MUST have an associated `<label>` with a matching `for` attribute (using `.sr-only` if visually hidden).

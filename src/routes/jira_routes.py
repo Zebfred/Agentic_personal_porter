@@ -76,6 +76,20 @@ def get_jira_jules_bridge_status():
 
     storage = JiraStorage()
     staged_issues = storage.get_staged_issues(user_email=user_email, limit=50)
+    if not staged_issues and jira_configured:
+        try:
+            client = JiraClient.from_env()
+            pulled = client.fetch_issues(
+                user_email=user_email,
+                project_key=client.project_key,
+                max_results=50,
+            )
+            if pulled:
+                storage.bulk_upsert_issues(pulled)
+                staged_issues = storage.get_staged_issues(user_email=user_email, limit=50)
+        except Exception as exc:
+            logger.warning("Auto-pull from Jira in status check skipped: %s", exc)
+
     recent_orders = storage.get_recent_work_orders(user_email=user_email, limit=20)
 
     status_payload = JiraJulesBridgeStatus(

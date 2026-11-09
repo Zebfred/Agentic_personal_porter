@@ -223,7 +223,7 @@ class TestLogin:
     def test_login_with_valid_guild_credential(self, mock_storage, mock_verify, client):
         """Valid Guild Google JWT should return an internal JWT token with admin role."""
         mock_verify.return_value = {
-            "email": "admin@nexus-ds-ml-consulting.com",
+            "email": "admin@nexus-guild.org",
             "name": "Admin User",
             "picture": "https://example.com/pic.jpg",
             "given_name": "Admin",
@@ -231,7 +231,7 @@ class TestLogin:
         mock_storage.return_value.get_or_create_user.return_value = {"username": "adminuser"}
 
         os.environ["GOOGLE_CLIENT_ID"] = "test_client_id"
-        os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-ds-ml-consulting.com"
+        os.environ["NEXUS_ADMIN_EMAIL"] = "admin@nexus-guild.org"
 
         response = client.post("/api/nexus/login", json={"credential": "mocked_google_jwt_token"})
         assert response.status_code == 200

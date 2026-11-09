@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Standardized Antigravity CLI & IDE Lifecycle Hooks (agent_lifecycle_hooks.py).
 
-Enforces Nexus LLC guardrails at runtime across PreToolUse, PostToolUse, and Stop
+Enforces organization guardrails at runtime across PreToolUse, PostToolUse, and Stop
 events while keeping generated scripts < 200 lines and functions < 60 lines.
 """
 

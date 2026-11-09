@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """4-Tier Retention & Dynamic .geminiignore Engine (retention_engine.py).
 
-Implements the Nexus LLC 4-Tier Date & Compression Lifecycle for `.legacy_hr/`
+Implements the 4-Tier Date & Compression Lifecycle for `.legacy_hr/`
 and `.logs/` (`DDMMYYYY/` -> `MMYYYY/` -> `YYYY_{PROJECT_NAME}/` -> `.tar.gz`)
 while keeping scripts < 200 lines and functions < 60 lines.
 """

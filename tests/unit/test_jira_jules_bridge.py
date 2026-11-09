@@ -368,9 +368,11 @@ def test_us3_jules_dispatcher_builds_work_order_with_playbook_and_gates() -> Non
     assert "Bolt's Journal" in work_order.formatted_prompt
 
 
-def test_us3_jules_dispatcher_executes_cli_with_shell_false_and_annotates_jira() -> None:
+def test_us3_jules_dispatcher_executes_cli_with_shell_false_and_annotates_jira(
+    tmp_path: Path,
+) -> None:
     """Verify live dispatch uses shell=False and records session ID back to Jira."""
-    dispatcher = JulesDispatcher()
+    dispatcher = JulesDispatcher(project_root=tmp_path)
     issue = JiraIssueRecord(
         uuid=UUIDGenerator.generate_for_jira_issue("PORTER-89", "hero@example.com"),
         user_email="hero@example.com",

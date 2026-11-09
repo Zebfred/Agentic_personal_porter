@@ -196,13 +196,22 @@ class JiraStorage:
         """Fetch projected tenant-scoped staged Jira issues for the Porter Hub GUI."""
         proj = {
             "_id": 0,
+            "uuid": 1,
+            "user_email": 1,
             "jira_key": 1,
+            "project_key": 1,
+            "issue_type": 1,
             "task_id": 1,
             "feature_id": 1,
+            "epic_key": 1,
             "summary": 1,
+            "description": 1,
             "status": 1,
             "persona": 1,
+            "labels": 1,
             "sync_status": 1,
+            "correlation_id": 1,
+            "jules_session_id": 1,
             "updated_at": 1,
         }
         return list(
@@ -220,17 +229,23 @@ class JiraStorage:
         proj = {
             "_id": 0,
             "work_order_id": 1,
+            "user_email": 1,
             "jira_key": 1,
             "task_id": 1,
+            "feature_id": 1,
             "persona": 1,
+            "playbook_path": 1,
+            "target_paths": 1,
+            "verification_commands": 1,
+            "formatted_prompt": 1,
+            "dry_run": 1,
             "dispatch_status": 1,
-            "jules_command": 1,
-            "created_at": 1,
+            "jules_session_id": 1,
             "correlation_id": 1,
         }
         return list(
             self.jules_col.find({"user_email": user_email}, proj)
-            .sort("created_at", DESCENDING)
+            .sort("work_order_id", DESCENDING)
             .limit(limit)
         )
 
