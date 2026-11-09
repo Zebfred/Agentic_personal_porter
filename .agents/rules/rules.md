@@ -74,10 +74,17 @@ trigger: always_on
 * **Pre-flight Check:** At the start of every session, the assigned agent MUST independently read their specific ACTIVE document before proposing any code edits.
 * **Verification Log:** As tasks are performed, the ACTIVE document must be updated to note human verification of completion.
 
-### Testing & Verification
-* **Definition of Done:** Task completion strictly requires running a verification script, test suite, or completing a checklist.
+### Testing, Verification & 3-Tier Stacked PR Git Workflow
+* **Definition of Done:** Task completion strictly requires running a verification script, test suite, or completing a checklist (`make verify-done`).
 * **Test Hygiene:** Run tests before committing major changes. Update tests when modifying functionality. Keep test files organized in the `tests/` directory.
-* **Git Workflow:** Create feature branches for significant changes, use descriptive commit messages, and test thoroughly before merging to main.
+* **3-Tier Branch & Worktree Topology:**
+  1. **Protected Release Branch (`main`)**: Never commit or push directly to `main`.
+  2. **Working Branch (`dev` or `dev/<domain>`)**: Shared machine-agnostic integration branch kept synced with `main` via `.github/workflows/sync-working-branches.yml`.
+  3. **Topic Branches & Git Worktrees (`feat/<topic>`, `fix/<topic>`, `chore/<topic>`)**: Branch off the working branch or create a dedicated Git worktree (`git worktree add ../<repo>-<topic> -b feat/<topic> <working-branch>`) for concurrent work.
+* **35-File Stacked PR Limit (`MAX_PR_FILES = 35`):**
+  * Pull Requests must **never exceed 35 changed files** (`<= 35` files).
+  * When a feature or refactor requires `> 35` file changes, split the work into an ordered **PR Stack** (`base <- part1 <- part2 <- part3`, `<= 35` files per PR) using `gh pr create --base <prev-branch> --head <next-branch> --fill`.
+  * Use `make pr-check` to validate branch & file count before opening or updating a PR with `make pr-create`.
 
 ### GitHub Actions Security
 * **Pin Actions to SHA:** Always pin GitHub Actions to an immutable 40-character commit SHA (e.g., `actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` instead of `@v4`) to protect the CI pipeline against supply chain attacks where tag references can be maliciously updated. Always add a comment noting the version name (e.g. `# v4.2.2`).

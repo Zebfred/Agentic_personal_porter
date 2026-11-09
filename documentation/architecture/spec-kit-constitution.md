@@ -104,6 +104,7 @@ graph TD
 4. **Error Transparency**: Error handling must produce clear, actionable, diagnostic messages. Bare `except:` or `except Exception: pass` statements that swallow exceptions are strictly prohibited.
 5. **Targeted Linting Boundary**: When running `ruff check`, the `--fix` flag MUST NEVER be executed globally across `src/` (`uv run ruff check src --fix`). Automated fixes must be restricted to explicitly modified files.
 6. **Shell Script Reliability**: All automation and deployment shell scripts MUST enforce `set -euo pipefail`, declare absolute paths, and ensure directory existence using `mkdir -p`.
+7. **3-Tier Git Flow & 35-File Stacked PR Standard**: Direct commits to `main` are prohibited. All work MUST occur on a working branch (`dev`), topic branch (`feat/<topic>`), or isolated Git worktree, and Pull Requests MUST NOT exceed 35 changed files (`<= 35` files per PR; larger features MUST be split into an ordered PR Stack).
 
 ### Principle VIII: Preset Hierarchy & Resolution Supremacy
 1. **Local Constitution Precedence**: The project-local constitution at `.specify/memory/constitution.md` (and its authoritative mirror at `documentation/architecture/spec-kit-constitution.md`) strictly supersedes any installed preset or core template defaults from the Spec Kit fork.
