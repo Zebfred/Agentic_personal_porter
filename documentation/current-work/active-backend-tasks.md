@@ -50,7 +50,7 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 
 - [ ] **Local Production Simulation:** Establish a rigorous local testing environment (using the Dockerized Gunicorn setup) to replicate and isolate the exact server connection failures occurring on the cloud production instance.
 - [x] **Resolve Neo4j/Cloud Networking:** Fix the `Cannot resolve address 402abe07.databases.neo4j.io:7687` connection failure or dynamic environment variable mounting issues causing the server to detach from the graph database in production. *(Optimized via singleton connection pooling and teardown context.)*
-- [ ] **API Endpoint Stress Testing:** Validate all heavily utilized endpoints (`/process_journal`, `/get_calendar_events`) for resilience against dropped connections or timeouts during large LLM inference runs.
+- [x] **API Endpoint Stress Testing (`T110`):** Added concurrent multi-tenant (`ThreadPoolExecutor`) and adversarial boundary stress tests for `/process_journal`, `/get_calendar_events`, `/api/chat/porter`, and `/api/admin/finops_traces` in `tests/unit/test_route_stress_and_threading.py`. *(Human verification pending.)*
 
 ## Secondary Priority: Twin-Track Data Ingestion (Mach 2)
 *Status: Architecture mapped, pipelines verified.*
@@ -69,6 +69,13 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [x] **first_serving_traces Collection:** Registered `FIRST_SERVING_TRACES_COLLECTION` in `src/config.py` with tenant-scoped `user_email`, DESCENDING compound indexes, and explicit projections in `src/utils/monitoring.py`.
 - [x] **first_serving_porter_happenings Collection:** Registered `FIRST_SERVING_HAPPENINGS_COLLECTION` with CID provenance tracking, `circuit_breaker_tripped` audit persistence, and `GET /api/admin/finops_traces` observability endpoint.
 - [x] **Token Request Density Monitoring:** Upgraded `TokenCircuitBreakerHandler` (`src/utils/token_circuit_breaker.py`) with 60s sliding-window `max_tokens_per_minute` + `max_requests_per_minute` caps and multi-provider token usage extraction (`llm_output`, `usage_metadata`, char fallback).
+
+## Multi-Tenant `username` Context Threading & Stress Hardening (`T109` + `T110` — Implemented & Verified)
+*Status: Completed on `feat/006-tenant-threading-and-stress-tests` (Human verification pending).*
+
+- [x] **Shared Tenant Context Resolver (`src/services/tenant_context.py`):** Added `TenantContext`, `resolve_request_tenant()`, `resolve_tenant_username()`, `sanitize_tenant_username()`, and recursive `contains_null_bytes()` guard so authenticated JWT / API-key identity resolves deterministically without cross-tenant `"Hero"` collapse or body-spoofing.
+- [x] **Route & Agent Threading (`src/routes/auth_middleware.py`, `journal_routes.py`, `chat_routes.py`, `admin_routes.py`, `calendar_routes.py`, `src/agents/audit_inspector.py`, `src/database/mongo_client/agent_health.py`, `src/utils/monitoring.py`):** Threaded resolved tenant `username` through journal reflections, chat turns, FinOps trace snapshots, admin impersonation tokens, and `AuditInspector` heartbeats/bulk writes.
+- [x] **Concurrent & Adversarial Route Stress Suite (`tests/unit/test_route_stress_and_threading.py`):** Verified zero cross-tenant leakage under `ThreadPoolExecutor` bursts across `/process_journal` and `/get_calendar_events`, hostile boundary rejection (NUL bytes, oversized strings, malformed JSON, invalid types, injection strings), and `AuditInspector` tenant `username` scoping.
 
 ## Tertiary Priority: Agent Socratic Upgrades & Backups (Mach 2)
 *Status: Completed upgrades & backup scripts scripts.*

@@ -6,6 +6,7 @@ and internal consumption by the journal reflection pipeline.
 """
 
 import logging
+import re
 from datetime import datetime, time
 from flask import Blueprint, request, jsonify
 from pydantic import ValidationError
@@ -13,9 +14,11 @@ from pydantic import ValidationError
 from src.routes.auth_middleware import require_api_key
 from src.integrations.google_calendar import get_calendar_service
 from src.schemas.api_models import CalendarRequestSchema
+from src.services.tenant_context import contains_null_bytes, resolve_request_tenant
 
 calendar_bp = Blueprint("calendar", __name__)
 logger = logging.getLogger("APP_ROUTER")
+_STRICT_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$", re.ASCII)
 
 # Lazy-initialized calendar service singleton
 _calendar_service = None
@@ -115,19 +118,31 @@ def get_calendar_events():
         if not date_str:
             date_str = datetime.now().strftime("%Y-%m-%d")
 
-        # Validate date format strictly
+        # Validate date format strictly (ASCII YYYY-MM-DD, no null bytes)
         try:
-            if len(date_str) != 10:
-                raise ValueError("Strict length check failed")
+            if (
+                not isinstance(date_str, str)
+                or contains_null_bytes(date_str)
+                or not _STRICT_ISO_DATE_RE.match(date_str)
+            ):
+                raise ValueError("Strict ISO date validation failed")
             datetime.strptime(date_str, "%Y-%m-%d")
         except ValueError:
             return jsonify({"error": "Invalid date format. Use strict YYYY-MM-DD."}), 400
 
-        logger.info(f"Fetching calendar events for date: {date_str}")
+        tenant = resolve_request_tenant(request)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+
+        logger.info(
+            "Fetching calendar events for date=%s tenant=%s",
+            date_str,
+            tenant.username,
+        )
 
         # Fetch events using helper function
         try:
-            events = fetch_calendar_events_for_date(date_str, getattr(request, "user_email", None))
+            events = fetch_calendar_events_for_date(date_str, tenant.user_email)
         except FileNotFoundError as e:
             return jsonify({"error": f"Google Calendar credentials not found: {e}"}), 500
         except Exception as e:
@@ -136,8 +151,10 @@ def get_calendar_events():
         # Format events for front-end
         formatted_events = []
         for event in events:
-            start = event["start"].get("dateTime", event["start"].get("date"))
-            end = event["end"].get("dateTime", event["end"].get("date"))
+            start_obj = event.get("start") or {}
+            end_obj = event.get("end") or {}
+            start = start_obj.get("dateTime", start_obj.get("date"))
+            end = end_obj.get("dateTime", end_obj.get("date"))
 
             formatted_events.append(
                 {
@@ -153,7 +170,12 @@ def get_calendar_events():
         logger.info(f"Found {len(formatted_events)} events for {date_str}")
 
         return jsonify(
-            {"date": date_str, "events": formatted_events, "count": len(formatted_events)}
+            {
+                "date": date_str,
+                "username": tenant.username,
+                "events": formatted_events,
+                "count": len(formatted_events),
+            }
         )
 
     except Exception as e:
@@ -168,15 +190,17 @@ def get_unverified_audits():
     Fetches the unverified records queue for the Verification Dashboard.
     """
     try:
-        user_email = getattr(request, "user_email", None)
-        if not user_email:
+        tenant = resolve_request_tenant(request)
+        if not tenant:
             return jsonify({"error": "User email context not found"}), 400
 
         from src.agents.audit_inspector import AuditInspector
 
         inspector = AuditInspector()
-        records = inspector.batch_unverified_records(user_email=user_email)
-        return jsonify({"status": "success", "records": records})
+        records = inspector.batch_unverified_records(
+            user_email=tenant.user_email, username=tenant.username
+        )
+        return jsonify({"status": "success", "username": tenant.username, "records": records})
     except Exception as e:
         logger.error(f"Error fetching unverified audits: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
@@ -189,15 +213,17 @@ def get_verified_history():
     Fetches the deeply confirmed historical audits for the Verification Dashboard.
     """
     try:
-        user_email = getattr(request, "user_email", None)
-        if not user_email:
+        tenant = resolve_request_tenant(request)
+        if not tenant:
             return jsonify({"error": "User email context not found"}), 400
 
         from src.agents.audit_inspector import AuditInspector
 
         inspector = AuditInspector()
-        records = inspector.get_recently_verified_records(user_email=user_email, limit=10)
-        return jsonify({"status": "success", "records": records})
+        records = inspector.get_recently_verified_records(
+            user_email=tenant.user_email, limit=10, username=tenant.username
+        )
+        return jsonify({"status": "success", "username": tenant.username, "records": records})
     except Exception as e:
         logger.error(f"Error fetching verified history: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
@@ -210,20 +236,30 @@ def approve_audits():
     Batch approves a list of record gcal_ids.
     """
     try:
-        user_email = getattr(request, "user_email", None)
-        if not user_email:
+        tenant = resolve_request_tenant(request)
+        if not tenant:
             return jsonify({"error": "User email context not found"}), 400
 
-        data = request.json
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or contains_null_bytes(data):
+            return jsonify({"status": "error", "message": "Invalid JSON payload."}), 400
         gcal_ids = data.get("gcal_ids", [])
-        if not gcal_ids:
-            return jsonify({"status": "error", "message": "No gcal_ids provided."}), 400
+        if (
+            not isinstance(gcal_ids, list)
+            or not gcal_ids
+            or not all(isinstance(gid, str) and gid.strip() for gid in gcal_ids)
+        ):
+            return jsonify({"status": "error", "message": "No valid gcal_ids provided."}), 400
 
         from src.agents.audit_inspector import AuditInspector
 
         inspector = AuditInspector()
-        modified = inspector.approve_batch(gcal_ids, user_email=user_email)
-        return jsonify({"status": "success", "modified_count": modified})
+        modified = inspector.approve_batch(
+            gcal_ids, user_email=tenant.user_email, username=tenant.username
+        )
+        return jsonify(
+            {"status": "success", "username": tenant.username, "modified_count": modified}
+        )
     except Exception as e:
         logger.error(f"Error approving audits: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
@@ -387,11 +423,7 @@ def push_to_gcal():
                 event = service.events().get(calendarId="primary", eventId=gcal_id).execute()
                 if new_title:
                     event["summary"] = new_title
-                updated_event = (
-                    service.events()
-                    .update(calendarId="primary", eventId=gcal_id, body=event)
-                    .execute()
-                )
+                service.events().update(calendarId="primary", eventId=gcal_id, body=event).execute()
 
                 # Update Mongo Native Collection
                 from src.database.mongo_storage import SovereignMongoStorage

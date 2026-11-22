@@ -12,6 +12,7 @@ from pymongo import ASCENDING, DESCENDING
 
 from src.config import MongoConfig
 from src.database.mongo_client.connection import MongoConnectionManager
+from src.services.tenant_context import resolve_tenant_username
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ TRACE_PROJECTION: dict[str, int] = {
     "_id": 0,
     "session_id": 1,
     "user_email": 1,
+    "username": 1,
     "timestamp": 1,
     "event": 1,
     "token_usage": 1,  # nosec B105 - MongoDB field projection flag, not a secret
@@ -31,6 +33,7 @@ HAPPENING_PROJECTION: dict[str, int] = {
     "_id": 0,
     "session_id": 1,
     "user_email": 1,
+    "username": 1,
     "timestamp": 1,
     "event": 1,
     "tool_name": 1,
@@ -93,10 +96,12 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
         session_id: str | None = None,
         correlation_id: str | None = None,
         user_email: str = "system@localhost",
+        username: str | None = None,
     ) -> None:
         self.session_id = session_id or str(uuid.uuid4())
         self.correlation_id = correlation_id
         self.user_email = user_email
+        self.username = resolve_tenant_username(user_email, jwt_username=username)
         self.db = MongoConnectionManager.get_db()
         ensure_observability_indexes(self.db)
         self.traces_collection = self.db[MongoConfig.FIRST_SERVING_TRACES_COLLECTION]
@@ -106,6 +111,7 @@ class FirstServingMonitoringHandler(BaseCallbackHandler):
         doc: dict[str, Any] = {
             "session_id": self.session_id,
             "user_email": self.user_email,
+            "username": self.username,
             "timestamp": datetime.datetime.now(datetime.timezone.utc),
             "event": event,
         }

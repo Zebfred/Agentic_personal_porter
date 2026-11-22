@@ -110,16 +110,21 @@ class AgentHeartbeatManager:
 
         return status_dict
 
-    def get_observability_snapshot(self, user_email: str, *, limit: int = 25) -> dict:
+    def get_observability_snapshot(
+        self, user_email: str, *, username: str | None = None, limit: int = 25
+    ) -> dict:
         """Return tenant-scoped FinOps trace totals, happenings, and circuit-breaker trip count."""
+        from src.services.tenant_context import resolve_tenant_username
         from src.utils.monitoring import fetch_recent_happenings, fetch_recent_traces
 
+        resolved_username = resolve_tenant_username(user_email, jwt_username=username)
         traces = fetch_recent_traces(self.db, user_email, limit=limit)
         happenings = fetch_recent_happenings(self.db, user_email, limit=limit)
         total_tokens = sum(int(t.get("token_usage", 0) or 0) for t in traces)
         trips = sum(1 for h in happenings if h.get("event") == "circuit_breaker_tripped")
         return {
             "user_email": user_email,
+            "username": resolved_username,
             "trace_count": len(traces),
             "happening_count": len(happenings),
             "recent_tokens_spent": total_tokens,
