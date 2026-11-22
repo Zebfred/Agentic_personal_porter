@@ -33,9 +33,6 @@ class MongoConfig:
     ACTUAL_COLLECTION = "event_actuals"
     UNIFIED_EVENTS_COLLECTION = "unified_events"
 
-    # Vector DB Collection for Agents
-    VECTOR_DB_COLLECTION = "semantic_vectors"
-
     # Agent Heartbeat/Health Logging
     AGENT_HEALTH_COLLECTION = "agent_health_log"
 
@@ -45,3 +42,8 @@ class MongoConfig:
 
     # First-Serving Hub Classification Queue Collection
     EVENTS_TO_BE_CLASSIFIED_COLLECTION = "events_to_be_classified"
+
+    # North Star Accountability Collections (004-north-star-accountability)
+    NORTH_STAR_PILLARS_COLLECTION = "north_star_pillars"
+    PILLAR_CHECKINS_COLLECTION = "pillar_checkins"
+    GRACE_WINDOWS_COLLECTION = "accountability_grace_windows"

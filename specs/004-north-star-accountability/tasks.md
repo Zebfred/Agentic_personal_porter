@@ -11,14 +11,14 @@
 
 ## Phase 2: Storage & Deterministic Streak Engine (PR #2)
 
-* [ ] **T003** [`bolt`] Add collection constants (`NORTH_STAR_PILLARS_COLLECTION`, `PILLAR_CHECKINS_COLLECTION`, `GRACE_WINDOWS_COLLECTION`) in `src/config.py` and implement projected, indexed Mongo storage with `mongomock` fallback in `src/database/mongo_client/accountability_storage.py`.
-* [ ] **T004** [`backend-porter`] Implement deterministic ISO-week streak calculator, Grace/Vacation freeze logic, and `markdownlint`-compliant Markdown snapshot renderer in `src/services/accountability_service.py` (`< 200` lines, zero LLM calls).
-* [ ] **T005** [`bolt`] Add idempotent Neo4j `MERGE` helpers for `(:Hero)-[:PURSUES]->(:NorthStarPillar)` and `(:PillarCheckIn)` using the singleton connection pool.
+* [x] **T003** [`bolt`] Add collection constants (`NORTH_STAR_PILLARS_COLLECTION`, `PILLAR_CHECKINS_COLLECTION`, `GRACE_WINDOWS_COLLECTION`) in `src/config.py` and implement projected, indexed Mongo storage with `mongomock` fallback in `src/database/mongo_client/accountability_storage.py`.
+* [x] **T004** [`backend-porter`] Implement deterministic ISO-week streak calculator, Grace/Vacation freeze logic, and `markdownlint`-compliant Markdown snapshot renderer in `src/services/accountability_service.py` (`< 200` lines, zero LLM calls).
+* [x] **T005** [`bolt`] Add idempotent Neo4j `MERGE` helpers for `(:Hero)-[:PURSUES]->(:NorthStarPillar)` and `(:PillarCheckIn)` using the singleton connection pool.
 
 ## Phase 3: Flask Blueprint & Security Hardening (PR #2)
 
-* [ ] **T006** [`backend-porter`] Implement `src/routes/accountability_routes.py` Blueprint (`/api/accountability/*`) and register it in `src/app.py`.
-* [ ] **T007** [`sentinel`] Audit JWT `request.user_email` scoping, idempotency deduplication, and sanitized error responses across all 6 endpoints; add tenant-isolation unit tests in `tests/unit/test_accountability_service.py`.
+* [x] **T006** [`backend-porter`] Implement `src/routes/accountability_routes.py` Blueprint (`/api/accountability/*`) and register it in `src/app.py`.
+* [x] **T007** [`sentinel`] Audit JWT `request.user_email` scoping, idempotency deduplication, and sanitized error responses across all 6 endpoints; add tenant-isolation unit tests in `tests/unit/test_accountability_service.py` and `tests/unit/test_accountability_routes.py`.
 
 ## Phase 4: Porter Hub 20-Second Recon UI (PR #3)
 

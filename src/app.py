@@ -82,6 +82,7 @@ def create_app():
     from src.routes.admin_routes import admin_bp
     from src.routes.user_routes import user_bp
     from src.routes.jira_routes import jira_bp
+    from src.routes.accountability_routes import accountability_bp
 
     app.register_blueprint(static_bp)
     app.register_blueprint(auth_bp, url_prefix="/api")
@@ -92,9 +93,10 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix="/api")
     app.register_blueprint(user_bp, url_prefix="/api/user")
     app.register_blueprint(jira_bp, url_prefix="/api")
+    app.register_blueprint(accountability_bp, url_prefix="/api/accountability")
 
     logger.info(
-        f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 9 blueprints."
+        f"Flask app created with {len(list(app.url_map.iter_rules()))} routes across 10 blueprints."
     )
     return app
 
