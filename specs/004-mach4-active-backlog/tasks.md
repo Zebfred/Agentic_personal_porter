@@ -29,7 +29,7 @@ description: "Task list for Mach 4 Active Swarm & Infrastructure Backlog (004-ma
 
 - [ ] T106 [P] [US2] Implement native MongoDB Time-Series collection schema and 1-month chronological batch queueing for historical calendar sync in `src/database/mongo_client/calendar_timeseries.py` and `src/database/mongo_storage.py`
 - [ ] T107 [P] [US2] Update GTKY Historian and Librarian agents to output strict Pydantic v2 schemas for `formatted_calendar_events` in `src/agents/gtky_historian.py`, `src/agents/gtky_librarian.py`, and `src/schemas/api_models.py`
-- [ ] T108 [P] [US2] Implement `first_serving_traces` and `first_serving_porter_happenings` observability collections and token request density circuit-breaker in `src/database/mongo_client/agent_health.py` and `src/agents/first_serving_porter.py`
+- [x] T108 [P] [US2] Implement `first_serving_traces` and `first_serving_porter_happenings` observability collections and token request density circuit-breaker in `src/database/mongo_client/agent_health.py`, `src/utils/monitoring.py`, `src/utils/token_circuit_breaker.py`, `src/routes/admin_routes.py`, and `src/agents/first_serving_porter.py`
 - [ ] T109 [P] [US2] Wire multi-tenant `username` context threading across `src/routes/journal_routes.py`, `src/routes/chat_routes.py`, `src/routes/admin_routes.py`, and `src/agents/audit_inspector.py`
 - [ ] T110 [P] [US2] Implement adversarial boundary & concurrency stress tests for `/api/process_journal` and `/api/get_calendar_events` in `tests/unit/test_blueprint_routes.py`
 

@@ -1,8 +1,11 @@
 from datetime import datetime, timezone
+import logging
 import uuid
 
 from src.database.mongo_client.connection import MongoConnectionManager
 from src.config import MongoConfig
+
+logger = logging.getLogger(__name__)
 
 
 class AgentHeartbeatManager:
@@ -35,8 +38,8 @@ class AgentHeartbeatManager:
 
         try:
             self.collection.insert_one(payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("AgentHeartbeatManager start_agent_run skipped: %s", exc)
         return run_id
 
     def end_agent_run(
@@ -70,8 +73,8 @@ class AgentHeartbeatManager:
             }
 
             self.collection.update_one({"_id": run_id}, update_payload)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("AgentHeartbeatManager end_agent_run skipped: %s", exc)
 
     def get_all_agent_statuses(self) -> dict:
         """
@@ -106,3 +109,21 @@ class AgentHeartbeatManager:
             }
 
         return status_dict
+
+    def get_observability_snapshot(self, user_email: str, *, limit: int = 25) -> dict:
+        """Return tenant-scoped FinOps trace totals, happenings, and circuit-breaker trip count."""
+        from src.utils.monitoring import fetch_recent_happenings, fetch_recent_traces
+
+        traces = fetch_recent_traces(self.db, user_email, limit=limit)
+        happenings = fetch_recent_happenings(self.db, user_email, limit=limit)
+        total_tokens = sum(int(t.get("token_usage", 0) or 0) for t in traces)
+        trips = sum(1 for h in happenings if h.get("event") == "circuit_breaker_tripped")
+        return {
+            "user_email": user_email,
+            "trace_count": len(traces),
+            "happening_count": len(happenings),
+            "recent_tokens_spent": total_tokens,
+            "circuit_breaker_trips": trips,
+            "traces": traces,
+            "happenings": happenings,
+        }

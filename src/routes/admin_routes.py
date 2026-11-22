@@ -176,3 +176,30 @@ def impersonate_user():
     except Exception as e:
         logger.error(f"Error during impersonation: {e}", exc_info=True)
         return jsonify({"error": "An internal server error occurred"}), 500
+
+
+@admin_bp.route("/admin/finops_traces", methods=["GET"])
+@require_api_key
+def get_finops_traces():
+    """Return tenant-scoped First-Serving traces, happenings, and FinOps breaker counts."""
+    caller_email = getattr(request, "user_email", None)
+    if not caller_email:
+        return jsonify({"error": "No email associated with token"}), 400
+    requested = request.args.get("user_email")
+    target_email = (
+        requested.strip()
+        if requested and getattr(request, "user_role", "user") == "admin"
+        else caller_email
+    )
+    try:
+        limit = max(1, min(100, int(request.args.get("limit", "25"))))
+    except ValueError:
+        return jsonify({"error": "limit must be an integer between 1 and 100"}), 422
+    try:
+        from src.database.mongo_client.agent_health import AgentHeartbeatManager
+
+        snap = AgentHeartbeatManager().get_observability_snapshot(target_email, limit=limit)
+        return jsonify({"status": "success", **snap}), 200
+    except Exception as exc:
+        logger.error("Error fetching FinOps traces for %s: %s", target_email, exc)
+        return jsonify({"error": "Internal server error"}), 500

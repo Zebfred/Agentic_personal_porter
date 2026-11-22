@@ -63,12 +63,12 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 - [ ] **Formatted Events Collection & Routing:** Fix the `formatted_calendar_events` collection logic (which is currently empty). This formatting pipeline is critical for pre-processing the raw GCal strings into structured, AI-ready JSON before it can be accurately routed and injected into the Neo4j Identity Graph.
 - [ ] **First-Serving Ingestion Queuing:** Implement rate-limiting or Redis/Celery queueing to safely buffer high-frequency event ingestion from the `first_serving_porter`.
 
-## Observability & State Tracing (NEW)
-*Status: Required following first_serving_porter infinite loop crash.*
+## Observability & State Tracing (`T108` — Implemented & Verified)
+*Status: Completed on `feat/005-finops-trace-circuit-breaker` (Human verification pending).*
 
-- [ ] **first_serving_traces Collection:** Create a MongoDB collection. Every time the lead porter delegates a task, log the `trace_id`, `target_agent`, `prompt`, and `token_count`.
-- [ ] **first_serving_porter_happenings Collection:** Define this new logging collection and integrate it with the existing `agent_reflections` heuristic collection.
-- [ ] **Token Request Density Monitoring:** Provide local or distributed strategy to halt agents and prevent request explosions by monitoring token usage density per minute.
+- [x] **first_serving_traces Collection:** Registered `FIRST_SERVING_TRACES_COLLECTION` in `src/config.py` with tenant-scoped `user_email`, DESCENDING compound indexes, and explicit projections in `src/utils/monitoring.py`.
+- [x] **first_serving_porter_happenings Collection:** Registered `FIRST_SERVING_HAPPENINGS_COLLECTION` with CID provenance tracking, `circuit_breaker_tripped` audit persistence, and `GET /api/admin/finops_traces` observability endpoint.
+- [x] **Token Request Density Monitoring:** Upgraded `TokenCircuitBreakerHandler` (`src/utils/token_circuit_breaker.py`) with 60s sliding-window `max_tokens_per_minute` + `max_requests_per_minute` caps and multi-provider token usage extraction (`llm_output`, `usage_metadata`, char fallback).
 
 ## Tertiary Priority: Agent Socratic Upgrades & Backups (Mach 2)
 *Status: Completed upgrades & backup scripts scripts.*

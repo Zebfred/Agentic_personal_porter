@@ -162,8 +162,8 @@ sort_by_size = true
 [tool.deadcode]
 exclude = [".auth", ".legacy_hr", ".logs", "data", "tests", ".venv", "venv", "build", "dist"]
 ignore-names-if-decorated-with = ["@*"]
-ignore-names-if-inherits-from = ["BaseModel", "Exception"]
-ignore-names = ["update_ghost_calendars", "redirect_uri"]
+ignore-names-if-inherits-from = ["BaseModel", "Exception", "BaseCallbackHandler"]
+ignore-names = ["update_ghost_calendars", "redirect_uri", "on_chat_model_start", "on_llm_start", "on_llm_end", "on_tool_start", "on_tool_end", "reset"]
 
 # ============================================================================
 # PYTEST — Sub-Second Unit & Contract Test Gate
