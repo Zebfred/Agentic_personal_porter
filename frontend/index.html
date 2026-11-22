@@ -73,6 +73,78 @@
                     </div>
                 </section>
 
+                <!-- North Star Accountability & 20-Second Recon Widget (004-north-star-accountability) -->
+                <section id="north-star-accountability-section" aria-labelledby="acct-heading"
+                    class="glass-panel p-6 rounded-2xl shadow-lg"
+                    style="border-top: 4px solid var(--primary-action);">
+                    <div class="flex flex-wrap justify-between items-start gap-3 mb-4">
+                        <div>
+                            <h3 id="acct-heading" class="text-xl font-bold flex items-center gap-2" style="color: var(--text-main);">
+                                <span>🧭</span> North Star Accountability
+                            </h3>
+                            <p class="text-xs" style="color: var(--text-muted);">
+                                20-Second Recon wins across Career, Business, Joy Fuel, and Protected Life Time.
+                            </p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span id="acct-iso-week-badge" class="text-xs font-mono font-bold px-2.5 py-1 rounded-full"
+                                style="background: var(--app-bg); color: var(--text-main); border: 1px solid var(--border-subtle);">
+                                Week: loading...
+                            </span>
+                            <span id="acct-life-harmony-badge" class="text-xs font-mono font-bold px-2.5 py-1 rounded-full"
+                                style="background: var(--status-success); color: var(--text-on-primary);">
+                                Life Harmony: --
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 mb-4 pb-3" style="border-bottom: 1px solid var(--border-subtle);">
+                        <button type="button" id="btn-acct-grace-toggle" aria-pressed="false"
+                            aria-label="Toggle Vacation Grace Mode for current ISO week"
+                            class="text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition cursor-pointer"
+                            style="background: var(--secondary-action); color: var(--text-on-primary);">
+                            🌴 Grace Mode: OFF
+                        </button>
+                        <button type="button" id="btn-acct-export-md"
+                            aria-label="Export North Star Accountability Markdown Snapshot"
+                            class="text-xs font-bold py-1.5 px-3 rounded-lg shadow-sm transition cursor-pointer"
+                            style="background: var(--nav-bg); color: var(--text-on-primary);">
+                            📋 Export Markdown
+                        </button>
+                        <span id="acct-feedback" class="text-xs font-medium ml-1" style="color: var(--text-muted);"
+                            role="status" aria-live="polite"></span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        <div>
+                            <label for="acct-duration-mins" class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted);">
+                                Quick Win Duration (mins)
+                            </label>
+                            <input id="acct-duration-mins" type="number" min="1" max="1440" value="25"
+                                class="w-full rounded-lg p-2 text-sm outline-none"
+                                style="background: var(--surface-bg); border: 1px solid var(--border-subtle); color: var(--text-main);">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="acct-win-note" class="block text-xs font-bold uppercase mb-1" style="color: var(--text-muted);">
+                                Optional 1-Line Win Note
+                            </label>
+                            <input id="acct-win-note" type="text" maxlength="500"
+                                placeholder="e.g., 25m air-gapped C++ drill or unplugged family dinner"
+                                class="w-full rounded-lg p-2 text-sm outline-none"
+                                style="background: var(--surface-bg); border: 1px solid var(--border-subtle); color: var(--text-main);">
+                        </div>
+                    </div>
+
+                    <div id="acct-pillars-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div class="text-sm italic" style="color: var(--text-muted);">Loading North Star Pillars...</div>
+                    </div>
+
+                    <div id="acct-markdown-drawer" class="hidden rounded-xl p-3 text-xs font-mono overflow-x-auto"
+                        style="background: var(--nav-bg); color: var(--text-on-primary);">
+                        <pre id="acct-markdown-content" class="whitespace-pre-wrap leading-relaxed"></pre>
+                    </div>
+                </section>
+
                 <!-- One-Shot Weekly Planning -->
                 <section id="one-shot-planning-section" class="glass-panel p-6 rounded-2xl shadow-lg border-t-4 border-emerald-500">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
