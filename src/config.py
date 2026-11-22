@@ -33,8 +33,10 @@ class MongoConfig:
     ACTUAL_COLLECTION = "event_actuals"
     UNIFIED_EVENTS_COLLECTION = "unified_events"
 
-    # Agent Heartbeat/Health Logging
+    # Agent Heartbeat/Health & FinOps Trace Logging
     AGENT_HEALTH_COLLECTION = "agent_health_log"
+    FIRST_SERVING_TRACES_COLLECTION = "first_serving_traces"
+    FIRST_SERVING_HAPPENINGS_COLLECTION = "first_serving_porter_happenings"
 
     # Jira & Jules Bridge Collections
     JIRA_STAGING_COLLECTION = "jira_issues_staging"

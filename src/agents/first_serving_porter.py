@@ -1,5 +1,4 @@
 from src.utils.logging_config import setup_logger
-import os
 
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
@@ -21,7 +20,6 @@ logger = setup_logger(__name__)
 # DB and Embedding Imports
 # Load Environment Vars (centralized — load_env_vars() handles dotenv internally)
 load_env_vars()
-raw_api_key = os.getenv("GROQ_API_KEY")
 
 
 # 2. Defines Tools
@@ -256,16 +254,26 @@ def run_first_serving_porter(
         ambition_context=str(context.get("ambition", "Unknown")),
         detriments_context=str(context.get("detriments", "Unknown")),
     )
-    # Secure the Executor with the new Token Circuit Breaker configured for Mach 3 Limits (25,000)
-    breaker = TokenCircuitBreakerHandler(max_tokens=25000)
-    monitor = FirstServingMonitoringHandler()
+    # Secure the Executor with FinOps Token & Request-Density Circuit Breaker (T108)
+    breaker = TokenCircuitBreakerHandler(
+        max_tokens=25000,
+        max_tokens_per_minute=30000,
+        max_requests_per_minute=20,
+        user_email=user_email,
+        session_id=run_id,
+    )
+    monitor = FirstServingMonitoringHandler(session_id=run_id, user_email=user_email)
     config = {"callbacks": [breaker, monitor]}
     logger.info("\n--- Invoking First-Serving Porter ---\n")
     try:
         result = invoke_with_retry(
             agent.invoke, {"messages": [HumanMessage(content=user_input)]}, config=config
         )
-        health_manager.end_agent_run(run_id, status="success")
+        health_manager.end_agent_run(
+            run_id,
+            status="success",
+            result_summary=f"tokens={breaker.snapshot()['total_tokens_spent']}",
+        )
     except TokenLimitExceededError as e:
         logger.error(f"\n[CRITICAL RUNTIME ERROR] {e}")
         health_manager.end_agent_run(run_id, status="fail", error_msg=str(e))
