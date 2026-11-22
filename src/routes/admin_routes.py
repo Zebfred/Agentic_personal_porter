@@ -12,6 +12,11 @@ import logging
 from flask import Blueprint, request, jsonify
 
 from src.routes.auth_middleware import require_api_key, require_role
+from src.services.tenant_context import (
+    contains_null_bytes,
+    resolve_request_tenant,
+    resolve_tenant_username,
+)
 
 admin_bp = Blueprint("admin", __name__)
 logger = logging.getLogger("APP_ROUTER")
@@ -119,11 +124,14 @@ def impersonate_user():
     if request.method == "OPTIONS":
         return "", 204
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict) or contains_null_bytes(data):
+            return jsonify({"error": "Invalid JSON payload"}), 400
         target_email = data.get("target_email")
 
-        if not target_email:
+        if not isinstance(target_email, str) or not target_email.strip():
             return jsonify({"error": "target_email is required"}), 400
+        target_email = target_email.strip()
 
         from src.database.mongo_storage import SovereignMongoStorage
         import jwt
@@ -136,6 +144,9 @@ def impersonate_user():
         if not user_doc:
             return jsonify({"error": f"User {target_email} not found in database"}), 404
 
+        admin_tenant = resolve_request_tenant(request, mongo_storage=storage)
+        actor_label = admin_tenant.username if admin_tenant else "unknown_admin"
+        target_username = resolve_tenant_username(target_email, mongo_storage=storage)
         profile_data = user_doc.get("profile", {})
         jwt_secret = os.environ.get("JWT_SECRET")
 
@@ -152,6 +163,7 @@ def impersonate_user():
                 "role": "user",
                 "account_type": "hero",
                 "email": target_email,
+                "username": target_username,
                 "exp": expiration,
                 "profile": profile_data,
                 "is_impersonation": True,
@@ -162,7 +174,11 @@ def impersonate_user():
         )
 
         logger.info(
-            f"SECURITY AUDIT: Admin {getattr(request, 'user_email', 'unknown')} initiated impersonation of {target_email}"
+            "SECURITY AUDIT: Admin %s (%s) initiated impersonation of %s (%s)",
+            getattr(request, "user_email", "unknown"),
+            actor_label,
+            target_email,
+            target_username,
         )
 
         return jsonify(
@@ -170,6 +186,7 @@ def impersonate_user():
                 "token": internal_token,
                 "role": "user",
                 "account_type": "hero",
+                "username": target_username,
                 "message": f"Successfully impersonating {target_email}",
             }
         )
@@ -182,15 +199,18 @@ def impersonate_user():
 @require_api_key
 def get_finops_traces():
     """Return tenant-scoped First-Serving traces, happenings, and FinOps breaker counts."""
-    caller_email = getattr(request, "user_email", None)
-    if not caller_email:
+    caller_tenant = resolve_request_tenant(request)
+    if not caller_tenant:
         return jsonify({"error": "No email associated with token"}), 400
     requested = request.args.get("user_email")
-    target_email = (
-        requested.strip()
-        if requested and getattr(request, "user_role", "user") == "admin"
-        else caller_email
-    )
+    if requested and contains_null_bytes(requested):
+        return jsonify({"error": "Invalid user_email query parameter"}), 400
+    if requested and caller_tenant.user_role == "admin":
+        target_email = requested.strip()
+        target_username = resolve_tenant_username(target_email)
+    else:
+        target_email = caller_tenant.user_email
+        target_username = caller_tenant.username
     try:
         limit = max(1, min(100, int(request.args.get("limit", "25"))))
     except ValueError:
@@ -198,7 +218,9 @@ def get_finops_traces():
     try:
         from src.database.mongo_client.agent_health import AgentHeartbeatManager
 
-        snap = AgentHeartbeatManager().get_observability_snapshot(target_email, limit=limit)
+        snap = AgentHeartbeatManager().get_observability_snapshot(
+            target_email, username=target_username, limit=limit
+        )
         return jsonify({"status": "success", **snap}), 200
     except Exception as exc:
         logger.error("Error fetching FinOps traces for %s: %s", target_email, exc)

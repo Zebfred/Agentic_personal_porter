@@ -22,18 +22,30 @@ from src.database.mongo_client.uuid_manager import UUIDGenerator
 from src.utils.correlation import generate_correlation_id, generate_freeform_correlation_id
 from src.events.publisher import publish_journal_event
 from src.database.neo4j_client.connection import get_driver
+from src.services.tenant_context import (
+    TenantContext,
+    contains_null_bytes,
+    resolve_request_tenant,
+)
 
 journal_bp = Blueprint("journal", __name__)
 logger = logging.getLogger("APP_ROUTER")
 
 
+def _resolve_journal_tenant(mongo_storage: SovereignMongoStorage) -> TenantContext | None:
+    """Resolve authenticated tenant context using the active storage handle."""
+    return resolve_request_tenant(request, mongo_storage=mongo_storage)
+
+
 def _handle_request_data():
-    """Helper to handle OPTIONS and extract JSON data."""
+    """Helper to handle OPTIONS, validate JSON dict payload, and reject null bytes."""
     if request.method == "OPTIONS":
         return None, ("", 204)
-    data = request.get_json()
-    if not data:
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not data:
         return None, (jsonify({"error": "No JSON data received"}), 400)
+    if contains_null_bytes(data):
+        return None, (jsonify({"error": "Invalid control characters in payload"}), 400)
     return data, None
 
 
@@ -76,12 +88,10 @@ def save_log():
 
         # 1. Save pristine Frontend log to MongoDB Landing Zone
         mongo_storage = SovereignMongoStorage()
-
-        user_email = getattr(request, "user_email", "Hero")
-        username = "Hero"
-        if user_email != "Hero":
-            user_doc = mongo_storage.get_user_by_email(user_email)
-            username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         day_str = str(log_data_dict.get("day", "unknown_date"))
         time_chunk = str(log_data_dict.get("timeChunk", "unknown_time"))
@@ -237,8 +247,10 @@ def handle_one_shot_weekly_planning():
         from src.schemas.hub_models import WeeklyPlanningRequestSchema
 
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         if request.method == "GET":
             week_start_date = request.args.get("week_start_date")
@@ -322,10 +334,11 @@ def save_weekly_expectation():
         week_start_date = data.get("week_start_date")
         expectation_text = data.get("expectation_text")
 
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         if not week_start_date or not expectation_text:
             return jsonify({"error": "Missing week_start_date or expectation_text"}), 400
@@ -409,10 +422,11 @@ def get_weekly_expectation():
         if not week_start_date:
             return jsonify({"error": "Missing week_start_date"}), 400
 
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         db = MongoConnectionManager.get_db()
         week_col = db["weekly_expectations"]
@@ -435,19 +449,20 @@ def get_weekly_expectation():
 @journal_bp.route("/api/journal/freeform", methods=["POST", "OPTIONS"])
 @require_api_key
 def save_freeform_journal():
-    if request.method == "OPTIONS":
-        return "", 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
     try:
-        data = request.get_json()
         date_str = data.get("date")
         text = data.get("text")
         if not date_str or text is None:
             return jsonify({"error": "Missing date or text"}), 400
 
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         # Generate freeform correlation ID with HH:MM:SS timestamp
         correlation_id = generate_freeform_correlation_id(user_id=username, day_str=date_str)
@@ -480,10 +495,11 @@ def get_freeform_journal():
         date_str = request.args.get("date")
         if not date_str:
             return jsonify({"error": "Missing date"}), 400
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
         doc = mongo_storage.get_freeform_journal(date_str, username)
         # convert datetime to string if it was saved prior to the isoformat change
         updated_at = doc.get("updated_at")
@@ -504,10 +520,11 @@ def get_journal_history():
     Fetches the combined history of recent freeform journals and weekly expectations.
     """
     try:
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         limit = int(request.args.get("limit", 10))
         correlation_id = request.args.get("correlation_id")
@@ -544,9 +561,10 @@ def get_historical_logs():
             return jsonify({"error": "Missing month parameter (format: YYYY-MM)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_email = getattr(request, "user_email", "Hero")
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
         month_data = mongo_storage.get_monthly_log(month, user_id=username)
 
         return jsonify({"status": "success", "data": month_data})
@@ -571,9 +589,10 @@ def get_yearly_logs_route():
             return jsonify({"error": "Missing year parameter (format: YYYY)"}), 400
 
         mongo_storage = SovereignMongoStorage()
-        user_email = getattr(request, "user_email", "Hero")
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
         data = mongo_storage.get_yearly_logs(year, user_id=username)
 
         return jsonify({"status": "success", "data": data})
@@ -604,11 +623,19 @@ def process_journal():
                 else validated_data.log_data.dict()
             )
             day = log_data.get("day", "Unknown")
+            if not isinstance(day, str) or not day.strip() or len(day) > 64:
+                return jsonify({"error": "Invalid day value in log_data"}), 400
         except ValidationError as e:
             logger.error(f"Validation Error: {e}")
             return jsonify({"error": "Invalid data format"}), 400
 
-        logger.info(f"Generating daily reflection for {day}...")
+        mongo_storage = SovereignMongoStorage()
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
+
+        logger.info("Generating daily reflection for day=%s tenant=%s...", day, username)
 
         try:
             # Enhance journal entry with calendar context
@@ -635,35 +662,30 @@ def process_journal():
                     target_date = (today + timedelta(days=days_diff)).strftime("%Y-%m-%d")
 
                     # Fetch calendar events using helper function
-                    events = fetch_calendar_events_for_date(
-                        target_date, getattr(request, "user_email", None)
-                    )
+                    events = fetch_calendar_events_for_date(target_date, tenant.user_email)
 
                     if events:
-                        event_titles = [e.get("summary", "Untitled") for e in events]
                         logger.info(f"Added {len(events)} calendar events to journal context")
             except Exception as cal_err:
                 logger.warning(f"Calendar context failed: {cal_err}")
 
-            # Run LangGraph reflection
-            result_text = run_porter_reflection(enhanced_journal_entry, log_data)
+            # Run LangGraph reflection scoped to authenticated tenant username
+            result_text = run_porter_reflection(enhanced_journal_entry, log_data, username=username)
 
             # Save Reflection to dedicated collection
-            mongo_storage = SovereignMongoStorage()
-            user_email = getattr(request, "user_email", "Hero")
-            user_doc = mongo_storage.get_user_by_email(user_email)
-            username = user_doc.get("username", "Hero") if user_doc else "Hero"
-
             reflection_id = mongo_storage.save_agent_reflection(
                 {
                     "day": day,
                     "user_id": username,
+                    "user_email": tenant.user_email,
                     "reflection_text": result_text,
                     "metadata": {"source": "daily_recon", "timestamp": datetime.now().isoformat()},
                 }
             )
 
-            return jsonify({"result": result_text, "reflection_id": reflection_id})
+            return jsonify(
+                {"result": result_text, "reflection_id": reflection_id, "username": username}
+            )
 
         except Exception as e:
             logger.error(f"Backend Error during LangGraph execution: {e}", exc_info=True)
@@ -687,10 +709,11 @@ def get_daily_reflection():
         if not date_str:
             return jsonify({"error": "Missing date parameter"}), 400
 
-        user_email = getattr(request, "user_email", "Hero")
         mongo_storage = SovereignMongoStorage()
-        user_doc = mongo_storage.get_user_by_email(user_email)
-        username = user_doc.get("username", "Hero") if user_doc else "Hero"
+        tenant = _resolve_journal_tenant(mongo_storage)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        username = tenant.username
 
         doc = mongo_storage.get_agent_reflection(date_str, username)
 
@@ -708,20 +731,31 @@ def edit_journal_event():
     Includes deleting nonsense events, or rigorously mapping misclassified events.
     If mapped, natively upgrades category_mapping.json to learn from the human.
     """
-    if request.method == "OPTIONS":
-        return "", 204
+    data, error_resp = _handle_request_data()
+    if error_resp:
+        return error_resp
     try:
-        data = request.get_json()
-        if not data or "gcal_id" not in data or "action" not in data:
+        if "gcal_id" not in data or "action" not in data:
             return jsonify({"error": "Missing required fields (gcal_id, action)"}), 400
 
         action = data["action"]
         gcal_id = data["gcal_id"]
         mongo = SovereignMongoStorage()
+        tenant = _resolve_journal_tenant(mongo)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+
+        tenant_filter = {
+            "gcal_id": gcal_id,
+            "$or": [
+                {"user_id": {"$in": [tenant.username, tenant.user_email]}},
+                {"user_email": tenant.user_email},
+            ],
+        }
 
         if action == "delete":
-            mongo.raw_col.delete_one({"gcal_id": gcal_id})
-            mongo.formatted_col.delete_one({"gcal_id": gcal_id})
+            mongo.raw_col.delete_one(tenant_filter)
+            mongo.formatted_col.delete_one(tenant_filter)
             return jsonify(
                 {"status": "success", "message": "Event permanently deleted from Mongo."}
             )
@@ -733,9 +767,9 @@ def edit_journal_event():
             if not new_pillar or not event_title:
                 return jsonify({"error": "reclassify requires 'new_pillar' and 'summary'."}), 400
 
-            # 1. Update the actual event
+            # 1. Update the actual event scoped to authenticated tenant
             mongo.formatted_col.update_one(
-                {"gcal_id": gcal_id},
+                tenant_filter,
                 {"$set": {"pillar": new_pillar, "classification_verified": True}},
             )
 
@@ -794,19 +828,21 @@ def get_journal_review_data():
         if not user_email:
             return jsonify({"error": "User email context not found"}), 400
 
-        from src.database.mongo_storage import SovereignMongoStorage
-
         mongo = SovereignMongoStorage()
+        tenant = _resolve_journal_tenant(mongo)
+        if not tenant:
+            return jsonify({"error": "User email context not found"}), 400
+        tenant_ids = {"$in": [tenant.user_email, tenant.username]}
 
         # 1. Fetch Intentions (Weekly Planning and Hero Ambition)
         active_intentions = []
         weekly_plan = mongo.db["weekly_planning"].find_one(
-            {"user_id": user_email}, sort=[("week_start_date", -1)]
+            {"user_id": tenant_ids}, sort=[("week_start_date", -1)]
         )
         if weekly_plan and weekly_plan.get("expectation_text"):
             active_intentions.append(f"Weekly Expectation: {weekly_plan['expectation_text']}")
 
-        hero_ambition = mongo.get_hero_artifact("hero_ambition.json")
+        hero_ambition = mongo.get_hero_artifact("hero_ambition.json", tenant.username)
         if hero_ambition and isinstance(hero_ambition, dict):
             # Extract some high-level ambitions if available
             for k, v in hero_ambition.items():
@@ -824,7 +860,7 @@ def get_journal_review_data():
         # 2. Fetch Actual Events (Time Chunks from unified_events / event_actuals for the given date)
         observations = []
 
-        query = {"user_id": user_email, "time_slot.start": {"$regex": f"^{date_str}"}}
+        query = {"user_id": tenant_ids, "time_slot.start": {"$regex": f"^{date_str}"}}
 
         unified = list(mongo.db["unified_events"].find(query))
         actuals = list(mongo.db["event_actuals"].find(query))

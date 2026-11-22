@@ -20,7 +20,7 @@ logger = logging.getLogger("APP_ROUTER")
 from functools import wraps
 from flask import request, jsonify, make_response
 
-logger = logging.getLogger("APP_ROUTER")
+from src.services.tenant_context import sanitize_tenant_username
 
 
 def require_role(*roles):
@@ -65,8 +65,8 @@ def require_api_key(f):
         # Check if it's the raw API Key (used by background python scripts usually)
         if api_key and hmac.compare_digest(token_str, api_key):
             request.user_email = "system_script@localhost"
+            request.user_username = "system"
             request.user_role = "admin"
-            request.user_account_type = "system"
             return f(*args, **kwargs)
 
         if not jwt_secret:
@@ -77,8 +77,10 @@ def require_api_key(f):
         try:
             decoded = jwt.decode(token_str, jwt_secret, algorithms=["HS256"])
             email_claim = decoded.get("email")
-            if not isinstance(email_claim, str) or not re.match(
-                r"^[\w.+-]+@[\w.-]+\.\w{2,}$", email_claim
+            if (
+                not isinstance(email_claim, str)
+                or "\x00" in email_claim
+                or not re.match(r"^[\w.+-]+@[\w.-]+\.\w{2,}$", email_claim)
             ):
                 logger.warning(
                     f"SECURITY AUDIT: Invalid email format or missing claim in JWT token from {request.remote_addr}: {email_claim}"
@@ -87,10 +89,9 @@ def require_api_key(f):
 
             # Inject identity into request context for downstream routes
             request.user_email = email_claim
+            request.user_username = sanitize_tenant_username(decoded.get("username"))
             role_claim = decoded.get("role")
             request.user_role = role_claim if isinstance(role_claim, str) else "user"
-            account_claim = decoded.get("account_type")
-            request.user_account_type = account_claim if isinstance(account_claim, str) else "hero"
 
             # We no longer hard-reject non-admins here.
             # Endpoint-level @require_role decorators will handle fine-grained authorization.
