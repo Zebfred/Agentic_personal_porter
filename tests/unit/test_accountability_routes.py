@@ -129,3 +129,20 @@ def test_accountability_route_validation_and_tenant_isolation() -> None:
     )
     bob_pillars = client.get("/api/accountability/pillars", headers=bob).get_json()
     assert bob_pillars["pillars"] == []
+
+
+def test_hub_html_includes_accessible_accountability_widget() -> None:
+    """Verify Porter Hub HTML renders the accessible North Star widget using semantic CSS tokens."""
+    from pathlib import Path
+
+    html = Path("frontend/index.html").read_text(encoding="utf-8")
+    for marker in (
+        'id="north-star-accountability-section"',
+        'id="btn-acct-grace-toggle"',
+        'id="btn-acct-export-md"',
+        'id="acct-pillars-grid"',
+        'aria-live="polite"',
+        "var(--primary-action)",
+        "var(--status-success)",
+    ):
+        assert marker in html

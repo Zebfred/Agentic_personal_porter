@@ -9,12 +9,12 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 > - **Saga Tracking**: Journal routes now natively inject `saga_status` (`RECEIVED`, `GRAPH_INJECTED`, `FAILED`). Agents must update this status to `LLM_PROCESSING` during execution.
 
 ## Priority: North Star Accountability & Weekly Streak Engine (`004-north-star-accountability`)
-*Status: Phase 1–3 Backend Implemented & Verified (`feat/004-north-star-accountability`, stacked on `feat/003-first-serving-hub-api` — Frontend `T008` next; human verification pending).*
+*Status: Full End-to-End Stack Implemented & Verified (`feat/004-north-star-accountability`, stacked on `feat/003-first-serving-hub-api` — Human browser verification pending).*
 
 - [x] **Spec-Kit Artifacts (`specs/004-north-star-accountability/`):** Authored `spec.md`, `plan.md`, `data-model.md`, `contracts/accountability-api.md`, and `tasks.md` extending the 20-Second Recon Loop and Neo4j Identity Graph with North Star Pillars, Grace/Vacation Mode, Restorative Life wins, and portable Markdown export.
 - [x] **Contract-First Pydantic v2 Schemas (`src/schemas/accountability_models.py`):** Implemented boundary models (`NorthStarPillar`, `PillarUpsertBatchRequest`, `ReconCheckInRequest`, `GraceWindowRequest`, `PillarStreakSummary`, `AccountabilityDashboardResponse`) and adversarial boundary unit tests (`tests/unit/test_accountability_models.py`).
 - [x] **Phase 2–3 Storage, Deterministic Streak Engine & Flask Blueprint (`T003`–`T007`):** Implemented `src/database/mongo_client/accountability_storage.py`, zero-LLM `src/services/accountability_service.py`, `src/routes/accountability_routes.py` (`/api/accountability/*` registered in `src/app.py`), and offline unit/route tests (`tests/unit/test_accountability_service.py`, `tests/unit/test_accountability_routes.py`).
-- [ ] **Phase 4 Porter Hub 20-Second Recon UI (`T008`):** Wire North Star Pillar chips, Grace Mode toggle, and Life Harmony badge into `frontend/index.html` and `frontend/js/user_hub.js`.
+- [x] **Phase 4 Porter Hub 20-Second Recon UI (`T008`–`T009`):** Wired North Star Pillar chips, Grace Mode toggle, Life Harmony badge, and Markdown export into `frontend/index.html`, `frontend/js/accountability_widget.js`, and `frontend/js/user_hub.js` using semantic CSS tokens and WCAG ARIA labels.
 
 ## Priority: First-Serving Agent API & Hub Support
 *Status: Implemented & Verified in `003-first-serving-hub-api` (Human browser verification ready).*

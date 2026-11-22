@@ -1,3 +1,5 @@
+import { initNorthStarAccountability } from './accountability_widget.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('porter-chat-container');
     const chatInput = document.getElementById('porter-chat-input');
@@ -743,6 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     initOneShotWeeklyPlanning();
+    setTimeout(initNorthStarAccountability, 350);
     setTimeout(loadArtifactScans, 400);
     setTimeout(loadWeeklyTrajectory, 500);
     setTimeout(loadAdventureLog, 600);

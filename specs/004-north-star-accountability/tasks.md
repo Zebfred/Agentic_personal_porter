@@ -22,5 +22,5 @@
 
 ## Phase 4: Porter Hub 20-Second Recon UI (PR #3)
 
-* [ ] **T008** [`frontend-porter`, `palette`] Add North Star Pillar chips, one-tap check-in button with async loading state, Grace Mode toggle, and Life Harmony badge to `frontend/index.html` and `frontend/js/user_hub.js` using semantic CSS tokens and WCAG ARIA labels.
-* [ ] **T009** [`silas`] Run `make verify-done` (`ruff`, `mypy`, `bandit`, `pytest tests/unit`) and update `documentation/current-work/active-backend-tasks.md`.
+* [x] **T008** [`frontend-porter`, `palette`] Add North Star Pillar chips, one-tap check-in button with async loading state, Grace Mode toggle, and Life Harmony badge to `frontend/index.html`, `frontend/js/accountability_widget.js`, and `frontend/js/user_hub.js` using semantic CSS tokens and WCAG ARIA labels.
+* [x] **T009** [`silas`] Run `make verify-done` (`ruff`, `mypy`, `bandit`, `pytest tests/unit`, `node -c`) and update `documentation/current-work/active-backend-tasks.md` and `documentation/current-work/active-frontend-dev.md`.
