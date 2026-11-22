@@ -245,10 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskSelect.innerHTML = '';
                 tasks.forEach(t => {
                     const stagedIssue = stagedMap[t.task_id];
-                    const jiraKey = stagedIssue ? stagedIssue.jira_key : `LOCAL-${currentFeatureId}-${t.task_id}`;
+                    const jiraKey = stagedIssue ? stagedIssue.jira_key : `LOCAL-${t.task_id}`;
+                    const statusLabel = stagedIssue
+                        ? `${stagedIssue.jira_key} [${stagedIssue.status}]`
+                        : (t.completed ? 'Done (Local)' : 'To Do (Local)');
                     const opt = document.createElement('option');
                     opt.value = JSON.stringify({ jira_key: jiraKey, task_id: t.task_id, persona: t.persona });
-                    opt.textContent = `[${t.task_id}] (${t.persona}) ${t.title.substring(0, 75)} — ${stagedIssue ? stagedIssue.jira_key : t.status}`;
+                    opt.textContent = `[${t.task_id}] (${t.persona}) ${t.title.substring(0, 70)} — ${statusLabel}`;
                     taskSelect.appendChild(opt);
                 });
 
@@ -269,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         `;
                     });
-                    staged.slice(0, 8).forEach(item => {
+                    staged.slice(0, 25).forEach(item => {
                         listHtml += `
                             <div class="bg-surface border border-border rounded-lg p-2.5 text-xs flex justify-between items-center">
                                 <div class="truncate max-w-[75%]">
@@ -277,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     ${item.task_id ? `<span class="ml-1 font-mono text-muted">[${escapeHTML(item.task_id)}]</span>` : ''}
                                     <span class="ml-2 text-main">${escapeHTML(item.summary)}</span>
                                 </div>
-                                <span class="font-mono text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">${escapeHTML(item.sync_status || item.status)}</span>
+                                <span class="font-mono text-[11px] bg-gray-100 text-gray-700 px-2 py-0.5 rounded">${escapeHTML(item.status || item.sync_status)}</span>
                             </div>
                         `;
                     });
@@ -301,7 +304,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        if (feedbackEl) feedbackEl.textContent = `✅ Staged ${data.total_tasks || 0} Spec-Kit tasks`;
+                        const createdCount = (data.created_tasks || []).length;
+                        const skippedCount = (data.skipped_tasks || []).length;
+                        if (feedbackEl) feedbackEl.textContent = `✅ Staged ${createdCount} new tasks (${skippedCount} existing) under ${data.epic_key || 'PORTER'}`;
                         await loadBridgeStatus();
                     } else if (feedbackEl) {
                         feedbackEl.textContent = `❌ ${data.error || 'Failed to stage tasks'}`;
@@ -375,8 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         drawer.classList.remove('hidden');
                         document.getElementById('jules-drawer-title').textContent = `Work Order: ${wo.work_order_id} (${wo.persona})`;
                         document.getElementById('jules-drawer-status').textContent = wo.dispatch_status;
-                        document.getElementById('jules-drawer-command').textContent = `$ ${wo.jules_command || 'jules session start'}`;
-                        document.getElementById('jules-drawer-prompt').textContent = wo.prompt_payload || '';
+                        document.getElementById('jules-drawer-command').textContent = `$ jules new --repo Zebfred/Agentic_personal_porter (${(wo.verification_commands || []).join(' && ')})`;
+                        document.getElementById('jules-drawer-prompt').textContent = wo.formatted_prompt || wo.prompt_payload || '';
                     }
                     if (feedbackEl) {
                         feedbackEl.textContent = dryRun

@@ -33,7 +33,10 @@ class AgentHeartbeatManager:
             "username": username or "system",
         }
 
-        self.collection.insert_one(payload)
+        try:
+            self.collection.insert_one(payload)
+        except Exception:
+            pass
         return run_id
 
     def end_agent_run(
@@ -45,27 +48,30 @@ class AgentHeartbeatManager:
         """
         end_time = datetime.now(timezone.utc)
 
-        # Fetch start time to calculate duration
-        record = self.collection.find_one({"_id": run_id})
-        duration = None
-        if record and record.get("start_time"):
-            start_time = record["start_time"]
-            # Ensure timezone awareness for subtraction
-            if start_time.tzinfo is None:
-                start_time = start_time.replace(tzinfo=timezone.utc)
-            duration = (end_time - start_time).total_seconds()
+        try:
+            # Fetch start time to calculate duration
+            record = self.collection.find_one({"_id": run_id})
+            duration = None
+            if record and record.get("start_time"):
+                start_time = record["start_time"]
+                # Ensure timezone awareness for subtraction
+                if start_time.tzinfo is None:
+                    start_time = start_time.replace(tzinfo=timezone.utc)
+                duration = (end_time - start_time).total_seconds()
 
-        update_payload = {
-            "$set": {
-                "status": status,
-                "end_time": end_time,
-                "duration_seconds": duration,
-                "result_summary": result_summary,
-                "error_msg": error_msg,
+            update_payload = {
+                "$set": {
+                    "status": status,
+                    "end_time": end_time,
+                    "duration_seconds": duration,
+                    "result_summary": result_summary,
+                    "error_msg": error_msg,
+                }
             }
-        }
 
-        self.collection.update_one({"_id": run_id}, update_payload)
+            self.collection.update_one({"_id": run_id}, update_payload)
+        except Exception:
+            pass
 
     def get_all_agent_statuses(self) -> dict:
         """

@@ -19,6 +19,8 @@ __pycache__/
 
 # Ignore sensitive information (e.g., configuration files with credentials)
 .auth/
+documentation/.organization_discrete/
+.organization_discrete/
 config.local.js
 .*env*
 *cred*
@@ -29,6 +31,7 @@ credentials.json
 !package.json
 !.agents/hooks.json
 !.agents/skill-stack.json
+!.specify/feature.json
 
 # Ignore sensitive data
 data/*

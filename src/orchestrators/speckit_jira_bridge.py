@@ -15,7 +15,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from src.database.mongo_client.jira_storage import JiraStorage
 from src.database.mongo_client.uuid_manager import UUIDGenerator
@@ -134,7 +134,7 @@ def _resolve_task_jira_key(
     epic_key: str,
     dry_run: bool,
     jira_client: Optional[JiraClient],
-) -> tuple[str, str]:
+) -> tuple[str, Literal["synced", "pending_upstream"]]:
     """Determine `(jira_key, sync_state)` for a Spec-Kit task item."""
     if dry_run:
         return f"LOCAL-{item.task_id}", "synced"
@@ -149,6 +149,11 @@ def _resolve_task_jira_key(
             labels=labels,
             epic_key=epic_key if not epic_key.startswith("LOCAL-") else None,
         )
+        if item.completed:
+            try:
+                jira_client.transition_issue(key, "Done")
+            except Exception as trans_exc:
+                logger.debug("Could not transition %s to Done: %s", key, trans_exc)
         return key, "synced"
     except JiraClientError as exc:
         logger.warning("Queued %s as pending_upstream due to Jira error: %s", item.task_id, exc)
@@ -198,7 +203,7 @@ def _create_or_stage_task_record(
         status="Done" if item.completed else "To Do",
         persona=item.persona,
         labels=labels,
-        sync_status=sync_state,  # type: ignore[arg-type]
+        sync_status=sync_state,
         correlation_id=correlation_id,
     )
     summary_dict = {

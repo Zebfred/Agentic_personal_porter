@@ -68,7 +68,7 @@ graph TD
 ### Principle IV: 20-Second Recon Loop & Frontend Accessibility (Fiona & Palette)
 1. **The 20-Second Rule**: Any interface layout or verification workflow requiring more than three clicks to log or verify an actual activity is classified as a "UI failure."
 2. **Semantic CSS Tokens & Project Palette**: All frontend components MUST use semantic design tokens and CSS variables defined in the root stylesheet (e.g., `--primary-action`, `--text-on-primary`) rather than hardcoded or generic styles.
-3. **Glassmorphic Hero Aesthetic**: The UI must maintain a high-contrast, responsive, glassmorphic visual language built with Vanilla JavaScript and Tailwind CSS. A sharp visual distinction MUST be maintained between the Personal Hero view and the Nexus Business/Admin view.
+3. **Glassmorphic Hero Aesthetic**: The UI must maintain a high-contrast, responsive, glassmorphic visual language built with Vanilla JavaScript and Tailwind CSS. A sharp visual distinction MUST be maintained between the Personal Hero view and the Organization Business/Admin view.
 4. **WCAG Accessibility (A11y)**:
    - Every icon-only button (e.g., `<`, `>`, `×`) MUST have a descriptive `aria-label`.
    - Every form input and textarea MUST have an associated `<label>` with a matching `for` attribute (using `.sr-only` if visually hidden).
@@ -104,6 +104,7 @@ graph TD
 4. **Error Transparency**: Error handling must produce clear, actionable, diagnostic messages. Bare `except:` or `except Exception: pass` statements that swallow exceptions are strictly prohibited.
 5. **Targeted Linting Boundary**: When running `ruff check`, the `--fix` flag MUST NEVER be executed globally across `src/` (`uv run ruff check src --fix`). Automated fixes must be restricted to explicitly modified files.
 6. **Shell Script Reliability**: All automation and deployment shell scripts MUST enforce `set -euo pipefail`, declare absolute paths, and ensure directory existence using `mkdir -p`.
+7. **3-Tier Git Flow & 35-File Stacked PR Standard**: Direct commits to `main` are prohibited. All work MUST occur on a working branch (`dev`), topic branch (`feat/<topic>`), or isolated Git worktree, and Pull Requests MUST NOT exceed 35 changed files (`<= 35` files per PR; larger features MUST be split into an ordered PR Stack).
 
 ### Principle VIII: Preset Hierarchy & Resolution Supremacy
 1. **Local Constitution Precedence**: The project-local constitution at `.specify/memory/constitution.md` (and its authoritative mirror at `documentation/architecture/spec-kit-constitution.md`) strictly supersedes any installed preset or core template defaults from the Spec Kit fork.

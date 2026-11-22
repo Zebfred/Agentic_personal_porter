@@ -31,7 +31,16 @@ _OAUTH_SCOPES: list[str] = [
     "https://www.googleapis.com/auth/calendar",
 ]
 
-_NEXUS_DOMAIN: str = "@nexus-ds-ml-consulting.com"
+
+def _get_allowed_org_domain() -> str:
+    """Resolve the allowed organization email domain from environment configuration."""
+    explicit = os.environ.get("NEXUS_ALLOWED_DOMAIN", "").strip()
+    if explicit:
+        return explicit if explicit.startswith("@") else f"@{explicit}"
+    admin_email = os.environ.get("NEXUS_ADMIN_EMAIL", "").strip()
+    if "@" in admin_email:
+        return "@" + admin_email.split("@", 1)[1]
+    return "@nexus-guild.org"
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +321,7 @@ def nexus_login():
         jwt_secret, google_client_id = _get_auth_secrets()
         idinfo = _verify_google_token(data["credential"], google_client_id)
         email, profile_data = _extract_profile(idinfo)
-        _enforce_org_domain(email, _NEXUS_DOMAIN)
+        _enforce_org_domain(email, _get_allowed_org_domain())
 
         result = _provision_user_and_issue_jwt(
             email=email,
@@ -362,7 +371,7 @@ def nexus_login_code():
 
         idinfo = _verify_google_token(credentials.id_token, google_client_id)
         email, profile_data = _extract_profile(idinfo)
-        _enforce_org_domain(email, _NEXUS_DOMAIN)
+        _enforce_org_domain(email, _get_allowed_org_domain())
 
         result = _provision_user_and_issue_jwt(
             email=email,

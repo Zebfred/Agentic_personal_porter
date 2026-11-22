@@ -2,14 +2,12 @@ from src.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 import os
-from pymongo import MongoClient, UpdateOne
+from pymongo import MongoClient, UpdateOne  # noqa: F401
 from datetime import datetime, timezone, timedelta
 
 # Ensure we can import from the src directory when running from helper_scripts
 
 from src.config import MongoConfig
-
-# from src.constants import ACTUAL_CATEGORY_MAPPING
 from src.integrations.calendar_parser import parse_single_event
 
 # --- Mongo Setup ---
@@ -24,9 +22,10 @@ class SovereignMongoStorage:
     """
 
     def __init__(self) -> None:
-        self.client = MongoClient(MongoConfig.MONGO_URI)
+        from src.database.mongo_client.connection import MongoConnectionManager
+
+        self.client = MongoConnectionManager.get_client()
         self.db = self.client[MongoConfig.DB_NAME]
-        self.mongo_uri = MongoConfig.MONGO_URI
 
         # Collection Pointers
         self.raw_col = self.db[MongoConfig.RAW_COLLECTION]
@@ -37,7 +36,6 @@ class SovereignMongoStorage:
         self.reflections_col = self.db["agent_reflections"]
         self.system_status_col = self.db["system_status"]
         self.users_col = self.db["users"]
-        self.events_to_classify_col = self.db[MongoConfig.EVENTS_TO_BE_CLASSIFIED_COLLECTION]
         self._ensure_indexes()
 
     def _ensure_indexes(self):
@@ -47,14 +45,14 @@ class SovereignMongoStorage:
         from pymongo import ASCENDING, DESCENDING
         from src.database.mongo_client.hub_storage import ensure_hub_indexes
 
-        # In the Timeseries (raw events), index on email + start time for quick window querying
-        self.raw_col.create_index([("metadata.user_email", ASCENDING), ("start_time", ASCENDING)])
-
-        # In formatted collections, index on email + start time
-        self.formatted_col.create_index([("user_email", ASCENDING), ("start.dateTime", ASCENDING)])
-
-        # Intent, Actual, Unified, and Classification Queue collections for quick queries
+        # Intent, Actual, Unified, Raw, Formatted, and Classification Queue collections
         try:
+            self.raw_col.create_index(
+                [("metadata.user_email", ASCENDING), ("start_time", ASCENDING)]
+            )
+            self.formatted_col.create_index(
+                [("user_email", ASCENDING), ("start.dateTime", ASCENDING)]
+            )
             self.db[MongoConfig.INTENT_COLLECTION].create_index(
                 [("user_id", ASCENDING), ("time_slot.start", DESCENDING)]
             )
@@ -94,7 +92,7 @@ class SovereignMongoStorage:
             month_id = dt.strftime("%Y-%m")
 
             # Get ISO week number formatted as Wxx
-            iso_year, iso_week, iso_weekday = dt.isocalendar()
+            _iso_year, iso_week, _iso_weekday = dt.isocalendar()
             week_id = f"W{iso_week:02d}"
 
             # Prepare chunk data
@@ -272,7 +270,7 @@ class SovereignMongoStorage:
         try:
             dt = datetime.strptime(day_str, "%Y-%m-%d")
             month_id = dt.strftime("%Y-%m")
-            iso_year, iso_week, iso_weekday = dt.isocalendar()
+            _iso_year, iso_week, _iso_weekday = dt.isocalendar()
             week_id = f"W{iso_week:02d}"
 
             query = {"month_id": month_id, "user_id": user_id}
