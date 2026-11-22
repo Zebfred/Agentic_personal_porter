@@ -8,6 +8,13 @@ This document tracks immediate, high-priority tasks for the Python backend infra
 > - **Data Reset**: Before testing agents, you must run `python helper_scripts/wipe_all_databases.py` to drop the old global Neo4j and MongoDB state and begin with a clean multi-tenant slate.
 > - **Saga Tracking**: Journal routes now natively inject `saga_status` (`RECEIVED`, `GRAPH_INJECTED`, `FAILED`). Agents must update this status to `LLM_PROCESSING` during execution.
 
+## Priority: North Star Accountability & Weekly Streak Engine (`004-north-star-accountability`)
+*Status: Spec-Kit & Contract-First Schemas Completed (`feat/004-north-star-accountability`, stacked on `feat/003-first-serving-hub-api` — Human verification pending).*
+
+- [x] **Spec-Kit Artifacts (`specs/004-north-star-accountability/`):** Authored `spec.md`, `plan.md`, `data-model.md`, `contracts/accountability-api.md`, and `tasks.md` extending the 20-Second Recon Loop and Neo4j Identity Graph with North Star Pillars, Grace/Vacation Mode, Restorative Life wins, and portable Markdown export.
+- [x] **Contract-First Pydantic v2 Schemas (`src/schemas/accountability_models.py`):** Implemented boundary models (`NorthStarPillar`, `PillarUpsertBatchRequest`, `ReconCheckInRequest`, `GraceWindowRequest`, `PillarStreakSummary`, `AccountabilityDashboardResponse`) and adversarial boundary unit tests (`tests/unit/test_accountability_models.py`).
+- [ ] **Phase 2 Storage, Streak Service & Flask Blueprint:** Implement `accountability_storage.py`, deterministic zero-LLM `accountability_service.py`, and `accountability_routes.py` (`T003`–`T007`).
+
 ## Priority: First-Serving Agent API & Hub Support
 *Status: Implemented & Verified in `003-first-serving-hub-api` (Human browser verification ready).*
 
